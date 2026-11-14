@@ -2,12 +2,12 @@
  const dialog=byId('home-dialog');
  let generation=0, timer, active;
  let arenaActors=new Map(), rosterRows=new Map(), displayedTurn=-1, recallSlotOnline=null;
- let frameAge=0, playbackClock=null, playbackDelay=0.25, soundsPlayed=new Set(), battleSnapshot=null;
+ let frameAge=0, playbackClock=null, playbackDelay=0.25, snapshotArrival=0, arrivalGaps=[], soundsPlayed=new Set(), battleSnapshot=null;
  function arenaView(match, picks, togglePick, ready, leave) {
   if(phase!=='online-battle') {
    lastDpsRender=-1;renderBattleDps(0,[]);
    arenaActors=new Map();rosterRows=new Map();soundsPlayed=new Set();displayedTurn=-1;
-   recallSlotOnline=null;battleSnapshot=null;playbackClock=null;playbackDelay=0.25;trainerFields=[[],[]];trainerPanels=null;
+   recallSlotOnline=null;battleSnapshot=null;playbackClock=null;playbackDelay=0.25;snapshotArrival=0;arrivalGaps=[];trainerFields=[[],[]];trainerPanels=null;
    phase='online-battle';speed=1;
    effects=[];pendingCasts=[];playerSwitch=enemySwitch=null;
    battleWeather=battleTerrain=null;arenaMap=null;weatherTime=0;onlineMatchDuration=0;
@@ -54,9 +54,16 @@
   displayedTurn=packet.turn;
   const data=packet.battle;
   const snapshotInterval=data.clock-(battleSnapshot?.clock ?? data.clock);
-  if(snapshotInterval>0) {
-   const delay=clamp(Math.max(frameAge,snapshotInterval)*1.35,0.20,0.50);
-   playbackDelay=playbackDelay*0.8+delay*0.2;
+  if(snapshotInterval>0 || !battleSnapshot) {
+   const arrived=performance.now()/1000;
+   if(snapshotArrival && snapshotInterval>0) {
+    arrivalGaps.push(Math.max(arrived-snapshotArrival,snapshotInterval));
+    if(arrivalGaps.length>16)arrivalGaps.shift();
+    const gaps=[...arrivalGaps].sort((a,b)=>a-b);
+    const desired=clamp(gaps[Math.ceil(gaps.length*0.9)-1]+0.06,0.16,0.65);
+    playbackDelay+=(desired-playbackDelay)*(desired>playbackDelay?0.65:0.06);
+   }
+   snapshotArrival=arrived;
   }
   playbackClock ??= data.clock-playbackDelay;
   updateNormalAttackToggle(data.normalAttacks ?? true,normalAttacks=>send({normalAttacks}));
@@ -78,7 +85,7 @@
    const sample={time:data.clock,x:actor.x,y:actor.y,ticks:actor.motionTicks};
    if(samples.length && samples.at(-1).time===sample.time)samples[samples.length-1]=sample;
    else samples.push(sample);
-   if(samples.length>12)samples.shift();
+   if(samples.length>64)samples.shift();
    if(Number.isFinite(oldX))actor.x=oldX;
    if(Number.isFinite(oldY))actor.y=oldY;
    arenaActors.set(entry.onlineId,actor);
@@ -166,8 +173,9 @@
   visualTime+=dt;frameAge+=dt;
   if(battleSnapshot) {
    const latest=battleSnapshot.clock;
-   const target=latest+Math.min(frameAge,playbackDelay)-playbackDelay;
-   const rate=clamp(1+(target-playbackClock)*2,0.8,1.25);
+   const age=Math.max(0,performance.now()/1000-snapshotArrival);
+   const target=latest+Math.min(age,playbackDelay)-playbackDelay;
+   const rate=clamp(1+(target-playbackClock)*1.5,0.75,1.20);
    playbackClock=active?.result?latest:Math.min(latest,playbackClock+dt*rate);
   }
   for(const actor of arenaActors.values()) {

@@ -8466,6 +8466,7 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.7.1',changes:['Improved PvP movement buffering for irregular live updates.']},
  {version:'0.7.0',changes:['Added private live PvP snapshots with polling fallback.']},
  {version:'0.6.8',changes:['Buffered PvP movement and returned players to the main menu when results close.']},
  {version:'0.6.7',changes:['Added DPS-style charts to online match results and improved PvP movement between network updates.']},
@@ -8564,4 +8565,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.7.0"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.7.1"></script></html>
