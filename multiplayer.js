@@ -1,5 +1,6 @@
 (() => {
  const isCoop=mode=>mode==='coop' || mode==='coop_gigantamax' || Object.hasOwn(megaRaidTiers,mode);
+ const multiplayerSource=document.currentScript.src;
  const dialog=byId('home-dialog');
  let generation=0, timer, active;
  let arenaActors=new Map(), rosterRows=new Map(), displayedTurn=-1, recallSlotOnline=null;
@@ -521,6 +522,22 @@
   if(error)throw error;
   return data;
  }
+ async function collectMegaRaidRewards() {
+  const client=await cloudClient();
+  const {data,error}=await client.rpc('arena_mega_raid_clears');
+  if(error) throw error;
+  const rewards=[];
+  for(const mode of data ?? []) {
+   const tier=megaRaidTiers[mode];
+   if(!tier || wildProgress.megaRaidRewards.includes(mode))continue;
+   wildProgress.megaRaidRewards.push(mode);
+   wildProgress.coins+=tier.coins;
+   wildProgress.balls[7]+=tier.masterBalls;
+   rewards.push('Tier '+tier.tier+' first clear · '+tier.masterBalls+' Master Balls · '+tier.coins.toLocaleString()+' coins');
+  }
+  if(rewards.length)saveWildProgress();
+  return rewards;
+ }
  function showRaidSeats(initial) {
   stop();
   const token=generation;
@@ -657,7 +674,7 @@
   const title=coop?'Co-op':'PvP';
   const mode=select('Match type',[['unranked','Unranked'],['ranked','Ranked']]);
   const raid=select('Raid tier',[
-   ...Object.entries(megaRaidTiers).map(([mode,entry])=>[mode,'Tier '+entry.tier+' · '+entry.name]),
+   ...Object.entries(megaRaidTiers).map(([mode,entry])=>[mode,'Tier '+entry.tier+' · '+entry.name+' · Lv. '+entry.level+' · '+entry.hp.toLocaleString()+' HP']),
   ]);
   const format=select('Battle format',[[1,'1v1'],[2,'2v2'],[3,'3v3']]);
   const freeFight=element('input');freeFight.type='checkbox';
@@ -688,6 +705,7 @@
   const find=button(coop?'Auto Match':'Find match',()=>begin('queue'));
   if(coop){
    const room=raidRoom('Co-op Raids','Raid selection');
+   collectMegaRaidRewards().then(rewards=>{for(const reward of rewards)room.controls.append(element('p',reward));}).catch(()=>{});
    raid.onchange=()=>{room.root.dataset.tier=String(megaRaidTiers[raid.value].tier);};
    raid.onchange();
    const findRoom=button('Find Room',async()=>{
@@ -729,6 +747,8 @@
   };
   const coOp=isCoop(active.mode);
   const tier=megaRaidTiers[active.mode];
+  raidBattleBackdrop=tier?new Image():null;
+  if(raidBattleBackdrop)raidBattleBackdrop.src=new URL('./assets/raid-tier-'+tier.tier+'.webp',multiplayerSource).href;
   const raid=coOp?raidRoom(tier?tier.name+' · Tier '+tier.tier:title,active.code?'Private room':'Public room',leave):null;
   if(raid)raid.controls.append(view);
   else show(title,view,button('Leave match',leave));
@@ -831,6 +851,16 @@
       chart.append(tabs,bars);
       renderBars('dealt');
       stats.push(chart);
+     }
+     if(tier && m.result==='coop_win') {
+      const reward=element('p','Checking first-clear rewards…');
+      stats.unshift(reward);
+      const check=()=>collectMegaRaidRewards().then(rewards=>{
+       reward.textContent=rewards.join(' • ') || 'First-clear rewards already collected.';
+      }).catch(()=>{
+       reward.replaceChildren(button('Retry first-clear reward',check));
+      });
+      check();
      }
      show(result,...stats,button('Main menu',()=>dialog.close()));
     }
