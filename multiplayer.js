@@ -208,7 +208,13 @@
   byId('reset').onclick=openMenu;
   originalMenu();
  };
- const stop=()=>{generation++;clearTimeout(timer);};
+ let closeBattleChannel=null;
+ const stop=()=>{
+  generation++;
+  clearTimeout(timer);
+  closeBattleChannel?.();
+  closeBattleChannel=null;
+ };
  dialog.addEventListener('close',()=>{
   if(phase==='online-battle' && active?.result)openMenu();
   else if(phase!=='online-battle')stop();
@@ -303,6 +309,22 @@
   };
   show(title,view,button('Leave match',leave));
   let picks=[], submitting=false, sending=false;
+  let joiningChannel=false, live=false, lastPush=0;
+  async function joinBattleChannel() {
+   if(joiningChannel || active.mode==='coop')return;
+   joiningChannel=true;
+   try {
+    const client=await cloudClient();
+    if(token!==generation || active.result)return;
+    const channel=client.channel('arena:'+active.id+':'+active.side,{config:{private:true}});
+    closeBattleChannel=()=>{void client.removeChannel(channel);};
+    channel.on('broadcast',{event:'snapshot'},({payload})=>{
+     if(token!==generation || active.result || !payload?.battle)return;
+     lastPush=performance.now();
+     acceptBattle(payload);
+    }).subscribe(status=>{live=status==='SUBSCRIBED';});
+   } catch {live=false;}
+  }
   async function send(command) {
    if(sending || active.result)return;
    sending=true;
@@ -318,6 +340,9 @@
    showBattleSnapshot(packet,send);
    if(packet.result && !active.result) {
     active={...active,result:packet.result};
+    clearTimeout(timer);
+    closeBattleChannel?.();
+    closeBattleChannel=null;
     render();
    }
   }
@@ -402,8 +427,15 @@
   }
   render();
   async function poll() {
+   if(token!==generation || active.result)return;
+   const began=performance.now();
    try {
     if(active.started && !active.result) {
+     void joinBattleChannel();
+     if(active.side==='guest' && live && began-lastPush<550){
+      timer=setTimeout(poll,120);
+      return;
+     }
      const packet=await combat(active.id);
      if(token!==generation)return;
      acceptBattle(packet);
@@ -413,7 +445,7 @@
      if(!submitting && (!active.locked || next.locked || next.result) && !active.started &&
        JSON.stringify(next)!==JSON.stringify(active)){active=next;render();}
     }
-    if(!active.result)timer=setTimeout(poll,active.started?90:850);
+    if(!active.result)timer=setTimeout(poll,active.started?Math.max(0,100-(performance.now()-began)):850);
    } catch(error){
     if(token!==generation)return;
     if(phase==='online-battle')byId('status').textContent='Reconnecting… '+error.message;
