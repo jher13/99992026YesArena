@@ -5958,6 +5958,12 @@ function gambitMatches(rule,subject,move,distance) {
   default:return actual===expected;
  }
 }
+function canPrepareWithoutOpponent(move,rules) {
+ return rules.scope==='ally' && moveCatalog[move][4] &&
+  (partyBuffMoves.has(move) || allyOnlyBuffMoves.has(move) || skillHealingPercent(move,rules)>0 ||
+   rules.changes.some(([,amount])=>amount>0) || weatherMoves[move] || terrainMoves[move] ||
+   ['Safeguard','Mist','Lucky Chant','Aurora Veil','Wish','Rest','Heal Pulse','Floral Healing','Lunar Blessing'].includes(move));
+}
 function gambitChoice(actor,opponents,defaultTarget) {
  if(actor.ai?.mode!=='Advanced' || !actor.ai.gambits?.length)return null;
  const living=opponents.filter(target=>target.hp>0 && target.friendly!==actor.friendly);
@@ -5969,7 +5975,7 @@ function gambitChoice(actor,opponents,defaultTarget) {
   return {target,distance,gap:distance-bodyRadius(actor)-bodyRadius(target)};
  };
  const enemyFallback=redirected.includes(defaultTarget) || !redirected.length && living.includes(defaultTarget)?
-  defaultTarget:enemiesOnField[0];
+  defaultTarget:enemiesOnField[0] ?? defaultTarget;
  for(const rule of actor.ai.gambits) {
   const ally=rule.target.startsWith('Ally ');
   const self=rule.target==='Self';
@@ -5998,6 +6004,7 @@ function gambitChoice(actor,opponents,defaultTarget) {
     if(move!==rule.move && rule.move!=='Any' && !(rule.move==='Attack' && moveCatalog[move][1]>0))continue;
     if(actor.moveTimers[slot]>0 || moveRestricted(actor,move))continue;
     const rules=moveRules(move);
+    if(defaultTarget===actor && !canPrepareWithoutOpponent(move,rules))continue;
     const {shape,selfCentered,range}=arenaMoveGeometry(move,rules);
     if(!gambitMatches(rule,subject.target,move,subject.distance))continue;
     if(moveCatalog[move][4] && rules.ailment && rules.scope!=='ally' &&
@@ -6056,11 +6063,15 @@ function act(actor, opponents, dt) {
    target=opponent;gap=separation;distance=centerDistance;targetRank=rank;
   }
  }
+ const preparing=!target && (actor.side==='host' || actor.side==='guest') &&
+  (actor.friendly?enemies:allies).some(member=>member.hp>0) &&
+  ![...allies,...enemies].some(member=>member.side==='boss');
+ if(preparing){target=actor;gap=0;distance=0;}
  if(!target) return;
  const gambit=gambitChoice(actor,opponents,target);
  if(gambit?.hold)return;
  if(gambit)({target,distance,gap}=gambit);
- actor.committedTarget=battleActorId(target);
+ actor.committedTarget=preparing?null:battleActorId(target);
  if(actor.attack>0 || pendingCasts.some(cast=>cast.actor===actor && !cast.flight &&
    (cast.shape==='dash' || cast.shape==='landing' || sacrificeProfiles.has(cast.move)))) return;
  if(distance>1) {
@@ -6079,6 +6090,7 @@ function act(actor, opponents, dt) {
   const move=actor.moves[slot];
   if(moveRestricted(actor,move))continue;
   const rules=moveRules(move);
+  if(preparing && !canPrepareWithoutOpponent(move,rules))continue;
   const {shape,selfCentered,range,warning}=arenaMoveGeometry(move,rules);
   const remaining=rules.scope==='ally' ? 0 : Math.max(0,gap-range);
   const score=tacticalMoveScore(actor,target,move,rules,gap);
@@ -6109,7 +6121,7 @@ function act(actor, opponents, dt) {
    ((1+(remaining+coverCost)/48)*(1+escapeRisk));
   if(!choice || value>choice.value) choice={slot,move,rules,shape,range,selfCentered,remaining,value};
  }
- const basicAllowed=actor.normalAttacksEnabled ?? (!actor.friendly || normalAttacksEnabled);
+ const basicAllowed=!preparing && (actor.normalAttacksEnabled ?? (!actor.friendly || normalAttacksEnabled));
  const basicRange=24;
  const basicRules={...moveRules('Tackle'),range:basicRange,category:2};
  const basicScore=basicAllowed?tacticalMoveScore(actor,target,'Normal Attack',basicRules,gap):0;
@@ -6120,6 +6132,7 @@ function act(actor, opponents, dt) {
  if(!choice && !usableAttack && basicScore>0) {
   choice={slot:-1,move:'Normal Attack',rules:basicRules,range:basicRange,remaining:Math.max(0,gap-basicRange)};
  }
+ if(preparing && !choice)return;
  if(!choice && !usableAttack) {
   const move='Struggle';
   const rules=moveRules(move);
@@ -7904,6 +7917,7 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.7.4',changes:['PvP Pokémon can use support moves while their opponent chooses a reserve.']},
  {version:'0.7.3',changes:['Restored manual PvP reserve selection and synchronized battle effects with buffered movement.']},
  {version:'0.7.2',changes:['Fixed stale PvP queue settings, automatic reserve deployment, and final match statistics.']},
  {version:'0.7.1',changes:['Improved PvP movement buffering for irregular live updates.']},
