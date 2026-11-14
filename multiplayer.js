@@ -53,7 +53,8 @@
   if(!packet.battle || packet.turn<=displayedTurn)return;
   displayedTurn=packet.turn;
   const data=packet.battle;
-  blendDuration=clamp(frameAge || 0.2,0.12,0.5);
+  const snapshotInterval=data.clock-(battleSnapshot?.clock ?? data.clock);
+  if(snapshotInterval>0)blendDuration=clamp(blendDuration*0.65+frameAge*0.35,0.10,0.55);
   updateNormalAttackToggle(data.normalAttacks ?? true,normalAttacks=>send({normalAttacks}));
   const mirror=active.mode!=='coop' && active.side==='guest';
   const mx=x=>mirror?canvas.width-x:x;
@@ -63,6 +64,7 @@
   for(const entry of data.actors) {
    const actor=arenaActors.get(entry.onlineId) ?? {};
    const oldX=actor.x,oldY=actor.y;
+   const priorX=actor.snapshotX,priorY=actor.snapshotY;
    Object.assign(actor,entry,{
     x:mx(entry.x),friendly:mirror?!entry.friendly:entry.friendly,
     direction:mirror?(8-entry.direction)%8:entry.direction,facing:dx(entry.facing),
@@ -71,6 +73,10 @@
    actor.snapshotX=actor.x;actor.snapshotY=actor.y;
    actor.previousX=Number.isFinite(oldX) && Math.abs(oldX-actor.x)<90?oldX:actor.x;
    actor.previousY=Number.isFinite(oldY) && Math.abs(oldY-actor.y)<90?oldY:actor.y;
+   const travel=Math.hypot(actor.snapshotX-priorX,actor.snapshotY-priorY);
+   const project=snapshotInterval>0 && travel<90 && entry.hp>0 && !entry.attack && ['walk','run'].includes(entry.gait);
+   actor.velocityX=project?clamp((actor.snapshotX-priorX)/snapshotInterval,-250,250):0;
+   actor.velocityY=project?clamp((actor.snapshotY-priorY)/snapshotInterval,-250,250):0;
    arenaActors.set(entry.onlineId,actor);
   }
   const actorFor=id=>arenaActors.get(id) ?? null;
@@ -155,9 +161,10 @@
  window.paintOnlineBattle=dt=>{
   visualTime+=dt;frameAge+=dt;
   const blend=Math.min(1,frameAge/blendDuration);
+  const prediction=active?.result?0:Math.min(0.10,frameAge);
   for(const actor of arenaActors.values()) {
-   actor.x=actor.previousX+(actor.snapshotX-actor.previousX)*blend;
-   actor.y=actor.previousY+(actor.snapshotY-actor.previousY)*blend;
+   actor.x=clamp(actor.previousX+(actor.snapshotX-actor.previousX+actor.velocityX*prediction)*blend,28,canvas.width-28);
+   actor.y=clamp(actor.previousY+(actor.snapshotY-actor.previousY+actor.velocityY*prediction)*blend,28,canvas.height-28);
    actor.attack=Math.max(0,actor.attack-dt);
    actor.hit=Math.max(0,actor.hit-dt);
    actor.labelTime=Math.max(0,actor.labelTime-dt);
@@ -335,16 +342,27 @@
       const seconds=Math.floor(data.clock);
       stats.push(element('p','Duration · '+Math.floor(seconds/60)+'m '+seconds%60+'s'));
       const mirror=m.mode!=='coop' && m.side==='guest';
-      const totals=battleDamageTotals(data.damageBuckets ?? [],'dealt');
-      for(const friendly of [true,false]) {
-       const rows=totals.filter(row=>(row.friendly!==mirror)===friendly);
-       const actors=[...arenaActors.values()].filter(actor=>actor.friendly===friendly);
-       stats.push(element('h3',friendly?'Your side':'Opposing side'),
-        element('p',rows.reduce((sum,row)=>sum+row.total,0).toLocaleString()+' damage dealt · '+
-         actors.filter(actor=>actor.hp<=0).length+' fainted'));
-       for(const row of rows.sort((a,b)=>b.total-a.total))
-        stats.push(element('p',row.name+' · '+row.total.toLocaleString()+' damage'));
+      const chart=element('section');
+      const tabs=element('div',null,'damage-tabs');
+      const bars=element('div');
+      const modes=[['dealt','Damage Dealt'],['taken','Damage Taken']];
+      const buttons=modes.map(([mode,label])=>button(label,()=>renderBars(mode)));
+      function renderBars(mode) {
+       buttons.forEach((tab,i)=>tab.setAttribute('aria-pressed',String(modes[i][0]===mode)));
+       const totals=battleDamageTotals(data.damageBuckets ?? [],mode);
+       bars.replaceChildren();
+       for(const friendly of [true,false]) {
+        const rows=totals.filter(row=>(row.friendly!==mirror)===friendly && row.total>0).sort((a,b)=>b.total-a.total);
+        const actors=[...arenaActors.values()].filter(actor=>actor.friendly===friendly);
+        bars.append(element('h3',friendly?'Your side':'Opposing side'),
+         element('p',actors.filter(actor=>actor.hp<=0).length+' fainted'),
+         ...(rows.length?damageBarRows(rows,data.clock,mode):[element('p','No damage recorded.')]));
+       }
       }
+      tabs.append(...buttons);
+      chart.append(tabs,bars);
+      renderBars('dealt');
+      stats.push(chart);
      }
      show(result,...stats,button('Main menu',()=>{openMenu();dialog.close();}));
     }
