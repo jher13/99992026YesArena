@@ -75,7 +75,75 @@
   updateOnlineRoster(commandSend);
   commandSend({incoming:actor.onlineId,slot:index});
  }
+ let soloSelection=null, soloCommand=null;
+ function localHotkey(action) {
+  const living=actor=>actor?.hp>0;
+  const fields=trainerFields?.[0] ?? [{actor:activePlayer,transition:playerSwitch}];
+  if(!allies.includes(soloSelection) || !living(soloSelection))soloSelection=null;
+  if(action==='Escape'){
+   soloCommand=null;updateBattleRosters();updateRecallStatus();return;
+  }
+  if(action==='Attack' || action==='Select'){
+   soloCommand=action;updateBattleRosters();
+   byId('status').textContent=action==='Attack'?'Choose an enemy target.':'Choose a healthy reserve to swap in.';
+   return;
+  }
+  const rosterKey=/^(Ally|Enemy) ([1-6])$/.exec(action);
+  if(rosterKey) {
+   const friendly=rosterKey[1]==='Ally',index=Number(rosterKey[2])-1;
+   const actor=(friendly?allies:enemies)[index];
+   if(!living(actor))return;
+   if(phase==='setup'){
+    if(friendly)rosterCards.find(row=>row.actor===actor)?.card.click();
+    return;
+   }
+   if(!friendly){
+    if(soloCommand==='Attack'){
+     const outgoing=soloSelection ?? fields.find(slot=>living(slot.actor))?.actor;
+     if(outgoing)outgoing.manualTarget=battleActorId(actor);
+     soloCommand=null;updateBattleRosters();updateRecallStatus();
+    }
+    return;
+   }
+   if(soloCommand==='Attack')return;
+   const fieldIndex=fields.findIndex(slot=>slot.actor===actor && !slot.transition);
+   if(fieldIndex>=0 && !soloCommand){
+    soloSelection=actor;updateBattleRosters();
+    byId('status').textContent=actor.name+' selected for commands.';return;
+   }
+   if(fieldIndex>=0)return;
+   if(trainerFields && soloCommand==='Select'){
+    const outgoing=fields.findIndex(slot=>slot.actor===soloSelection && !slot.transition);
+    if(outgoing<0)return;
+    recallSlot=outgoing;
+   }
+   if(!canSendReserve(actor))return;
+   soloCommand=null;
+   updateBattleRosters();
+   rosterCards.find(row=>row.actor===actor)?.card.click();
+   return;
+  }
+  const actor=soloSelection ?? fields.find(slot=>living(slot.actor))?.actor;
+  if(!living(actor))return;
+  const style=['Aggressive','Balanced','Defensive'].includes(action);
+  actor.ai=normalizeBattleAI({...actor.ai,[style?'style':'position']:action});
+  byId('status').textContent=actor.name+' · '+action;
+ }
+ window.localBattleHotkeyClick=(friendly,index)=>{
+  if(phase!=='battle' || !soloCommand)return false;
+  localHotkey((friendly?'Ally ':'Enemy ')+(index+1));return true;
+ };
+ window.localBattleCanTarget=()=>phase==='battle' && soloCommand==='Attack';
+ window.localBattleCanSwap=()=>phase==='battle' && soloCommand==='Select';
+ window.localBattleIsSelected=actor=>actor===soloSelection;
  function handleBattleHotkey(event) {
+  if(phase==='setup' || phase==='battle'){
+   if(dialog.open || byId('battle-settings').open || event.repeat ||
+      event.target.closest?.('input,textarea,select,[contenteditable]'))return;
+   const action=event.key==='Escape' && soloCommand?'Escape':Object.keys(bindings).find(key=>bindings[key]===keyName(event));
+   if(action){event.preventDefault();localHotkey(action);}
+   return;
+  }
   if(phase!=='online-battle' || active?.result || active?.mode==='coop' || dialog.open || byId('battle-settings').open ||
      event.repeat || event.target.closest?.('input,textarea,select,[contenteditable]'))return;
   if(event.key==='Escape' && commandMode){
@@ -90,7 +158,7 @@
    }
    return;
   }
-  if(!commandSend)return;
+  if(!commandSend || active.mode==='coop' && !(/^(Ally |Select$)/.test(action)))return;
   event.preventDefault();
   if(action==='Attack' || action==='Select'){
    if(!selectedUnit) {
@@ -286,7 +354,7 @@
     row.card.setAttribute('aria-pressed',String(actor.onlineId===selectedUnit || index>=0 && recallSlotOnline===index));
     row.card.disabled=!own || actor.hp<=0 || (index>=0?!canReserve || Boolean(ownSlots[index].transition):
      reserveSlot===null || (openSlot<0 && battleSnapshot.recall>0));
-    if(active.mode!=='coop'){
+    if(active.mode!=='coop' || commandMode==='Select'){
      const outgoing=ownSlots.find(slot=>slot.actor?.onlineId===selectedUnit);
      const swapSlot=ownSlots.length===1?ownSlots[0]:outgoing;
      const canQuickSwap=index<0 && Boolean(swapSlot) && !swapSlot.transition &&
@@ -353,6 +421,7 @@
  const originalMenu=openMenu;
  openMenu=()=>{
   stop();
+  soloSelection=soloCommand=null;
   byId('start').hidden=false;
   byId('speed').disabled=false;
   byId('reset').onclick=openMenu;

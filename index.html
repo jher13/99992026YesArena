@@ -4834,7 +4834,8 @@ function renderBattleRosters() {
    if(xp) card.append(xp);
    const stages=element('span',null,'battle-stage-icons');
    card.append(stages);
-   if(friendly) card.onclick=()=>{
+   card.onclick=()=>{
+    if(window.localBattleHotkeyClick?.(friendly,index) || !friendly)return;
     if(phase==='setup') {selected=index;renderControls();return;}
     if(trainerFields && phase==='battle') {
      const slotIndex=trainerFields[0].findIndex(slot=>slot.actor===actor && actor.hp>0);
@@ -4872,6 +4873,9 @@ function updateBattleRosters() {
   card.disabled=!friendly || (phase!=='setup' && !canSendReserve(actor) &&
    !(phase==='battle' && slots && active && actor.hp>0));
   if(friendly && slots) card.setAttribute('aria-pressed',String(actor.hp>0 && slots[recallSlot]?.actor===actor));
+  if(!friendly && window.localBattleCanTarget?.())card.disabled=actor.hp<=0;
+  if(friendly && window.localBattleCanSwap?.() && actor.hp>0)card.disabled=false;
+  card.classList.toggle('is-command-selected',Boolean(window.localBattleIsSelected?.(actor)));
   let experience='';
   if(xp) {
    const progress=ownedPokemon(actor.originalName ?? actor.name);
@@ -6424,7 +6428,7 @@ function readyKnockout(actor,target,gap) {
  });
 }
 function targetPreference(actor,opponent,gap) {
- if(actor.manualTarget && actor.manualTarget===opponent.onlineId)return -50000;
+ if(actor.manualTarget && actor.manualTarget===battleActorId(opponent))return -50000;
  if(opponent.friendly!==actor.friendly && (opponent.redirectUntil>clock ||
   opponent.powderRedirectUntil>clock && !arenaDefenseTypes(actor).includes('Grass') && activeAbility(actor)!=='Overcoat'))return -1e6;
  const enemyDepth=opponent.friendly?canvas.width-opponent.x:opponent.x;
@@ -6633,7 +6637,7 @@ function act(actor, opponents, dt) {
   ![...allies,...enemies].some(member=>member.side==='boss');
  if(preparing){target=actor;gap=0;distance=0;}
  if(!target) return;
- const gambit=gambitChoice(actor,!preparing && actor.manualTarget===target.onlineId && actor.manualTarget?[target]:opponents,target);
+ const gambit=gambitChoice(actor,!preparing && actor.manualTarget===battleActorId(target) && actor.manualTarget?[target]:opponents,target);
  if(gambit?.hold)return;
  if(gambit)({target,distance,gap}=gambit);
  actor.committedTarget=preparing?null:battleActorId(target);
@@ -8482,6 +8486,7 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.8.3',changes:['Extended configurable battle hotkeys to local battle modes.']},
  {version:'0.8.2',changes:['Updated PvP keyboard handling and displayed each binding on a separate Hotkey Settings row.']},
  {version:'0.8.1',changes:['Updated PvP shortcuts for direct 1v1 send-outs and selected-slot quick swaps.']},
  {version:'0.8.0',changes:['Added configurable PvP commands and one-click Ready for full teams in 6v6.']},
@@ -8587,4 +8592,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.8.2"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.8.3"></script></html>
