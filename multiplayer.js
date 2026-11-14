@@ -238,7 +238,7 @@
  function lobby(coop) {
   stop();
   const title=coop?'Co-op':'PvP';
-  const mode=select('Match type',[['unranked','Unranked'],['ranked','Ranked']]);
+  const mode=select('Match type',[['unranked','Unranked'],['free_fight','Free Fight · Lv. 100'],['ranked','Ranked']]);
   const format=select('Battle format',[[1,'1v1'],[2,'2v2'],[3,'3v3']]);
   const code=input('Room code');
   const begin=async action=>{
@@ -250,10 +250,19 @@
   };
   const create=button('Create room',()=>begin('create'));
   const join=button('Join room',()=>begin('join'));
-  mode.onchange=()=>{create.hidden=join.hidden=code.hidden=mode.value==='ranked';};
+  if(!coop) {
+   const six=element('option','6v6');six.value='6';
+   format.append(six);
+   mode.onchange=()=>{
+    create.hidden=join.hidden=code.hidden=mode.value==='ranked';
+    six.disabled=mode.value==='free_fight';
+    if(six.disabled && format.value==='6')format.value='3';
+   };
+  }
   show(title,...(coop?[]:[mode]),format,button('Find match',()=>begin('queue')),create,code,join);
  }
  function showMatch(title) {
+  if(active.mode==='free_fight')title='Free Fight';
   stop();
   const token=generation;
   const view=element('div');
