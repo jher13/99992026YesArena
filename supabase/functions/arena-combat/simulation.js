@@ -55,10 +55,13 @@ function initializeOnline(match) {
  const forms=raidFormRoster[match.mode];
  const guardians=forms ?? ['Onix','Steelix','Golem','Aggron','Tyranitar','Rhyperior'];
  const boss=coop?Array.from({length:raid?1:match.format*2},(_,i)=>{
-  const actor=onlineActor(raid?.species ?? guardians[i],{},'boss',i,raid?Math.min(100,bossLevel+(raid.tier-1)*5):bossLevel);
+  const actor=onlineActor(raid?.species ?? guardians[i],{},'boss',i,raid?.level ?? bossLevel);
   if(raid) {
    actor.raidForm=raid.name;
-   actor.hp=actor.max=actor.stats[0]=Math.round(actor.max*raid.hp*(1+(raidTeam?Math.max(0,raidTeam.length-2)*0.33:(match.format-1)*0.7)));
+   actor.hp=actor.max=actor.stats[0]=raid.hp;
+   actor.moves=legalLoadout(raid.species,raid.moves,8);
+   actor.moveCooldowns=actor.moves.map(move=>moveRules(move).cooldown);
+   actor.moveTimers=actor.moves.map(()=>0);
    for(const stat of [1,2,4,5])actor.stats[stat]=Math.round(actor.stats[stat]*(1+raid.tier*0.12));
    return actor;
   }
