@@ -494,7 +494,7 @@
    if(token===generation) await view();
   } catch(error){if(token===generation)show(title,element('p',error.message));}
  }
- function raidRoom(title,visibility,leave,tier=1) {
+ function raidRoom(title,visibility,leave,tier=1,code) {
   phase='raid-lobby';
   showScreen('raid-lobby');
   if(dialog.open)dialog.close();
@@ -503,7 +503,10 @@
   const top=element('div',null,'raid-room-top');
   const actions=element('div',null,'raid-room-actions');
   actions.append(button('Settings',()=>byId('toolbar-settings').click()),button(leave?'Leave room':'Main menu',leave ?? openMenu));
-  top.append(element('span',visibility),element('h2',title),actions);
+  const roomInfo=element('div',null,'raid-room-info');
+  roomInfo.append(element('span',visibility));
+  if(code)roomInfo.append(element('small',code));
+  top.append(roomInfo,element('h2',title),actions);
   const seats=element('div',null,'raid-room-seats');
   const controls=element('div',null,'raid-room-controls');
   const footer=element('div',null,'raid-room-footer');
@@ -524,13 +527,12 @@
   let match=initial, busy=false, revision='';
   const tier=megaRaidTiers[match.mode];
   const room=raidRoom(tier?tier.name+' · Tier '+tier.tier:'Co-op Raid',
-   match.code?'Private room':'Public room',async()=>{
+   match.public?'Public room':'Private room',async()=>{
     await raidRpc('leave',{id:match.id});if(token===generation)openMenu();
-   },tier?.tier ?? 1);
+   },tier?.tier ?? 1,match.code);
   const status=element('p');
   const actions=element('div',null,'raid-left-actions');
   room.controls.append(status,actions);
-  if(match.code)room.controls.append(element('p','Room code · '+match.code));
   const available=Object.keys(wildProgress.owned).filter(isAvailablePokemon).sort((a,b)=>a.localeCompare(b));
   let fighter=match.seats[match.ownSlot]?.pokemon ?? team[0] ?? available[0] ?? '';
   let kickMode=false;
@@ -607,15 +609,23 @@
     fighter=pokemon;
     await act('pick',{pokemon:''});
    }));
-   const invite=button('Invite',async()=>{
-    if(!match.code){
-     status.textContent='Friends can join this public raid through Find match on the same tier.';
-     return;
-    }
-    try {
-     await navigator.clipboard.writeText(match.code);
-     status.textContent='Room code copied.';
-    } catch {status.textContent='Share room code '+match.code+'.';}
+   const invite=button('Invite',()=>{
+    const contacts=element('div');
+    const showContacts=async kind=>{
+     const data=kind==='friends'?await rpc('friends'):null;
+     let names;
+     if(kind==='friends')names=data.filter(friend=>friend.accepted).map(friend=>friend.name);
+     else names=await raidRpc('guildlist',{id:match.id});
+     contacts.replaceChildren(...(names.length?names.map(name=>button('Invite '+name,async()=>{
+      await raidRpc('invite',{id:match.id,name});
+      contacts.append(element('p','Invited '+name+'.'));
+     })):[element('p','No contacts available.')]));
+    };
+    show('Invite',button('Friendlist',()=>showContacts('friends')),button('Guildlist',()=>showContacts('guild')),
+     button('Copy Room Code',async()=>{
+      try{await navigator.clipboard.writeText(match.code);contacts.replaceChildren(element('p','Room code copied.'));}
+      catch{contacts.replaceChildren(element('p',match.code));}
+     }),contacts);
    });
    actions.replaceChildren(ready,edit,invite);
    if(match.side==='host'){
@@ -653,15 +663,19 @@
   const freeFight=element('input');freeFight.type='checkbox';
   const freeFightLabel=element('label','Free Fight · Lv. 100 ');freeFightLabel.append(freeFight);
   const code=input('Room code');
-  const begin=async action=>{
+  const begin=async (action,extra={})=>{
    if(cloudAccount && dirty) await flushArenaSave();
-   const match=await (coop?raidRpc:rpc)(action,{mode:coop?raid.value:mode.value==='unranked' && freeFight.checked?'free_fight':mode.value,format:Number(format.value),code:code.value});
+   const match=await (coop?raidRpc:rpc)(action,{mode:coop?raid.value:mode.value==='unranked' && freeFight.checked?'free_fight':mode.value,format:Number(format.value),code:code.value,...extra});
    if(coop?phase!=='raid-lobby':!dialog.open)return;
    if(coop){showRaidSeats(match);return;}
    active=match;
    showMatch(title);
   };
-  const create=button('Create room',()=>begin('create'));
+  const create=button('Create room',()=>{
+   if(!coop)return begin('create');
+   show('Create Raid Room',button('Public',()=>begin('create',{visibility:'public'})),
+    button('Private',()=>begin('create',{visibility:'private'})));
+  });
   const join=button('Join room',()=>begin('join'));
   if(!coop) {
    const six=element('option','6v6');six.value='6';
@@ -671,12 +685,31 @@
     freeFightLabel.hidden=mode.value!=='unranked';
    };
   }
-  const find=button('Find match',()=>begin('queue'));
+  const find=button(coop?'Auto Match':'Find match',()=>begin('queue'));
   if(coop){
    const room=raidRoom('Co-op Raids','Raid selection');
    raid.onchange=()=>{room.root.dataset.tier=String(megaRaidTiers[raid.value].tier);};
    raid.onchange();
-   room.controls.append(raid,find,create,code,join);
+   const findRoom=button('Find Room',async()=>{
+    const rooms=await raidRpc('list',{});
+    const search=input('Search by host, tier, or boss');
+    const results=element('div');
+    const render=()=>{
+     const query=search.value.trim().toLowerCase();
+     const rows=rooms.filter(row=>{
+      const tier=megaRaidTiers[row.mode];
+      return (row.host+' Tier '+tier?.tier+' '+tier?.name).toLowerCase().includes(query);
+     });
+     results.replaceChildren(...(rows.length?rows.map(row=>{
+      const tier=megaRaidTiers[row.mode];
+      return button(row.host+' · Tier '+tier?.tier+' · '+tier?.name+' · '+row.players+'/6 players',
+       ()=>begin('join_public',{id:row.id}));
+     }):[element('p','No matching public rooms.')]));
+    };
+    search.oninput=render;render();
+    show('Find Room',search,results);
+   });
+   room.controls.append(raid,find,create,findRoom,code,join);
    return;
   }
   show(title,mode,freeFightLabel,format,find,create,code,join);
@@ -913,6 +946,7 @@
   show('Notifications',...data.friends.map(name=>element('div',name+' sent a friend request.')),
    ...data.friends.map(name=>button('Accept '+name,async()=>{await rpc('friend_request',{name});await notifications();})),
    ...data.invites.map(invite=>button('Join '+invite.name+' · '+invite.mode,async()=>{
+    if(invite.raid){showRaidSeats(await raidRpc('join',{code:invite.code}));return;}
     active=await rpc('join',{code:invite.code});showMatch(isCoop(invite.mode)?'Co-op':'PvP');
    })),
    ...(!data.friends.length&&!data.invites.length?[element('p','No new notifications.')]:[]));
