@@ -560,23 +560,84 @@
    const prior=inspected;
    panel.before(anchor);
    const title=element('h2','Edit Pokémon');
-   const picker=select('Choose raid Pokémon',available.map(name=>[name,name]));
-   picker.value=initial || available[0] || '';
+   const storage=element('section',null,'team-box');
+   storage.setAttribute('aria-label','Choose raid Pokémon');
+   const controls=new Map();
+   for(let source=byId('box-generation').parentElement;source;source=source.nextElementSibling) {
+    const copy=source.cloneNode(true);
+    for(const control of [copy,...copy.querySelectorAll('[id]')]) {
+     if(!control.id)continue;
+     controls.set(control.id,control);
+     control.removeAttribute('id');
+    }
+    storage.append(copy);
+    if(source.id==='box-grid')break;
+   }
+   const control=id=>controls.get(id);
+   const grid=control('box-grid');
+   let chosen=available.includes(initial)?initial:available[0] ?? '';
+   let page=0;
    const preview=()=>{
-    if(!picker.value)return;
-    inspected=picker.value;
+    panel.hidden=!chosen;
+    if(!chosen)return;
+    inspected=chosen;
     renderDetail();
    };
-   picker.onchange=preview;
    const use=button('Use this Pokémon',async()=>{
-    if(!picker.value)return;
-    await save(picker.value);
-    editor.close();
+    if(!chosen || use.disabled)return;
+    use.disabled=true;
+    try {await save(chosen);editor.close();}
+    finally {use.disabled=!chosen;}
    });
-   use.disabled=!available.length;
-   editor.append(title,picker,panel,element('div',null,'raid-room-actions'));
-   editor.lastChild.append(use,button('Done',()=>editor.close()));
+   function renderPicker() {
+    const names=pcCandidates(available,control('box-search').value.trim().toLowerCase(),Number(control('box-generation').value),control);
+    const pages=Math.ceil(names.length/boxSize);
+    page=clamp(page,0,Math.max(0,pages-1));
+    control('box-prev').disabled=page===0;
+    control('box-next').disabled=page>=pages-1;
+    control('box-page').textContent=pages?'Box '+(page+1)+' / '+pages:'No boxes';
+    control('box-count').textContent=names.length+' Pokémon';
+    grid.replaceChildren(...names.slice(page*boxSize,(page+1)*boxSize).map((name,index)=>
+     pokemonTile(name,'Select',name===chosen,()=>{
+      chosen=name;
+      use.disabled=false;
+      preview();
+      renderPicker();
+      grid.children[index]?.focus();
+     })));
+    if(!names.length)grid.append(element('p',available.length?'No Pokémon match these filters.':'Catch a Pokémon to join a raid.'));
+   }
+   function refreshPicker() {
+    const single=control('pc-stat').value!=='';
+    for(const [id,max] of [['pc-min-iv',single?31:186],['pc-min-ev',single?252:510]]) {
+     const input=control(id);
+     input.max=max;
+     if(Number(input.value)>max)input.value=String(max);
+    }
+    page=0;
+    renderPicker();
+   }
+   const defaults={'pc-sort':'number','pc-order':'asc','box-generation':'0'};
+   const filters=[...pcFilterIds,'box-search','box-generation'];
+   const reset=()=>{
+    for(const id of filters)control(id).value=defaults[id] ?? '';
+    refreshPicker();
+   };
+   for(const id of filters)control(id).oninput=refreshPicker;
+   control('pc-reset').onclick=reset;
+   control('box-prev').onclick=()=>{page--;renderPicker();};
+   control('box-next').onclick=()=>{page++;renderPicker();};
+   reset();
+   if(chosen) {
+    const ordered=pcCandidates(available,'',0,control);
+    page=Math.floor(ordered.indexOf(chosen)/boxSize);
+    renderPicker();
+   }
+   use.disabled=!chosen;
+   editor.append(title,storage,panel,element('div',null,'raid-room-actions'));
+   editor.lastChild.append(use,button('Cancel',()=>editor.close()));
    editor.addEventListener('close',()=>{
+    panel.hidden=false;
     anchor.replaceWith(panel);
     inspected=prior;
     editor.remove();

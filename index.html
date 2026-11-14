@@ -1285,15 +1285,15 @@ byId('pc-reset').onclick=()=>{
  boxGeneration.value='0';
  refreshPcFilters();
 };
-function pcCandidates(storage,query,generation) {
+function pcCandidates(storage,query,generation,control=byId) {
  const numeric=query.replace(/^#/,'');
- const natureFilter=byId('pc-nature').value;
- const personalityFilter=byId('pc-personality').value;
- const selectedStat=byId('pc-stat').value;
- const minIv=Math.max(0,Number(byId('pc-min-iv').value)||0);
- const minEv=Math.max(0,Number(byId('pc-min-ev').value)||0);
- const sort=byId('pc-sort').value || 'number';
- const direction=byId('pc-order').value==='desc'?-1:1;
+ const natureFilter=control('pc-nature').value;
+ const personalityFilter=control('pc-personality').value;
+ const selectedStat=control('pc-stat').value;
+ const minIv=Math.max(0,Number(control('pc-min-iv').value)||0);
+ const minEv=Math.max(0,Number(control('pc-min-ev').value)||0);
+ const sort=control('pc-sort').value || 'number';
+ const direction=control('pc-order').value==='desc'?-1:1;
  const readStat=values=>selectedStat==='' ? values.reduce((sum,value)=>sum+value,0) : values[Number(selectedStat)];
  const matches=[];
  for(const name of storage) {
@@ -8585,6 +8585,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.14.4',changes:['Replaced the Co-op raid Pokémon dropdown with the PC grid, filters, and sorting.']},
  {version:'0.14.3',changes:['Reduced Mega raid bosses to 3× sprite size and tuned their builds and moves.']},
  {version:'0.14.2',changes:['Updated Mega raid art, boss stats and moves, and added first-clear rewards.']},
  {version:'0.14.1',changes:['Packed Mega and shiny sprites into shared atlases for easier uploads.']},
@@ -8700,4 +8701,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.14.2"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.14.4"></script></html>
