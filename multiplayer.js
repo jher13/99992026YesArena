@@ -2,12 +2,12 @@
  const dialog=byId('home-dialog');
  let generation=0, timer, active;
  let arenaActors=new Map(), rosterRows=new Map(), displayedTurn=-1, recallSlotOnline=null;
- let frameAge=0, blendDuration=0.2, soundsPlayed=new Set(), battleSnapshot=null;
+ let frameAge=0, playbackClock=null, playbackDelay=0.25, soundsPlayed=new Set(), battleSnapshot=null;
  function arenaView(match, picks, togglePick, ready, leave) {
   if(phase!=='online-battle') {
    lastDpsRender=-1;renderBattleDps(0,[]);
    arenaActors=new Map();rosterRows=new Map();soundsPlayed=new Set();displayedTurn=-1;
-   recallSlotOnline=null;battleSnapshot=null;trainerFields=[[],[]];trainerPanels=null;
+   recallSlotOnline=null;battleSnapshot=null;playbackClock=null;playbackDelay=0.25;trainerFields=[[],[]];trainerPanels=null;
    phase='online-battle';speed=1;
    effects=[];pendingCasts=[];playerSwitch=enemySwitch=null;
    battleWeather=battleTerrain=null;arenaMap=null;weatherTime=0;onlineMatchDuration=0;
@@ -54,7 +54,11 @@
   displayedTurn=packet.turn;
   const data=packet.battle;
   const snapshotInterval=data.clock-(battleSnapshot?.clock ?? data.clock);
-  if(snapshotInterval>0)blendDuration=clamp(blendDuration*0.65+frameAge*0.35,0.10,0.55);
+  if(snapshotInterval>0) {
+   const delay=clamp(Math.max(frameAge,snapshotInterval)*1.35,0.20,0.50);
+   playbackDelay=playbackDelay*0.8+delay*0.2;
+  }
+  playbackClock ??= data.clock-playbackDelay;
   updateNormalAttackToggle(data.normalAttacks ?? true,normalAttacks=>send({normalAttacks}));
   const mirror=active.mode!=='coop' && active.side==='guest';
   const mx=x=>mirror?canvas.width-x:x;
@@ -64,19 +68,19 @@
   for(const entry of data.actors) {
    const actor=arenaActors.get(entry.onlineId) ?? {};
    const oldX=actor.x,oldY=actor.y;
-   const priorX=actor.snapshotX,priorY=actor.snapshotY;
+
    Object.assign(actor,entry,{
     x:mx(entry.x),friendly:mirror?!entry.friendly:entry.friendly,
     direction:mirror?(8-entry.direction)%8:entry.direction,facing:dx(entry.facing),
     attackX:dx(entry.attackX),hitX:dx(entry.hitX),
    });
-   actor.snapshotX=actor.x;actor.snapshotY=actor.y;
-   actor.previousX=Number.isFinite(oldX) && Math.abs(oldX-actor.x)<90?oldX:actor.x;
-   actor.previousY=Number.isFinite(oldY) && Math.abs(oldY-actor.y)<90?oldY:actor.y;
-   const travel=Math.hypot(actor.snapshotX-priorX,actor.snapshotY-priorY);
-   const project=snapshotInterval>0 && travel<90 && entry.hp>0 && !entry.attack && ['walk','run'].includes(entry.gait);
-   actor.velocityX=project?clamp((actor.snapshotX-priorX)/snapshotInterval,-250,250):0;
-   actor.velocityY=project?clamp((actor.snapshotY-priorY)/snapshotInterval,-250,250):0;
+   const samples=actor.motionSamples ??= [];
+   const sample={time:data.clock,x:actor.x,y:actor.y,ticks:actor.motionTicks};
+   if(samples.length && samples.at(-1).time===sample.time)samples[samples.length-1]=sample;
+   else samples.push(sample);
+   if(samples.length>12)samples.shift();
+   if(Number.isFinite(oldX))actor.x=oldX;
+   if(Number.isFinite(oldY))actor.y=oldY;
    arenaActors.set(entry.onlineId,actor);
   }
   const actorFor=id=>arenaActors.get(id) ?? null;
@@ -160,11 +164,22 @@
  }
  window.paintOnlineBattle=dt=>{
   visualTime+=dt;frameAge+=dt;
-  const blend=Math.min(1,frameAge/blendDuration);
-  const prediction=active?.result?0:Math.min(0.10,frameAge);
+  if(battleSnapshot) {
+   const latest=battleSnapshot.clock;
+   const target=latest+Math.min(frameAge,playbackDelay)-playbackDelay;
+   const rate=clamp(1+(target-playbackClock)*2,0.8,1.25);
+   playbackClock=active?.result?latest:Math.min(latest,playbackClock+dt*rate);
+  }
   for(const actor of arenaActors.values()) {
-   actor.x=clamp(actor.previousX+(actor.snapshotX-actor.previousX+actor.velocityX*prediction)*blend,28,canvas.width-28);
-   actor.y=clamp(actor.previousY+(actor.snapshotY-actor.previousY+actor.velocityY*prediction)*blend,28,canvas.height-28);
+   const samples=actor.motionSamples;
+   while(samples.length>2 && samples[1].time<=playbackClock)samples.shift();
+   const from=samples[0];
+   const to=samples[1] ?? from;
+   const blend=to.time>from.time?clamp((playbackClock-from.time)/(to.time-from.time),0,1):1;
+   const position=Math.hypot(to.x-from.x,to.y-from.y)>90 && blend<1?0:blend;
+   actor.x=from.x+(to.x-from.x)*position;
+   actor.y=from.y+(to.y-from.y)*position;
+   actor.motionTicks=from.ticks+(to.ticks-from.ticks)*position;
    actor.attack=Math.max(0,actor.attack-dt);
    actor.hit=Math.max(0,actor.hit-dt);
    actor.labelTime=Math.max(0,actor.labelTime-dt);
@@ -194,7 +209,10 @@
   originalMenu();
  };
  const stop=()=>{generation++;clearTimeout(timer);};
- dialog.addEventListener('close',()=>{if(phase!=='online-battle')stop();});
+ dialog.addEventListener('close',()=>{
+  if(phase==='online-battle' && active?.result)openMenu();
+  else if(phase!=='online-battle')stop();
+ });
  async function rpc(action,args={}) {
   const client=await cloudClient();
   const {data,error}=await client.rpc('arena_online',{action,args});
@@ -364,7 +382,7 @@
       renderBars('dealt');
       stats.push(chart);
      }
-     show(result,...stats,button('Main menu',()=>{openMenu();dialog.close();}));
+     show(result,...stats,button('Main menu',()=>dialog.close()));
     }
     else view.append(element('strong',result));return;
    }

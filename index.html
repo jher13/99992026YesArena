@@ -8466,6 +8466,7 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.6.8',changes:['Buffered PvP movement and returned players to the main menu when results close.']},
  {version:'0.6.7',changes:['Added DPS-style charts to online match results and improved PvP movement between network updates.']},
  {version:'0.6.6',changes:['Free Fight now calculates battle stats at level 100 using each Pokémon’s saved build.']},
  {version:'0.6.5',changes:['Fixed Free Fight level displays, smoothed PvP updates, added match results, and restored Friendlist presence dots.']},
@@ -8562,4 +8563,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.6.7"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.6.8"></script></html>
