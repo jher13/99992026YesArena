@@ -7901,6 +7901,7 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.6.6',changes:['Free Fight now calculates battle stats at level 100 using each Pokémon’s saved build.']},
  {version:'0.6.5',changes:['Fixed Free Fight level displays, smoothed PvP updates, added match results, and restored Friendlist presence dots.']},
  {version:'0.6.4',changes:['Updated the PC to show Base Stat, IV, and EV in the table and current-level stats in the radar chart.']},
  {version:'0.6.3',changes:['Enabled 6v6 in Unranked Free Fight.']},
@@ -8003,14 +8004,14 @@ function onlineRandom() {
  onlineRandomState=(Math.imul(1664525,onlineRandomState)+1013904223)>>>0;
  return onlineRandomState/4294967296;
 }
-function onlineActor(name,entries,side,index,bossLevel) {
+function onlineActor(name,entries,side,index,bossLevel,levelOverride) {
  if(!isAvailablePokemon(name)) throw Error('A Pokémon in this team is unavailable.');
  const progress=JSON.parse(entries['pokemon-arena-wild-progress'] ?? '{}') ?? {};
  const starter=JSON.parse(entries['pokemon-arena-starter'] ?? '{}') ?? {};
  const profileData=JSON.parse(entries['pokemon-arena-profiles'] ?? '{}') ?? {};
  const profile=profileData[dex[name][0]];
  const savedLevel=progress.owned?.[name]?.level;
- const level=bossLevel ?? (Number.isInteger(savedLevel)?clamp(savedLevel,1,100):name===starter.name?1:5);
+ const level=levelOverride ?? bossLevel ?? (Number.isInteger(savedLevel)?clamp(savedLevel,1,100):name===starter.name?1:5);
  const fallback={ivs:Array(6).fill(bossLevel?23:0),evs:Array(6).fill(0),pid:0};
  savedMoves=JSON.parse(entries['pokemon-arena-moves'] ?? '{}') ?? {};
  delete loadouts[name];
@@ -8032,10 +8033,10 @@ function placeOnline(slot,actor) {
  if(slot.transition.stage==='send')actor.revealed=true;
 }
 function initializeOnline(match) {
- const host=match.host_pick.map((name,i)=>onlineActor(name,match.host_entries,'host',i));
- const guest=match.guest_pick.map((name,i)=>onlineActor(name,match.guest_entries,'guest',i));
+ const levelOverride=match.mode==='free_fight'?100:undefined;
+ const host=match.host_pick.map((name,i)=>onlineActor(name,match.host_entries,'host',i,undefined,levelOverride));
+ const guest=match.guest_pick.map((name,i)=>onlineActor(name,match.guest_entries,'guest',i,undefined,levelOverride));
  const coop=match.mode==='coop';
- if(match.mode==='free_fight')for(const actor of [...host,...guest])actor.level=100;
  const bossLevel=Math.min(100,Math.ceil(Math.max(...host.map(a=>a.level),...guest.map(a=>a.level))*1.1)+2);
  const boss=coop?Array.from({length:match.format*2},(_,i)=>onlineActor(
   ['Onix','Steelix','Golem','Aggron','Tyranitar','Rhyperior'][i],{},'boss',i,bossLevel)):[];
@@ -8141,7 +8142,6 @@ function onlineFrame(dt) {
 export function simulateOnline(match,state,steps,command,side) {
  onlineSounds=[];
  if(state)loadOnlineState(state);else initializeOnline(match);
- if(match.mode==='free_fight')for(const actor of [...allies,...enemies])actor.level=100;
  if(typeof command?.normalAttacks==='boolean') {
   for(const actor of [...allies,...enemies])if(actor.side===side)actor.normalAttacksEnabled=command.normalAttacks;
  } else if(command)onlineSend(side,command.incoming,command.slot);
