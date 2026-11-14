@@ -462,7 +462,7 @@
   b.onclick=async()=>{
    b.disabled=true;
    try {await fn();}
-   catch(error){byId('home-dialog-content').append(element('p',error.message));}
+   catch(error){(phase==='raid-lobby'?byId('raid-lobby').querySelector('.raid-room-controls'):byId('home-dialog-content')).append(element('p',error.message));}
    finally {b.disabled=false;}
   };
   return b;
@@ -508,6 +508,83 @@
   root.replaceChildren(top,seats,controls);
   return {seats,controls};
  }
+ async function raidRpc(action,args) {
+  const client=await cloudClient();
+  const {data,error}=await client.rpc('arena_raid',{action,args});
+  if(error)throw error;
+  return data;
+ }
+ function showRaidSeats(initial) {
+  stop();
+  const token=generation;
+  let match=initial, busy=false, revision='';
+  const tier=megaRaidTiers[match.mode];
+  const room=raidRoom(tier?tier.name+' · Tier '+tier.tier:'Co-op Raid',
+   match.code?'Private room':'Public room',async()=>{
+    await raidRpc('leave',{id:match.id});if(token===generation)openMenu();
+   });
+  const status=element('p');
+  const actions=element('div');
+  room.controls.append(status,actions);
+  if(match.code)room.controls.append(element('p','Room code · '+match.code));
+  const available=Object.keys(wildProgress.owned).filter(isAvailablePokemon).sort((a,b)=>a.localeCompare(b));
+  const act=async(action,args={})=>{
+   if(busy)return;
+   busy=true;
+   try{
+    if(action==='pick' || action==='fill'){
+     if(args.pokemon){profileFor(args.pokemon);saveTeam();await flushArenaSave();}
+    }
+    const next=await raidRpc(action,{id:match.id,...args});
+    if(token===generation){match=next;draw();}
+   }catch(error){status.textContent=error.message;}
+   finally{busy=false;}
+  };
+  function draw(){
+   if(match.result){openMenu();return;}
+   if(match.started){active=match;showMatch('Co-op Raid');return;}
+   const nextRevision=JSON.stringify(match.seats);
+   if(nextRevision===revision)return;
+   revision=nextRevision;
+   room.seats.replaceChildren(...match.seats.map((seat,index)=>{
+    const tile=element('div',null,'raid-seat');
+    const pad=element('div',null,'raid-seat-pad');
+    if(seat?.pokemon)pad.append(idlePokemonPortrait(seat.pokemon));
+    tile.append(pad,element('strong',seat?.name ?? 'Open seat'),
+     element('small',seat?.pokemon ? seat.pokemon+(seat.ready?' · Ready':'') : seat?'Not ready':''));
+    if(match.side==='host' && seat?.uid && index!==match.ownSlot)
+     tile.append(button('Kick',()=>act('kick',{slot:index})));
+    if(match.side==='host' && (!seat || seat.substitute)){
+     const picker=select('Seat '+(index+1)+' substitute',[['','Empty'],...available.map(name=>[name,name])]);
+     picker.value=seat?.pokemon ?? '';
+     picker.onchange=()=>act('fill',{slot:index,pokemon:picker.value});
+     tile.append(picker);
+    }
+    return tile;
+   }));
+   const fighter=select('Your raid Pokémon',available.map(name=>[name,name]));
+   fighter.value=match.seats[match.ownSlot]?.pokemon ?? team[0] ?? available[0] ?? '';
+   const ready=button('Ready up',()=>act('pick',{pokemon:fighter.value}));
+   ready.disabled=!available.length;
+   const start=button('Start raid',()=>act('start'));
+   start.disabled=match.seats.some(seat=>seat && !seat.ready);
+   actions.replaceChildren(fighter,ready);
+   if(match.side==='host')actions.append(start);
+  }
+  async function pollRaid(){
+   if(token!==generation)return;
+   try{
+    if(!busy){
+     const next=await raidRpc('poll',{id:match.id});
+     if(token!==generation)return;
+     if(!busy){match=next;draw();}
+    }
+   }catch(error){status.textContent=error.message;}
+   if(token===generation)timer=setTimeout(pollRaid,900);
+  }
+  draw();
+  if(token===generation)timer=setTimeout(pollRaid,900);
+ }
  function lobby(coop) {
   stop();
   const title=coop?'Co-op':'PvP';
@@ -522,8 +599,9 @@
   const code=input('Room code');
   const begin=async action=>{
    if(cloudAccount && dirty) await flushArenaSave();
-   const match=await rpc(action,{mode:coop?raid.value:mode.value==='unranked' && freeFight.checked?'free_fight':mode.value,format:Number(format.value),code:code.value});
+   const match=await (coop?raidRpc:rpc)(action,{mode:coop?raid.value:mode.value==='unranked' && freeFight.checked?'free_fight':mode.value,format:Number(format.value),code:code.value});
    if(coop?phase!=='raid-lobby':!dialog.open)return;
+   if(coop){showRaidSeats(match);return;}
    active=match;
    showMatch(title);
   };
@@ -540,7 +618,7 @@
   const find=button('Find match',()=>begin('queue'));
   if(coop){
    const room=raidRoom('Co-op Raids','Raid selection');
-   room.controls.append(raid,format,find,create,code,join);
+   room.controls.append(raid,find,create,code,join);
    return;
   }
   show(title,mode,freeFightLabel,format,find,create,code,join);
@@ -553,7 +631,7 @@
   const leave=async()=>{
    if(!active.result && !confirm('Leave this match? Leaving a started ranked match counts as a loss.'))return;
    try {
-    if(!active.result)await rpc('leave',{id:active.id});
+    if(!active.result)await (active.seats?raidRpc:rpc)('leave',{id:active.id});
     if(token!==generation)return;
     openMenu();if(dialog.open)dialog.close();
    } catch(error) {byId('status').textContent=error.message;view.append(element('p',error.message));}
@@ -668,7 +746,7 @@
     else view.append(element('strong',result));return;
    }
    if(raid && !m.joined)raid.seats.replaceChildren(element('div','You','raid-seat'),element('div','Open seat','raid-seat'));
-   if(!m.joined){
+   if(!m.joined && !m.seats){
     view.append(element('p','Waiting for another player…'));
     if(m.code && m.side==='host') view.append(button('Invite friend or guild member',async()=>{
      const names=await rpc('invite_list');
@@ -713,7 +791,7 @@
      if(token!==generation)return;
      acceptBattle(packet);
     } else {
-     const next=await rpc('poll',{id:active.id});
+     const next=await (active.seats?raidRpc:rpc)('poll',{id:active.id});
      if(token!==generation || (!dialog.open && phase!=='online-battle' && phase!=='raid-lobby'))return;
      if(!submitting && (!active.locked || next.locked || next.result) && !active.started &&
        JSON.stringify(next)!==JSON.stringify(active)){active=next;render();}

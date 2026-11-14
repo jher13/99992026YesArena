@@ -349,6 +349,13 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .raid-room-controls p{margin:0}.raid-room-controls input{max-width:100%}
 #raid-boss-hud{display:grid;gap:4px;text-align:center;margin:0 auto 8px;width:min(100%,960px);color:#ffe3da}
 #raid-boss-hp{width:100%;height:20px;accent-color:#ee4d57}
+.raid-room-seats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:end}
+.raid-seat{min-width:0;display:grid;justify-items:center;gap:5px}.raid-seat::before{display:none}
+.raid-seat:nth-child(1),.raid-seat:nth-child(6){transform:translateY(-88px)}
+.raid-seat:nth-child(2),.raid-seat:nth-child(5){transform:translateY(-38px)}
+.raid-seat-pad{width:min(78px,100%);height:42px;display:grid;place-items:center;border:2px solid #d9c6f5;border-radius:50%;background:#28253fc9;box-shadow:0 0 18px #bf8cea77}
+.raid-seat-pad canvas{border:0;background:transparent}.raid-seat select{width:100%;min-width:0}
+@media(max-width:700px){.raid-room-seats{grid-template-columns:repeat(3,minmax(0,1fr))}.raid-room-seats .raid-seat{transform:none}}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -8505,6 +8512,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',hp:6},
 };
 const updateLogEntries=[
+ {version:'0.11.0',changes:['Expanded Co-op raids to six seats with one fighter per player and host substitutes.']},
  {version:'0.10.0',changes:['Added an illustrated Co-op raid room, three Mega boss tiers, and a dedicated boss health bar.']},
  {version:'0.9.0',changes:['Added raid-only Mega and Gigantamax encounters to Co-op.']},
  {version:'0.8.3',changes:['Extended configurable battle hotkeys to local battle modes.']},
@@ -8613,4 +8621,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.10.0"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.11.0"></script></html>
