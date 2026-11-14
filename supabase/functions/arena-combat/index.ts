@@ -19,6 +19,27 @@ async function db(functionName: string, args: object) {
   return await response.json();
 }
 
+async function broadcastSnapshots(id: string, mode: string, turn: number, state: Parameters<typeof onlineView>[0], result: string | null) {
+ const controller = new AbortController();
+ const timeout = setTimeout(() => controller.abort(), 300);
+ try {
+  const messages = ["host", "guest"].map(side => ({
+   topic: "arena:" + id + ":" + side, event: "snapshot", private: true,
+   payload: { turn, result, battle: onlineView(state, side, mode) },
+  }));
+  const response = await fetch(url + "/realtime/v1/api/broadcast", {
+   method: "POST", signal: controller.signal,
+   headers: { apikey: serviceKey, Authorization: "Bearer " + serviceKey, "Content-Type": "application/json" },
+   body: JSON.stringify({ messages }),
+  });
+  if (!response.ok) console.error("Arena broadcast failed", response.status);
+ } catch (error) {
+  console.error("Arena broadcast unavailable", error);
+ } finally {
+  clearTimeout(timeout);
+ }
+}
+
 Deno.serve(async request => {
   if (request.method === "OPTIONS") return new Response(null, { headers: cors });
   if (request.method !== "POST") return reply({ error: "Use POST." }, 405);
@@ -56,8 +77,13 @@ Deno.serve(async request => {
       const saved = await db("arena_combat_commit", {
         match_id: id, revision: match.turn, state: next.state, outcome: next.result, steps,
       });
-      if (saved) return reply({ turn: match.turn + 1, result: next.result,
-        battle: onlineView(next.state, side, match.mode) });
+      if (saved) {
+        if (match.mode !== "coop") EdgeRuntime.waitUntil(
+          broadcastSnapshots(id, match.mode, match.turn + 1, next.state, next.result)
+        );
+        return reply({ turn: match.turn + 1, result: next.result,
+          battle: onlineView(next.state, side, match.mode) });
+      }
     }
     return reply({ error: "Match is busy. Try again." }, 409);
   } catch (error) {
