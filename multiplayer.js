@@ -2,12 +2,12 @@
  const dialog=byId('home-dialog');
  let generation=0, timer, active;
  let arenaActors=new Map(), rosterRows=new Map(), displayedTurn=-1, recallSlotOnline=null;
- let frameAge=0, playbackClock=null, playbackDelay=0.25, snapshotArrival=0, arrivalGaps=[], soundsPlayed=new Set(), battleSnapshot=null;
+ let frameAge=0, playbackClock=null, playbackDelay=0.25, snapshotArrival=0, arrivalGaps=[], visualSnapshots=[], soundsPlayed=new Set(), battleSnapshot=null;
  function arenaView(match, picks, togglePick, ready, leave) {
   if(phase!=='online-battle') {
    lastDpsRender=-1;renderBattleDps(0,[]);
    arenaActors=new Map();rosterRows=new Map();soundsPlayed=new Set();displayedTurn=-1;
-   recallSlotOnline=null;battleSnapshot=null;playbackClock=null;playbackDelay=0.25;snapshotArrival=0;arrivalGaps=[];trainerFields=[[],[]];trainerPanels=null;
+   recallSlotOnline=null;battleSnapshot=null;playbackClock=null;playbackDelay=0.25;snapshotArrival=0;arrivalGaps=[];visualSnapshots=[];trainerFields=[[],[]];trainerPanels=null;
    phase='online-battle';speed=1;
    effects=[];pendingCasts=[];playerSwitch=enemySwitch=null;
    battleWeather=battleTerrain=null;arenaMap=null;weatherTime=0;onlineMatchDuration=0;
@@ -97,9 +97,12 @@
     incoming:actorFor(slot.transition.incoming),snapshotElapsed:slot.transition.elapsed}:null,
   })));
   trainerFields=fields;
-  effects=data.effects.map(effect=>({...effect,x:mx(effect.x),tx:mx(effect.tx),sector:lineView(effect.sector)}));
-  pendingCasts=data.casts.map(cast=>({...cast,actor:actorFor(cast.actor),
-   center:cast.center?{...cast.center,x:mx(cast.center.x)}:null,line:lineView(cast.line)}));
+  visualSnapshots.push({time:data.clock,
+   effects:data.effects.map(effect=>({...effect,x:mx(effect.x),tx:mx(effect.tx),sector:lineView(effect.sector)})),
+   casts:data.casts.map(cast=>({...cast,actor:actorFor(cast.actor),
+    center:cast.center?{...cast.center,x:mx(cast.center.x)}:null,line:lineView(cast.line)})),
+  });
+  if(visualSnapshots.length>64)visualSnapshots.shift();
   battleWeather=data.weather;battleTerrain=data.terrain;weatherTime=data.weatherTime ?? 0;
   arenaMap=data.arenaMap?{...data.arenaMap,rocks:data.arenaMap.rocks.map(rock=>({...rock,x:mx(rock.x),fall:rock.fall?{...rock.fall,x:mx(rock.fall.x),dx:dx(rock.fall.dx)}:null})),
    zones:data.arenaMap.zones.map(zone=>({...zone,x:mx(zone.x)}))}:null;
@@ -126,7 +129,7 @@
   const canReserve=[...arenaActors.values()].some(actor=>actor.side===active.side && actor.hp>0 &&
    !ownSlots.some(slot=>trainerOnField(actor,[slot])));
   const status=ownSlots.some(slot=>slot.transition)?'Sending out Pokémon…':
-   openSlot>=0 && canReserve?'Preparing the next reserve…':
+   openSlot>=0 && canReserve?'Choose a healthy reserve to send out.':
    !canReserve?'Battle in progress.':
    battleSnapshot.recall>0?'Recall ready in '+Math.ceil(battleSnapshot.recall)+'s.':
    recallSlotOnline!==null?'Choose a reserve to send out.':'Select an active Pokémon to recall it.';
@@ -199,12 +202,15 @@
     slot.transition.elapsed=Math.min(duration,slot.transition.snapshotElapsed+frameAge);
    }
   }
-  for(const cast of pendingCasts) {
-   if(cast.flight)cast.travel=Math.min(cast.line.length,cast.travel+460*dt);
-   else cast.remaining=Math.max(0,cast.remaining-dt);
+  while(visualSnapshots.length>1 && visualSnapshots[1].time<=playbackClock)visualSnapshots.shift();
+  const visual=visualSnapshots[0];
+  if(visual && visual.time<=playbackClock) {
+   const elapsed=playbackClock-visual.time;
+   effects=visual.effects.filter(effect=>effect.life>elapsed).map(effect=>({...effect,life:effect.life-elapsed}));
+   pendingCasts=visual.casts.map(cast=>cast.flight && cast.line?
+    {...cast,travel:Math.min(cast.line.length,cast.travel+460*elapsed)}:
+    {...cast,remaining:Math.max(0,cast.remaining-elapsed)});
   }
-  for(const effect of effects)effect.life-=dt;
-  effects=effects.filter(effect=>effect.life>0);
   if(battleSnapshot && (frameAge===dt || Math.floor(frameAge*10)!==Math.floor((frameAge-dt)*10)))updateActivePanels(trainerFields);
   paint();
  };
