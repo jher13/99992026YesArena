@@ -126,7 +126,7 @@
   const canReserve=[...arenaActors.values()].some(actor=>actor.side===active.side && actor.hp>0 &&
    !ownSlots.some(slot=>trainerOnField(actor,[slot])));
   const status=ownSlots.some(slot=>slot.transition)?'Sending out Pokémon…':
-   openSlot>=0 && canReserve?'Choose a healthy reserve to fill the open slot.':
+   openSlot>=0 && canReserve?'Preparing the next reserve…':
    !canReserve?'Battle in progress.':
    battleSnapshot.recall>0?'Recall ready in '+Math.ceil(battleSnapshot.recall)+'s.':
    recallSlotOnline!==null?'Choose a reserve to send out.':'Select an active Pokémon to recall it.';
