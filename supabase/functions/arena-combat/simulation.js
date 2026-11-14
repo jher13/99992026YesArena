@@ -41,10 +41,16 @@ const raidFormRoster={
 };
 function initializeOnline(match) {
  const levelOverride=match.mode==='free_fight'?100:undefined;
- const host=match.host_pick.map((name,i)=>onlineActor(name,match.host_entries,'host',i,undefined,levelOverride));
- const guest=match.guest_pick.map((name,i)=>onlineActor(name,match.guest_entries,'guest',i,undefined,levelOverride));
+ const host=(match.host_pick ?? []).map((name,i)=>onlineActor(name,match.host_entries,'host',i,undefined,levelOverride));
+ const guest=(match.guest_pick ?? []).map((name,i)=>onlineActor(name,match.guest_entries,'guest',i,undefined,levelOverride));
  const coop=isCoopMode(match.mode);
- const bossLevel=Math.min(100,Math.ceil(Math.max(...host.map(a=>a.level),...guest.map(a=>a.level))*1.1)+2);
+ const raidTeam=match.raid_seats?.flatMap((seat,index)=>{
+  if(!seat?.pokemon)return [];
+  const side=seat.substitute || seat.uid===match.host?'host':'raid:'+seat.uid;
+  return [onlineActor(seat.pokemon,seat.entries,side,index)];
+ });
+ const fighters=raidTeam ?? [...host,...guest];
+ const bossLevel=Math.min(100,Math.ceil(Math.max(...fighters.map(a=>a.level))*1.1)+2);
  const raid=Object.hasOwn(megaRaidTiers,match.mode)?megaRaidTiers[match.mode]:null;
  const forms=raidFormRoster[match.mode];
  const guardians=forms ?? ['Onix','Steelix','Golem','Aggron','Tyranitar','Rhyperior'];
@@ -52,7 +58,7 @@ function initializeOnline(match) {
   const actor=onlineActor(raid?.species ?? guardians[i],{},'boss',i,raid?Math.min(100,bossLevel+(raid.tier-1)*5):bossLevel);
   if(raid) {
    actor.raidForm=raid.name;
-   actor.hp=actor.max=actor.stats[0]=Math.round(actor.max*raid.hp*(1+(match.format-1)*0.7));
+   actor.hp=actor.max=actor.stats[0]=Math.round(actor.max*raid.hp*(1+(raidTeam?Math.max(0,raidTeam.length-2)*0.33:(match.format-1)*0.7)));
    for(const stat of [1,2,4,5])actor.stats[stat]=Math.round(actor.stats[stat]*(1+raid.tier*0.12));
    return actor;
   }
@@ -66,10 +72,10 @@ function initializeOnline(match) {
   }
   return actor;
  }):[];
- allies=coop?[...host,...guest]:host;
+ allies=coop?fighters:host;
  enemies=coop?boss:guest;
  for(const actor of enemies) actor.friendly=false;
- const leads=coop?[...host.slice(0,match.format),...guest.slice(0,match.format)]:host.slice(0,match.format);
+ const leads=raidTeam ?? (coop?[...host.slice(0,match.format),...guest.slice(0,match.format)]:host.slice(0,match.format));
  trainerFields=[leads,enemies.slice(0,match.format)].map(leads=>
    leads.map((actor,i)=>{
     const slot={actor:null,owner:actor.side,y:240+(i-(leads.length-1)/2)*Math.min(112,370/leads.length)};

@@ -58,10 +58,10 @@ Deno.serve(async request => {
     for (let attempt = 0; attempt < 5; attempt++) {
       const match = await db("arena_combat_read", { match_id: id, player_id: player });
       if (!match) return reply({ error: "Match unavailable." }, 404);
-      const side = match.host === player ? "host" : "guest";
+      const side = match.host === player ? "host" : match.raid_seats ? "raid:" + player : "guest";
       if (match.result) return reply({ result: match.result, turn: match.turn,
         battle: match.combat_state ? onlineView(match.combat_state, side, match.mode) : undefined });
-      if (!match.field || !match.host_entries || !match.guest_entries)
+      if (!match.field || (!match.raid_seats && (!match.host_entries || !match.guest_entries)))
         return reply({ error: "Both players must be ready." }, 409);
       const elapsed = Date.parse(match.server_now) - Date.parse(match.next_tick);
       const steps = match.combat_state ? Math.min(60, Math.max(0, Math.floor(elapsed * 0.06))) : 0;
