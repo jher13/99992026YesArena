@@ -14,9 +14,14 @@
   (event.shiftKey?'shift+':'')+(event.metaKey?'meta+':'')+event.key.toLowerCase();
  function editPvpKeys() {
   const rows=Object.keys(commands).map(action=>{
-   const label=element('label',(action==='Select'?'Quick swap':action)+' ');
+   const label=element('div',null,'hotkey-setting-row');
+   const name=action==='Select'?'Quick swap':action;
+   label.append(element('span',name));
    const key=element('button',bindings[action]);
+   key.type='button';
+   key.setAttribute('aria-label',name+' key: '+bindings[action]);
    key.onclick=()=>{
+    key.focus();
     key.textContent='Press a key…';
     key.onkeydown=event=>{
      if(['Control','Alt','Shift','Meta','Escape'].includes(event.key))return;
@@ -28,6 +33,7 @@
      bindings[action]=value;
      playerStorage.setItem(keyStorage,JSON.stringify(bindings));
      key.textContent=value;
+     key.setAttribute('aria-label',name+' key: '+value);
      key.onkeydown=null;
     };
    };
@@ -38,9 +44,10 @@
   const reset=button('Reset defaults',()=>{
    bindings={...commands};playerStorage.setItem(keyStorage,JSON.stringify(bindings));editPvpKeys();
   });
-  show('PvP hotkeys',...rows,reset);
+  show('Hotkey Settings',...rows,reset);
  }
  function chooseBattleUnit(actor) {
+  if(!commandSend)return;
   if(actor.hp<=0)return;
   if(commandMode==='Attack' && actor.side!==active.side && selectedUnit) {
    commandMode=null;
@@ -61,22 +68,32 @@
    slots.findIndex(slot=>slot.actor?.onlineId===selectedUnit):
    slots.findIndex(slot=>!slot.transition && !(slot.actor?.hp>0));
   const slot=slots[index];
-  if(!slot || slot.transition || battleSnapshot.recall>0 && slot.actor?.hp>0)return;
+  if(!slot || slot.transition || battleSnapshot.recall>0 && slot.actor?.hp>0){
+   byId('status').textContent='That field slot is not ready to swap.';return;
+  }
   commandMode=null;
   updateOnlineRoster(commandSend);
   commandSend({incoming:actor.onlineId,slot:index});
  }
- document.addEventListener('keydown',event=>{
-  if(phase!=='online-battle' || active?.result || active?.mode==='coop' || !battleSnapshot ||
-     event.repeat || event.target.closest?.('input,textarea,select,dialog,[contenteditable]'))return;
+ function handleBattleHotkey(event) {
+  if(phase!=='online-battle' || active?.result || active?.mode==='coop' || dialog.open || byId('battle-settings').open ||
+     event.repeat || event.target.closest?.('input,textarea,select,[contenteditable]'))return;
   if(event.key==='Escape' && commandMode){
    commandMode=null;updateOnlineRoster(commandSend);return;
   }
   const action=Object.keys(bindings).find(key=>bindings[key]===keyName(event));
   if(!action)return;
+  if(!battleSnapshot) {
+   if(!active.started && !active.locked && active.format!==6 && action.startsWith('Ally ')){
+    const card=byId('player-roster').querySelectorAll('.battle-slot')[Number(action.split(' ')[1])-1];
+    if(card && !card.disabled){event.preventDefault();card.click();}
+   }
+   return;
+  }
+  if(!commandSend)return;
   event.preventDefault();
   if(action==='Attack' || action==='Select'){
-   if(action==='Select' && !selectedUnit) {
+   if(!selectedUnit) {
     byId('status').textContent='Select a field Pokémon first.';
     return;
    }
@@ -89,19 +106,22 @@
    const id=(side==='Ally'?active.side:active.side==='host'?'guest':'host')+':'+(Number(number)-1);
    const actor=arenaActors.get(id);
    if(actor)chooseBattleUnit(actor);
+   else byId('status').textContent='No revealed Pokémon in that roster slot.';
    return;
   }
   if(selectedUnit)commandSend({ai:{actor:selectedUnit,...(['Aggressive','Balanced','Defensive'].includes(action)?
    {style:action}:{position:action})}});
- });
- const settingsButton=element('button','PvP Hotkeys');
+  else byId('status').textContent='Select a field Pokémon first.';
+ }
+ window.addEventListener('keydown',handleBattleHotkey,true);
+ const settingsButton=element('button','Hotkey Settings');
  settingsButton.type='button';
  settingsButton.onclick=()=>{byId('battle-settings').close();editPvpKeys();};
  byId('battle-settings').querySelector('.battle-settings-grid').append(settingsButton);
  const menuSettings=byId('toolbar-settings').onclick;
  byId('toolbar-settings').onclick=()=>{
   menuSettings();
-  byId('home-dialog-content').append(button('PvP Hotkeys',editPvpKeys));
+  byId('home-dialog-content').append(button('Hotkey Settings',editPvpKeys));
  };
  function arenaView(match, picks, togglePick, ready, leave) {
   if(phase!=='online-battle') {

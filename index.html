@@ -337,6 +337,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .dex-type-badges{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .friend-presence{display:inline-block;width:9px;height:9px;margin-right:7px;border-radius:50%;background:#87919d;vertical-align:middle}.friend-presence.is-online{background:#69e78d}
 .battle-slot.is-command-selected{outline:2px solid #8bdfff;outline-offset:-2px}
+.hotkey-setting-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid #ffffff24}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -8481,6 +8482,7 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.8.2',changes:['Updated PvP keyboard handling and displayed each binding on a separate Hotkey Settings row.']},
  {version:'0.8.1',changes:['Updated PvP shortcuts for direct 1v1 send-outs and selected-slot quick swaps.']},
  {version:'0.8.0',changes:['Added configurable PvP commands and one-click Ready for full teams in 6v6.']},
  {version:'0.7.4',changes:['PvP Pokémon can use support moves while their opponent chooses a reserve.']},
@@ -8585,4 +8587,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.8.1"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.8.2"></script></html>
