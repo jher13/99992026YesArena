@@ -335,6 +335,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 #shop-purchase #shop-purchase-total{color:#000}
 #shop-purchase input{width:100%;accent-color:#294438}
 .dex-type-badges{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.friend-presence{display:inline-block;width:9px;height:9px;margin-right:7px;border-radius:50%;background:#87919d;vertical-align:middle}.friend-presence.is-online{background:#69e78d}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -401,7 +402,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 <button id="toolbar-logout">Log out</button>
 </div>
 
-<dialog id="home-dialog"><div class="menu-heading"><h2 id="home-dialog-title"></h2><form method="dialog"><button>Close</button></form></div><div id="home-dialog-content"></div></dialog>
+
 <div class="home-grid">
 <nav class="home-links" aria-label="Battle and team">
 <button id="home-dex" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Pokédex</strong><small>Browse 947 Pokémon</small></span></button>
@@ -569,6 +570,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 
 <section id="choices" class="choices" aria-label="Team and upgrades"></section>
 <div class="toolbar battle-actions"><button id="start">Start battle</button><button id="next-gym" class="campaign-next" hidden>Next gym</button><button id="reset">Main menu</button></div></div></main>
+<dialog id="home-dialog"><div class="menu-heading"><h2 id="home-dialog-title"></h2><form method="dialog"><button>Close</button></form></div><div id="home-dialog-content"></div></dialog>
 <dialog id="battle-settings" aria-labelledby="battle-settings-title">
  <div class="menu-heading"><h2 id="battle-settings-title">Battle settings</h2><form method="dialog"><button>Done</button></form></div>
  <div class="battle-settings-grid"><button id="battle-sfx" aria-pressed="true">SFX: On</button><button id="battle-music" aria-pressed="true">Music: On</button><button id="basic-attacks" type="button" aria-pressed="true">Normal Attack: On</button><button id="speed" aria-pressed="false">1× speed</button><button id="battle-auto-start" aria-pressed="false" hidden>Auto Start: Off</button><button id="battle-auto-capture" aria-pressed="false" hidden>Auto capture: Off</button><button id="battle-auto-repeat" aria-pressed="false" hidden>Auto repeat: Off</button><button id="auto-reserve" aria-pressed="false" hidden>Auto send-out: Off</button></div>
@@ -8461,6 +8463,7 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.6.5',changes:['Fixed Free Fight level displays, smoothed PvP updates, added match results, and restored Friendlist presence dots.']},
  {version:'0.6.4',changes:['Updated the PC to show Base Stat, IV, and EV in the table and current-level stats in the radar chart.']},
  {version:'0.6.3',changes:['Enabled 6v6 in Unranked Free Fight.']},
  {version:'0.6.2',changes:['Moved Free Fight into Unranked PvP as a toggle.']},
@@ -8554,4 +8557,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.6.3"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.6.5"></script></html>

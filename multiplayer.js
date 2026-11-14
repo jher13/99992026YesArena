@@ -2,7 +2,7 @@
  const dialog=byId('home-dialog');
  let generation=0, timer, active;
  let arenaActors=new Map(), rosterRows=new Map(), displayedTurn=-1, recallSlotOnline=null;
- let frameAge=0, soundsPlayed=new Set(), battleSnapshot=null;
+ let frameAge=0, blendDuration=0.2, soundsPlayed=new Set(), battleSnapshot=null;
  function arenaView(match, picks, togglePick, ready, leave) {
   if(phase!=='online-battle') {
    lastDpsRender=-1;renderBattleDps(0,[]);
@@ -30,7 +30,7 @@
    'Choose '+match.format+' lead Pokémon from your team, then press Ready.'+(match.opponentLocked?' The other player is ready.':'');
   byId('player-roster').replaceChildren(element('h2','Your team'),...team.map(name=>{
    const card=element('button',null,'battle-slot');
-   card.append(pokemonPortrait(name),battleRosterIdentity(name,ownedPokemon(name)?.level ?? 5));
+   card.append(pokemonPortrait(name),battleRosterIdentity(name,match.mode==='free_fight'?100:ownedPokemon(name)?.level ?? 5));
    card.disabled=match.locked;
    card.setAttribute('aria-pressed',String(picks.includes(name)));
    card.onclick=()=>togglePick(name);
@@ -53,6 +53,7 @@
   if(!packet.battle || packet.turn<=displayedTurn)return;
   displayedTurn=packet.turn;
   const data=packet.battle;
+  blendDuration=clamp(frameAge || 0.2,0.12,0.5);
   updateNormalAttackToggle(data.normalAttacks ?? true,normalAttacks=>send({normalAttacks}));
   const mirror=active.mode!=='coop' && active.side==='guest';
   const mx=x=>mirror?canvas.width-x:x;
@@ -153,7 +154,7 @@
  }
  window.paintOnlineBattle=dt=>{
   visualTime+=dt;frameAge+=dt;
-  const blend=Math.min(1,frameAge/0.13);
+  const blend=Math.min(1,frameAge/blendDuration);
   for(const actor of arenaActors.values()) {
    actor.x=actor.previousX+(actor.snapshotX-actor.previousX)*blend;
    actor.y=actor.previousY+(actor.snapshotY-actor.previousY)*blend;
@@ -174,7 +175,7 @@
   }
   for(const effect of effects)effect.life-=dt;
   effects=effects.filter(effect=>effect.life>0);
-  if(battleSnapshot)updateActivePanels(trainerFields);
+  if(battleSnapshot && (frameAge===dt || Math.floor(frameAge*10)!==Math.floor((frameAge-dt)*10)))updateActivePanels(trainerFields);
   paint();
  };
  const originalMenu=openMenu;
@@ -326,7 +327,27 @@
    if(m.result){
     const result={draw:'Draw',cancelled:'Match cancelled',coop_win:'Co-op victory',coop_loss:'Co-op defeat'}[m.result] ?? (m.result===m.side?'Victory':'Defeat');
     stopBattleMusic();
-    if(phase==='online-battle') show(title,element('strong',result),button('Main menu',()=>{openMenu();dialog.close();}));
+    if(phase==='online-battle') {
+     byId('status').textContent=result;
+     const data=battleSnapshot;
+     const stats=[];
+     if(data) {
+      const seconds=Math.floor(data.clock);
+      stats.push(element('p','Duration · '+Math.floor(seconds/60)+'m '+seconds%60+'s'));
+      const mirror=m.mode!=='coop' && m.side==='guest';
+      const totals=battleDamageTotals(data.damageBuckets ?? [],'dealt');
+      for(const friendly of [true,false]) {
+       const rows=totals.filter(row=>(row.friendly!==mirror)===friendly);
+       const actors=[...arenaActors.values()].filter(actor=>actor.friendly===friendly);
+       stats.push(element('h3',friendly?'Your side':'Opposing side'),
+        element('p',rows.reduce((sum,row)=>sum+row.total,0).toLocaleString()+' damage dealt · '+
+         actors.filter(actor=>actor.hp<=0).length+' fainted'));
+       for(const row of rows.sort((a,b)=>b.total-a.total))
+        stats.push(element('p',row.name+' · '+row.total.toLocaleString()+' damage'));
+      }
+     }
+     show(result,...stats,button('Main menu',()=>{openMenu();dialog.close();}));
+    }
     else view.append(element('strong',result));return;
    }
    if(!m.joined){
@@ -356,12 +377,12 @@
      if(!submitting && (!active.locked || next.locked || next.result) && !active.started &&
        JSON.stringify(next)!==JSON.stringify(active)){active=next;render();}
     }
-    if(!active.result)timer=setTimeout(poll,active.started?140:850);
+    if(!active.result)timer=setTimeout(poll,active.started?90:850);
    } catch(error){
     if(token!==generation)return;
     if(phase==='online-battle')byId('status').textContent='Reconnecting… '+error.message;
     else view.replaceChildren(element('p','Reconnecting… '+error.message));
-    timer=setTimeout(poll,2000);
+    timer=setTimeout(poll,active.started?400:2000);
    }
   }
   if(!active.result)timer=setTimeout(poll,850);
@@ -371,6 +392,13 @@
   show('Friendlist',name,button('Send request',async()=>{await rpc('friend_request',{name:name.value});await friends();}),
    ...rows.map(friend=>{
     const row=element('p',friend.name+' · '+(friend.accepted?'Friend':friend.incoming?'Incoming request':'Request sent'));
+    if(friend.accepted) {
+     const presence=element('span',null,'friend-presence'+(friend.online?' is-online':''));
+     presence.title=friend.online?'Online':'Offline';
+     presence.setAttribute('role','img');
+     presence.setAttribute('aria-label',presence.title);
+     row.prepend(presence);
+    }
     if(friend.incoming&&!friend.accepted)row.append(button('Accept',async()=>{await rpc('friend_request',{name:friend.name});await friends();}));
     return row;
    }));
