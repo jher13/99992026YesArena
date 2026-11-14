@@ -124,9 +124,11 @@ function onlineFrame(dt) {
  if(sides.some(side=>!side.length))lastDamageClock+=dt;
  advanceCombat(dt,dt,sides);
  refreshBerriesAfterKnockout();
- for(const slot of trainerFields[1]) {
-  if(slot.owner!=='boss' || slot.transition || slot.actor?.hp>0)continue;
-  const reserve=enemies.find(actor=>actor.hp>0 && !trainerOnField(actor,trainerFields[1]));
+ // Fill empty slots so a team with reserves can keep fighting even if its player takes no action.
+ for(const slots of trainerFields)for(const slot of slots) {
+  if(slot.transition || slot.actor?.hp>0)continue;
+  const reserve=[...allies,...enemies].find(actor=>actor.side===slot.owner && actor.hp>0 &&
+   !slots.some(field=>trainerOnField(actor,[field])));
   if(reserve)placeOnline(slot,reserve);
  }
  onlineSounds=onlineSounds.filter(sound=>clock-sound.clock<1);

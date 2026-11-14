@@ -7142,6 +7142,23 @@ function battleDamageTotals(buckets,kind) {
  }
  return [...totals.values()];
 }
+function damageBarRows(rows,time,mode,total=rows.reduce((sum,row)=>sum+row.total,0)) {
+ return rows.map((row,index)=>{
+   const entry=element('div',null,'damage-bar-row');
+   const share=100*row.total/total;
+   const rate=Math.round(row.total/Math.max(1,time));
+   const stats=Math.round(row.total)+' damage · '+rate+(mode==='dealt'?' DPS':' damage/s')+
+    ' · '+share.toFixed(1)+'%';
+   const track=element('span',null,'damage-track');
+   const bar=element('span',null,'damage-fill');
+   bar.style.width=share+'%';
+   bar.style.background=damageBarColors[index] ?? 'hsl('+((index*137.508)%360)+' 80% 65%)';
+   track.append(bar);
+   track.setAttribute('aria-hidden','true');
+   entry.append(element('span',row.name),element('span',stats),track);
+   return entry;
+ });
+}
 function renderBattleDps(time,buckets,mirror=false) {
  dpsSnapshot=[time,buckets,mirror];
  const quarter=Math.floor(time*4);
@@ -7156,21 +7173,7 @@ function renderBattleDps(time,buckets,mirror=false) {
   const rows=totals[panel.mode].filter(row=>(row.friendly!==mirror)===(side===0) && row.total>0);
   const total=rows.reduce((sum,row)=>sum+row.total,0);
   const offset=panel.rows.scrollTop;
-  panel.rows.replaceChildren(...rows.map((row,index)=>{
-   const entry=element('div',null,'damage-bar-row');
-   const share=100*row.total/total;
-   const rate=Math.round(row.total/Math.max(1,time));
-   const stats=Math.round(row.total)+' damage · '+rate+(panel.mode==='dealt'?' DPS':' damage/s')+
-    ' · '+share.toFixed(1)+'%';
-   const track=element('span',null,'damage-track');
-   const bar=element('span',null,'damage-fill');
-   bar.style.width=share+'%';
-   bar.style.background=damageBarColors[index] ?? 'hsl('+((index*137.508)%360)+' 80% 65%)';
-   track.append(bar);
-   track.setAttribute('aria-hidden','true');
-   entry.append(element('span',row.name),element('span',stats),track);
-   return entry;
-  }));
+  panel.rows.replaceChildren(...damageBarRows(rows,time,panel.mode,total));
   panel.rows.scrollTop=offset;
  }
 }
@@ -7901,6 +7904,11 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.7.2',changes:['Fixed stale PvP queue settings, automatic reserve deployment, and final match statistics.']},
+ {version:'0.7.1',changes:['Improved PvP movement buffering for irregular live updates.']},
+ {version:'0.7.0',changes:['Added private live PvP snapshots with polling fallback.']},
+ {version:'0.6.8',changes:['Buffered PvP movement and returned players to the main menu when results close.']},
+ {version:'0.6.7',changes:['Added DPS-style charts to online match results and improved PvP movement between network updates.']},
  {version:'0.6.6',changes:['Free Fight now calculates battle stats at level 100 using each Pokémon’s saved build.']},
  {version:'0.6.5',changes:['Fixed Free Fight level displays, smoothed PvP updates, added match results, and restored Friendlist presence dots.']},
  {version:'0.6.4',changes:['Updated the PC to show Base Stat, IV, and EV in the table and current-level stats in the radar chart.']},
@@ -8122,9 +8130,11 @@ function onlineFrame(dt) {
  if(sides.some(side=>!side.length))lastDamageClock+=dt;
  advanceCombat(dt,dt,sides);
  refreshBerriesAfterKnockout();
- for(const slot of trainerFields[1]) {
-  if(slot.owner!=='boss' || slot.transition || slot.actor?.hp>0)continue;
-  const reserve=enemies.find(actor=>actor.hp>0 && !trainerOnField(actor,trainerFields[1]));
+ // Fill empty slots so a team with reserves can keep fighting even if its player takes no action.
+ for(const slots of trainerFields)for(const slot of slots) {
+  if(slot.transition || slot.actor?.hp>0)continue;
+  const reserve=[...allies,...enemies].find(actor=>actor.side===slot.owner && actor.hp>0 &&
+   !slots.some(field=>trainerOnField(actor,[field])));
   if(reserve)placeOnline(slot,reserve);
  }
  onlineSounds=onlineSounds.filter(sound=>clock-sound.clock<1);
