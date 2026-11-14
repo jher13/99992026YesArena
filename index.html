@@ -956,17 +956,16 @@ function individualTable(name,profile) {
  const table=element('table',null,'individual-stats');
  const header=element('thead');
  const columns=element('tr');
- const level=ownedPokemon(name)?.level ?? 5;
- for(const label of ['Stat','IV','EV','Lv. '+level]) columns.append(element('th',label));
+ for(const label of ['Stat','Base Stat','IV','EV']) columns.append(element('th',label));
  header.append(columns);
  const body=element('tbody');
- const values=calculatedStats(name,profile,level);
+ const base=dexStats[dex[name][0]-1];
  const {up,down}=natureOf(profile);
  statLabels.forEach((label,i)=>{
   const row=element('tr');
   const color=up===down ? null : i===up?'raised':i===down?'lowered':null;
-  row.append(element('th',label,color),element('td',String(profile.ivs[i])),
-   element('td',String(profile.evs[i])),element('td',String(values[i]),color));
+  row.append(element('th',label,color),element('td',String(base[i])),
+   element('td',String(profile.ivs[i])),element('td',String(profile.evs[i])));
   body.append(row);
  });
  table.append(header,body);
@@ -1281,9 +1280,9 @@ function renderBoxes() {
   }),name)));
  if(!page.length) grid.append(element('p',storage.length?'No Pokémon match these filters.':'Catch more Pokémon in Pokebattle to fill your PC.'));
 }
-function drawStats(chart,name) {
+function drawStats(chart,values) {
  const g=chart.getContext('2d');
- const values=dexStats[dex[name][0]-1];
+ const scale=Math.max(255,Math.ceil(Math.max(...values)/50)*50);
  const labels=['HP','Attack','Defense','Speed','Sp. Def','Sp. Atk'];
  const points=values.map((value,index)=>{
   const angle=index*Math.PI/3-Math.PI/2;
@@ -1292,7 +1291,7 @@ function drawStats(chart,name) {
  function polygon(radius,scaled) {
   g.beginPath();
   points.forEach(([x,y,value],index)=>{
-   const r=radius*(scaled ? value/255 : 1);
+   const r=radius*(scaled ? value/scale : 1);
    if(index===0) g.moveTo(125+x*r,83+y*r); else g.lineTo(125+x*r,83+y*r);
   });
   g.closePath();
@@ -1634,14 +1633,15 @@ function renderDetail() {
  info.append(element('p',owned ? 'Lv. '+owned.level+(owned.level<100?' · '+owned.xp+'/'+experienceNeeded(owned.level)+' XP':' · Max level') : 'Unowned',owned?'team-owned':'team-unowned'),
 badges,element('p',height/10+' m · '+weight/10+' kg'),
   element('p','Nature · '+nature.name+effect),element('p','Personality · '+personalityOf(profile)),
-  element('p','Base stat chart'));
+  element('p',owned?'Current stats · Lv. '+owned.level:'Base stat chart'));
  if(ability) info.append(element('p',(hiddenAbilityFor(name,profile)?'Hidden Ability':'Ability')+' · '+ability));
+ const chartValues=owned?calculatedStats(name,profile,owned.level):dexStats[dex[name][0]-1];
  const chart=element('canvas',null,'stat-chart');
  chart.width=250;
  chart.height=168;
  chart.setAttribute('role','img');
  chart.setAttribute('aria-label',['HP','Attack','Defense','Speed','Special Defense','Special Attack']
-  .map((label,i)=>label+' '+dexStats[dex[name][0]-1][i]).join(', '));
+  .map((label,i)=>label+' '+chartValues[i]).join(', '));
  summary.append(info,chart);
  body.append(summary,individualTable(name,profile));
  if(owned) body.append(heldItemPicker(name),capsuleControl(name),vitaminControls(name),battleAIControls(name),pcCollectionControls(name));
@@ -1658,7 +1658,7 @@ badges,element('p',height/10+' m · '+weight/10+' kg'),
  }
  body.append(actions);
  panel.replaceChildren(title,body);
- drawStats(chart,name);
+ drawStats(chart,chartValues);
 }
 function renderMenu() {
  renderRoster();
@@ -8461,6 +8461,7 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.6.4',changes:['Updated the PC to show Base Stat, IV, and EV in the table and current-level stats in the radar chart.']},
  {version:'0.6.3',changes:['Enabled 6v6 in Unranked Free Fight.']},
  {version:'0.6.2',changes:['Moved Free Fight into Unranked PvP as a toggle.']},
  {version:'0.6.1',changes:['Completed the in-game Pokédex descriptions through Generation 9.']},
