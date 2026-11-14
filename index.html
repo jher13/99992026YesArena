@@ -356,6 +356,17 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .raid-seat-pad{width:min(78px,100%);height:42px;display:grid;place-items:center;border:2px solid #d9c6f5;border-radius:50%;background:#28253fc9;box-shadow:0 0 18px #bf8cea77}
 .raid-seat-pad canvas{border:0;background:transparent}.raid-seat select{width:100%;min-width:0}
 @media(max-width:700px){.raid-room-seats{grid-template-columns:repeat(3,minmax(0,1fr))}.raid-room-seats .raid-seat{transform:none}}
+.raid-lobby[data-tier="1"]{background-image:url('./assets/raid-tier-1.webp')}
+.raid-lobby[data-tier="2"]{background-image:url('./assets/raid-tier-2.webp')}
+.raid-lobby[data-tier="3"]{background-image:url('./assets/raid-tier-3.webp')}
+.raid-room-top{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:start}
+.raid-room-top .raid-room-actions{justify-content:flex-end}
+.raid-room-footer{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:end;gap:10px}
+.raid-room-controls{justify-self:start;max-width:100%}.raid-left-actions{display:grid;gap:5px}
+.raid-room-start button{min-width:112px;font-weight:800;background:#543968}
+.raid-pc-dialog{width:min(850px,calc(100vw - 24px));max-height:90dvh;overflow:auto;background:#171c31;color:#fff;border:1px solid #9180af;border-radius:12px}
+.raid-pc-dialog::backdrop{background:#090d19bd}.raid-pc-dialog .detail-panel{margin:10px 0}
+@media(max-width:620px){.raid-room-top{grid-template-columns:1fr 1fr}.raid-room-top h2{grid-column:1/-1;grid-row:1}.raid-room-footer{grid-template-columns:1fr}.raid-room-start{justify-self:center}.raid-room-seats{min-height:140px}}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -8512,6 +8523,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',hp:6},
 };
 const updateLogEntries=[
+ {version:'0.12.0',changes:['Redesigned Mega raid rooms with tier backgrounds, a centered Start button, and PC-style Pokémon editing.']},
  {version:'0.11.0',changes:['Expanded Co-op raids to six seats with one fighter per player and host substitutes.']},
  {version:'0.10.0',changes:['Added an illustrated Co-op raid room, three Mega boss tiers, and a dedicated boss health bar.']},
  {version:'0.9.0',changes:['Added raid-only Mega and Gigantamax encounters to Co-op.']},
@@ -8621,4 +8633,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.11.0"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.12.0"></script></html>

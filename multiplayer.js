@@ -494,19 +494,23 @@
    if(token===generation) await view();
   } catch(error){if(token===generation)show(title,element('p',error.message));}
  }
- function raidRoom(title,visibility,leave) {
+ function raidRoom(title,visibility,leave,tier=1) {
   phase='raid-lobby';
   showScreen('raid-lobby');
   if(dialog.open)dialog.close();
   const root=byId('raid-lobby');
+  root.dataset.tier=String(tier);
   const top=element('div',null,'raid-room-top');
   const actions=element('div',null,'raid-room-actions');
   actions.append(button('Settings',()=>byId('toolbar-settings').click()),button(leave?'Leave room':'Main menu',leave ?? openMenu));
   top.append(element('span',visibility),element('h2',title),actions);
   const seats=element('div',null,'raid-room-seats');
   const controls=element('div',null,'raid-room-controls');
-  root.replaceChildren(top,seats,controls);
-  return {seats,controls};
+  const footer=element('div',null,'raid-room-footer');
+  const start=element('div',null,'raid-room-start');
+  footer.append(controls,start);
+  root.replaceChildren(top,seats,footer);
+  return {root,seats,controls,start};
  }
  async function raidRpc(action,args) {
   const client=await cloudClient();
@@ -522,12 +526,46 @@
   const room=raidRoom(tier?tier.name+' · Tier '+tier.tier:'Co-op Raid',
    match.code?'Private room':'Public room',async()=>{
     await raidRpc('leave',{id:match.id});if(token===generation)openMenu();
-   });
+   },tier?.tier ?? 1);
   const status=element('p');
-  const actions=element('div');
+  const actions=element('div',null,'raid-left-actions');
   room.controls.append(status,actions);
   if(match.code)room.controls.append(element('p','Room code · '+match.code));
   const available=Object.keys(wildProgress.owned).filter(isAvailablePokemon).sort((a,b)=>a.localeCompare(b));
+  let fighter=match.seats[match.ownSlot]?.pokemon ?? team[0] ?? available[0] ?? '';
+  let kickMode=false;
+  function editFighter(initial,save) {
+   const editor=element('dialog',null,'raid-pc-dialog');
+   const panel=byId('pokemon-detail');
+   const anchor=document.createComment('PC detail position');
+   const prior=inspected;
+   panel.before(anchor);
+   const title=element('h2','Edit Pokémon');
+   const picker=select('Choose raid Pokémon',available.map(name=>[name,name]));
+   picker.value=initial || available[0] || '';
+   const preview=()=>{
+    if(!picker.value)return;
+    inspected=picker.value;
+    renderDetail();
+   };
+   picker.onchange=preview;
+   const use=button('Use this Pokémon',async()=>{
+    if(!picker.value)return;
+    await save(picker.value);
+    editor.close();
+   });
+   use.disabled=!available.length;
+   editor.append(title,picker,panel,element('div',null,'raid-room-actions'));
+   editor.lastChild.append(use,button('Done',()=>editor.close()));
+   editor.addEventListener('close',()=>{
+    anchor.replaceWith(panel);
+    inspected=prior;
+    editor.remove();
+   },{once:true});
+   document.body.append(editor);
+   preview();
+   editor.showModal();
+  }
   const act=async(action,args={})=>{
    if(busy)return;
    busy=true;
@@ -544,32 +582,51 @@
    if(match.result){openMenu();return;}
    if(match.started){active=match;showMatch('Co-op Raid');return;}
    const nextRevision=JSON.stringify(match.seats);
-   if(nextRevision===revision)return;
-   revision=nextRevision;
+   const viewRevision=nextRevision+'|'+fighter+'|'+kickMode;
+   if(viewRevision===revision)return;
+   revision=viewRevision;
    room.seats.replaceChildren(...match.seats.map((seat,index)=>{
     const tile=element('div',null,'raid-seat');
     const pad=element('div',null,'raid-seat-pad');
-    if(seat?.pokemon)pad.append(idlePokemonPortrait(seat.pokemon));
+    const shown=index===match.ownSlot?fighter:seat?.pokemon;
+    if(shown)pad.append(idlePokemonPortrait(shown));
     tile.append(pad,element('strong',seat?.name ?? 'Open seat'),
-     element('small',seat?.pokemon ? seat.pokemon+(seat.ready?' · Ready':'') : seat?'Not ready':''));
-    if(match.side==='host' && seat?.uid && index!==match.ownSlot)
-     tile.append(button('Kick',()=>act('kick',{slot:index})));
+     element('small',shown ? shown+(seat?.ready?' · Ready':' · Not ready') : seat?'Not ready':''));
+    if(kickMode && match.side==='host' && seat?.uid && index!==match.ownSlot)
+     tile.append(button('Remove player',()=>{kickMode=false;return act('kick',{slot:index});}));
     if(match.side==='host' && (!seat || seat.substitute)){
-     const picker=select('Seat '+(index+1)+' substitute',[['','Empty'],...available.map(name=>[name,name])]);
-     picker.value=seat?.pokemon ?? '';
-     picker.onchange=()=>act('fill',{slot:index,pokemon:picker.value});
-     tile.append(picker);
+     tile.append(button(seat?'Edit substitute':'Choose Pokémon',()=>editFighter(shown,pokemon=>act('fill',{slot:index,pokemon}))));
+     if(seat)tile.append(button('Clear',()=>act('fill',{slot:index,pokemon:''})));
     }
     return tile;
    }));
-   const fighter=select('Your raid Pokémon',available.map(name=>[name,name]));
-   fighter.value=match.seats[match.ownSlot]?.pokemon ?? team[0] ?? available[0] ?? '';
-   const ready=button('Ready up',()=>act('pick',{pokemon:fighter.value}));
-   ready.disabled=!available.length;
-   const start=button('Start raid',()=>act('start'));
-   start.disabled=match.seats.some(seat=>seat && !seat.ready);
-   actions.replaceChildren(fighter,ready);
-   if(match.side==='host')actions.append(start);
+   const current=match.seats[match.ownSlot];
+   const ready=button(current?.ready?'Unready':'Ready Up',()=>act('pick',{pokemon:current?.ready?'':fighter}));
+   ready.disabled=!fighter;
+   const edit=button('Edit Pokémon',()=>editFighter(fighter,async pokemon=>{
+    fighter=pokemon;
+    await act('pick',{pokemon:''});
+   }));
+   const invite=button('Invite',async()=>{
+    if(!match.code){
+     status.textContent='Friends can join this public raid through Find match on the same tier.';
+     return;
+    }
+    try {
+     await navigator.clipboard.writeText(match.code);
+     status.textContent='Room code copied.';
+    } catch {status.textContent='Share room code '+match.code+'.';}
+   });
+   actions.replaceChildren(ready,edit,invite);
+   if(match.side==='host'){
+    const kick=button(kickMode?'Cancel kick':'Kick',()=>{kickMode=!kickMode;draw();});
+    kick.disabled=!match.seats.some((seat,index)=>seat?.uid && index!==match.ownSlot);
+    actions.append(kick);
+    const start=button('START',()=>act('start'));
+    start.disabled=match.seats.some(seat=>seat && !seat.ready);
+    room.start.replaceChildren(start);
+   }
+
   }
   async function pollRaid(){
    if(token!==generation)return;
@@ -591,7 +648,6 @@
   const mode=select('Match type',[['unranked','Unranked'],['ranked','Ranked']]);
   const raid=select('Raid tier',[
    ...Object.entries(megaRaidTiers).map(([mode,entry])=>[mode,'Tier '+entry.tier+' · '+entry.name]),
-   ['coop','Guardians'],['coop_gigantamax','Gigantamax Raid'],
   ]);
   const format=select('Battle format',[[1,'1v1'],[2,'2v2'],[3,'3v3']]);
   const freeFight=element('input');freeFight.type='checkbox';
@@ -618,6 +674,8 @@
   const find=button('Find match',()=>begin('queue'));
   if(coop){
    const room=raidRoom('Co-op Raids','Raid selection');
+   raid.onchange=()=>{room.root.dataset.tier=String(megaRaidTiers[raid.value].tier);};
+   raid.onchange();
    room.controls.append(raid,find,create,code,join);
    return;
   }
