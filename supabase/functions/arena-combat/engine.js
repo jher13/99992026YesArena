@@ -4183,6 +4183,7 @@ function updateActivePanels(onlineFields) {
    const heading=element('div',null,'active-heading');
    panel.activity=element('small',panel.label);
    const title=pokemonNameplate(actor.name,' · Lv. '+actor.level,'h2');
+   if(actor.raidForm)heading.append(element('small',actor.raidForm));
    panel.statusBadge=element('span',null,'battle-status-badge');
    panel.statusBadge.hidden=true;
    title.append(panel.statusBadge);
@@ -4270,7 +4271,8 @@ function renderBattleRosters() {
    if(xp) card.append(xp);
    const stages=element('span',null,'battle-stage-icons');
    card.append(stages);
-   if(friendly) card.onclick=()=>{
+   card.onclick=()=>{
+    if(window.localBattleHotkeyClick?.(friendly,index) || !friendly)return;
     if(phase==='setup') {selected=index;renderControls();return;}
     if(trainerFields && phase==='battle') {
      const slotIndex=trainerFields[0].findIndex(slot=>slot.actor===actor && actor.hp>0);
@@ -4308,6 +4310,9 @@ function updateBattleRosters() {
   card.disabled=!friendly || (phase!=='setup' && !canSendReserve(actor) &&
    !(phase==='battle' && slots && active && actor.hp>0));
   if(friendly && slots) card.setAttribute('aria-pressed',String(actor.hp>0 && slots[recallSlot]?.actor===actor));
+  if(!friendly && window.localBattleCanTarget?.())card.disabled=actor.hp<=0;
+  if(friendly && window.localBattleCanSwap?.() && actor.hp>0)card.disabled=false;
+  card.classList.toggle('is-command-selected',Boolean(window.localBattleIsSelected?.(actor)));
   let experience='';
   if(xp) {
    const progress=ownedPokemon(actor.originalName ?? actor.name);
@@ -5860,7 +5865,7 @@ function readyKnockout(actor,target,gap) {
  });
 }
 function targetPreference(actor,opponent,gap) {
- if(actor.manualTarget && actor.manualTarget===opponent.onlineId)return -50000;
+ if(actor.manualTarget && actor.manualTarget===battleActorId(opponent))return -50000;
  if(opponent.friendly!==actor.friendly && (opponent.redirectUntil>clock ||
   opponent.powderRedirectUntil>clock && !arenaDefenseTypes(actor).includes('Grass') && activeAbility(actor)!=='Overcoat'))return -1e6;
  const enemyDepth=opponent.friendly?canvas.width-opponent.x:opponent.x;
@@ -6069,7 +6074,7 @@ function act(actor, opponents, dt) {
   ![...allies,...enemies].some(member=>member.side==='boss');
  if(preparing){target=actor;gap=0;distance=0;}
  if(!target) return;
- const gambit=gambitChoice(actor,!preparing && actor.manualTarget===target.onlineId && actor.manualTarget?[target]:opponents,target);
+ const gambit=gambitChoice(actor,!preparing && actor.manualTarget===battleActorId(target) && actor.manualTarget?[target]:opponents,target);
  if(gambit?.hold)return;
  if(gambit)({target,distance,gap}=gambit);
  actor.committedTarget=preparing?null:battleActorId(target);
@@ -7048,7 +7053,7 @@ function drawUnit(actor) {
  const {x,y,name,type} = actor;
  const sprite = getSprite(name);
  const art=battleArt(name);
- const scale=battleSpriteScale;
+ const scale=battleSpriteScale*(actor.raidForm?.startsWith('Gigantamax')?1.45:actor.raidForm?1.15:1);
  const width=art.width*scale;
  const height=art.height*scale;
  const radius = Math.max(10,Math.min(52,width*0.37));
@@ -7918,6 +7923,10 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.9.0',changes:['Added raid-only Mega and Gigantamax encounters to Co-op.']},
+ {version:'0.8.3',changes:['Extended configurable battle hotkeys to local battle modes.']},
+ {version:'0.8.2',changes:['Updated PvP keyboard handling and displayed each binding on a separate Hotkey Settings row.']},
+ {version:'0.8.1',changes:['Updated PvP shortcuts for direct 1v1 send-outs and selected-slot quick swaps.']},
  {version:'0.8.0',changes:['Added configurable PvP commands and one-click Ready for full teams in 6v6.']},
  {version:'0.7.4',changes:['PvP Pokémon can use support moves while their opponent chooses a reserve.']},
  {version:'0.7.3',changes:['Restored manual PvP reserve selection and synchronized battle effects with buffered movement.']},
@@ -8057,14 +8066,31 @@ function placeOnline(slot,actor) {
  slot.transition.incoming.y=slot.y;
  if(slot.transition.stage==='send')actor.revealed=true;
 }
+function isCoopMode(mode) {return ['coop','coop_mega','coop_gigantamax'].includes(mode);}
+const raidFormRoster={
+ coop_mega:['Gengar','Charizard','Lucario','Gardevoir','Tyranitar','Rayquaza'],
+ coop_gigantamax:['Charizard','Gengar','Lapras','Snorlax','Machamp','Corviknight'],
+};
 function initializeOnline(match) {
  const levelOverride=match.mode==='free_fight'?100:undefined;
  const host=match.host_pick.map((name,i)=>onlineActor(name,match.host_entries,'host',i,undefined,levelOverride));
  const guest=match.guest_pick.map((name,i)=>onlineActor(name,match.guest_entries,'guest',i,undefined,levelOverride));
- const coop=match.mode==='coop';
+ const coop=isCoopMode(match.mode);
  const bossLevel=Math.min(100,Math.ceil(Math.max(...host.map(a=>a.level),...guest.map(a=>a.level))*1.1)+2);
- const boss=coop?Array.from({length:match.format*2},(_,i)=>onlineActor(
-  ['Onix','Steelix','Golem','Aggron','Tyranitar','Rhyperior'][i],{},'boss',i,bossLevel)):[];
+ const forms=raidFormRoster[match.mode];
+ const guardians=forms ?? ['Onix','Steelix','Golem','Aggron','Tyranitar','Rhyperior'];
+ const boss=coop?Array.from({length:match.format*2},(_,i)=>{
+  const actor=onlineActor(guardians[i],{},'boss',i,bossLevel);
+  if(forms) {
+   const mega=match.mode==='coop_mega';
+   actor.raidForm=mega?(actor.name==='Charizard'?'Mega Charizard X':'Mega '+actor.name):'Gigantamax '+actor.name;
+   actor.max=Math.round(actor.max*(mega?1.35:1.85));
+   actor.hp=actor.max;
+   actor.stats[0]=actor.max;
+   if(mega)for(const stat of [1,2,4,5])actor.stats[stat]=Math.round(actor.stats[stat]*1.2);
+  }
+  return actor;
+ }):[];
  allies=coop?[...host,...guest]:host;
  enemies=coop?boss:guest;
  for(const actor of enemies) actor.friendly=false;
@@ -8175,7 +8201,7 @@ export function simulateOnline(match,state,steps,command,side) {
   const team=side==='host'?allies:enemies;
   const opposing=side==='host'?enemies:allies;
   const actor=team.find(member=>member.onlineId===id && member.side===side && member.hp>0);
-  if(!actor || match.mode==='coop')throw Error('Choose a healthy Pokémon on your side.');
+  if(!actor || isCoopMode(match.mode))throw Error('Choose a healthy Pokémon on your side.');
   if(position!==undefined && !Object.hasOwn(battlePositions,position))throw Error('Invalid position.');
   if(style!==undefined && !['Aggressive','Balanced','Defensive'].includes(style))throw Error('Invalid style.');
   if(target!==undefined && !opposing.some(member=>member.onlineId===target && member.revealed && member.hp>0))
@@ -8185,7 +8211,7 @@ export function simulateOnline(match,state,steps,command,side) {
  } else if(command)onlineSend(side,command.incoming,command.slot);
  let result=null;
  for(let i=0;i<steps && !result;i++)result=onlineFrame(1/60);
- if(match.mode==='coop' && result && result!=='draw')result=result==='host'?'coop_win':'coop_loss';
+ if(isCoopMode(match.mode) && result && result!=='draw')result=result==='host'?'coop_win':'coop_loss';
  return {state:saveOnlineState(),result};
 }
 function compactOnlineDamage(buckets) {
@@ -8203,10 +8229,10 @@ export function onlineView(state,side,mode) {
  const visible=[...state.allies,...state.enemies].filter(allowed).map(actor=>{
   const {name,side,onlineId,hp,max,level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil}=actor;
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,raidForm}=actor;
   return {name,side,onlineId,hp,max,level:mode==='free_fight'?100:level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil};
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,raidForm};
  });
  const ids=new Set(visible.map(actor=>actor.onlineId));
  const fields=state.fields.map(slots=>slots.map(slot=>{

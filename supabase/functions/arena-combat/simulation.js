@@ -34,14 +34,31 @@ function placeOnline(slot,actor) {
  slot.transition.incoming.y=slot.y;
  if(slot.transition.stage==='send')actor.revealed=true;
 }
+function isCoopMode(mode) {return ['coop','coop_mega','coop_gigantamax'].includes(mode);}
+const raidFormRoster={
+ coop_mega:['Gengar','Charizard','Lucario','Gardevoir','Tyranitar','Rayquaza'],
+ coop_gigantamax:['Charizard','Gengar','Lapras','Snorlax','Machamp','Corviknight'],
+};
 function initializeOnline(match) {
  const levelOverride=match.mode==='free_fight'?100:undefined;
  const host=match.host_pick.map((name,i)=>onlineActor(name,match.host_entries,'host',i,undefined,levelOverride));
  const guest=match.guest_pick.map((name,i)=>onlineActor(name,match.guest_entries,'guest',i,undefined,levelOverride));
- const coop=match.mode==='coop';
+ const coop=isCoopMode(match.mode);
  const bossLevel=Math.min(100,Math.ceil(Math.max(...host.map(a=>a.level),...guest.map(a=>a.level))*1.1)+2);
- const boss=coop?Array.from({length:match.format*2},(_,i)=>onlineActor(
-  ['Onix','Steelix','Golem','Aggron','Tyranitar','Rhyperior'][i],{},'boss',i,bossLevel)):[];
+ const forms=raidFormRoster[match.mode];
+ const guardians=forms ?? ['Onix','Steelix','Golem','Aggron','Tyranitar','Rhyperior'];
+ const boss=coop?Array.from({length:match.format*2},(_,i)=>{
+  const actor=onlineActor(guardians[i],{},'boss',i,bossLevel);
+  if(forms) {
+   const mega=match.mode==='coop_mega';
+   actor.raidForm=mega?(actor.name==='Charizard'?'Mega Charizard X':'Mega '+actor.name):'Gigantamax '+actor.name;
+   actor.max=Math.round(actor.max*(mega?1.35:1.85));
+   actor.hp=actor.max;
+   actor.stats[0]=actor.max;
+   if(mega)for(const stat of [1,2,4,5])actor.stats[stat]=Math.round(actor.stats[stat]*1.2);
+  }
+  return actor;
+ }):[];
  allies=coop?[...host,...guest]:host;
  enemies=coop?boss:guest;
  for(const actor of enemies) actor.friendly=false;
@@ -152,7 +169,7 @@ export function simulateOnline(match,state,steps,command,side) {
   const team=side==='host'?allies:enemies;
   const opposing=side==='host'?enemies:allies;
   const actor=team.find(member=>member.onlineId===id && member.side===side && member.hp>0);
-  if(!actor || match.mode==='coop')throw Error('Choose a healthy Pokémon on your side.');
+  if(!actor || isCoopMode(match.mode))throw Error('Choose a healthy Pokémon on your side.');
   if(position!==undefined && !Object.hasOwn(battlePositions,position))throw Error('Invalid position.');
   if(style!==undefined && !['Aggressive','Balanced','Defensive'].includes(style))throw Error('Invalid style.');
   if(target!==undefined && !opposing.some(member=>member.onlineId===target && member.revealed && member.hp>0))
@@ -162,7 +179,7 @@ export function simulateOnline(match,state,steps,command,side) {
  } else if(command)onlineSend(side,command.incoming,command.slot);
  let result=null;
  for(let i=0;i<steps && !result;i++)result=onlineFrame(1/60);
- if(match.mode==='coop' && result && result!=='draw')result=result==='host'?'coop_win':'coop_loss';
+ if(isCoopMode(match.mode) && result && result!=='draw')result=result==='host'?'coop_win':'coop_loss';
  return {state:saveOnlineState(),result};
 }
 function compactOnlineDamage(buckets) {
@@ -180,10 +197,10 @@ export function onlineView(state,side,mode) {
  const visible=[...state.allies,...state.enemies].filter(allowed).map(actor=>{
   const {name,side,onlineId,hp,max,level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil}=actor;
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,raidForm}=actor;
   return {name,side,onlineId,hp,max,level:mode==='free_fight'?100:level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil};
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,raidForm};
  });
  const ids=new Set(visible.map(actor=>actor.onlineId));
  const fields=state.fields.map(slots=>slots.map(slot=>{

@@ -78,7 +78,7 @@ Deno.serve(async request => {
         match_id: id, revision: match.turn, state: next.state, outcome: next.result, steps,
       });
       if (saved) {
-        if (match.mode !== "coop") EdgeRuntime.waitUntil(
+        if (!match.mode.startsWith("coop")) EdgeRuntime.waitUntil(
           broadcastSnapshots(id, match.mode, match.turn + 1, next.state, next.result)
         );
         return reply({ turn: match.turn + 1, result: next.result,
