@@ -583,12 +583,19 @@
     inspected=chosen;
     renderDetail();
    };
-   const use=button('Use this Pokémon',async()=>{
+   const feedback=element('p');
+   feedback.setAttribute('role','alert');
+   const use=element('button','Use this Pokémon');
+   use.type='button';
+   use.onclick=async()=>{
     if(!chosen || use.disabled)return;
     use.disabled=true;
-    try {await save(chosen);editor.close();}
-    finally {use.disabled=!chosen;}
-   });
+    feedback.textContent='';
+    try {
+     if(await save(chosen))editor.close();
+     else feedback.textContent=status.textContent || 'The raid room is busy. Try again.';
+    } finally {use.disabled=!chosen;}
+   };
    function renderPicker() {
     const names=pcCandidates(available,control('box-search').value.trim().toLowerCase(),Number(control('box-generation').value),control);
     const pages=Math.ceil(names.length/boxSize);
@@ -600,7 +607,7 @@
     grid.replaceChildren(...names.slice(page*boxSize,(page+1)*boxSize).map((name,index)=>
      pokemonTile(name,'Select',name===chosen,()=>{
       chosen=name;
-      use.disabled=false;
+      feedback.textContent='';
       preview();
       renderPicker();
       grid.children[index]?.focus();
@@ -634,7 +641,7 @@
     renderPicker();
    }
    use.disabled=!chosen;
-   editor.append(title,storage,panel,element('div',null,'raid-room-actions'));
+   editor.append(title,storage,panel,feedback,element('div',null,'raid-room-actions'));
    editor.lastChild.append(use,button('Cancel',()=>editor.close()));
    editor.addEventListener('close',()=>{
     panel.hidden=false;
@@ -649,13 +656,16 @@
   const act=async(action,args={})=>{
    if(busy)return;
    busy=true;
+   status.textContent='';
    try{
     if(action==='pick' || action==='fill'){
      if(args.pokemon){profileFor(args.pokemon);saveTeam();await flushArenaSave();}
     }
     const next=await raidRpc(action,{id:match.id,...args});
-    if(token===generation){match=next;draw();}
-   }catch(error){status.textContent=error.message;}
+    if(token!==generation)return false;
+    match=next;draw();
+    return true;
+   }catch(error){status.textContent=error.message;return false;}
    finally{busy=false;}
   };
   function draw(){
@@ -684,8 +694,10 @@
    const ready=button(current?.ready?'Unready':'Ready Up',()=>act('pick',{pokemon:current?.ready?'':fighter}));
    ready.disabled=!fighter;
    const edit=button('Edit Pokémon',()=>editFighter(fighter,async pokemon=>{
+    if(match.seats[match.ownSlot]?.ready && !await act('pick',{pokemon:''}))return false;
     fighter=pokemon;
-    await act('pick',{pokemon:''});
+    draw();
+    return true;
    }));
    const invite=button('Invite',()=>{
     const contacts=element('div');

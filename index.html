@@ -2,6 +2,7 @@
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pokemon Arena</title>
 <style>
+.dex-art canvas.dex-preview{width:auto;height:auto;max-width:min(100%,120px);max-height:120px;object-fit:contain;transform:none}
 *{box-sizing:border-box}body{margin:0;background:#101b18;color:#eff6e9;font:16px system-ui}main{max-width:1060px;margin:auto;padding:24px}header,.toolbar,.choices{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}h1{font-size:clamp(32px,6vw,62px);letter-spacing:-.06em;margin:0}p{color:#c1d5c7}canvas{width:100%;display:block;background:#1c372d;border:1px solid #547869;border-radius:16px;touch-action:manipulation}button{font:inherit;background:#244438;color:inherit;border:1px solid #547869;border-radius:9px;padding:10px 15px;cursor:pointer}button:hover,button[aria-pressed=true]{border-color:#d5ed95;background:#35594a}button:disabled{opacity:.55;cursor:default}#start{background:#d5ed95;color:#142617;font-weight:750}section{margin:14px 0}.choices{justify-content:flex-start}.choices button{text-align:left}.choices small{display:block;color:#c1d5c7;margin-top:4px}#status{min-height:1.5em}#wave{color:#d5ed95;font-weight:700}
 
 body{background:radial-gradient(ellipse at 75% 0,#304f61,transparent 48%),linear-gradient(135deg,#253653,#10182e 75%);min-height:100vh}
@@ -3871,7 +3872,7 @@ function renderCatalogDetail(name) {
   credit.rel='noopener';
   const preview=()=>{
    const variant=options.get(picker.value);
-   art.replaceChildren(idlePokemonPortrait(name,null,variant,true));
+   art.replaceChildren(idlePokemonPortrait(name,'dex-preview',variant,true));
    credit.hidden=!variant;
    if(variant) credit.href='./assets/variant-atlases/credits.txt';
   };
@@ -7701,7 +7702,7 @@ function drawUnit(actor) {
  const {x,y,name,type} = actor;
  const sprite = getSprite(name);
  const art=battleArt(name,actorSpriteVariant(actor));
- const scale=battleSpriteScale*(actor.raidForm?.startsWith('Gigantamax')?1.45:actor.raidForm?.startsWith('Mega ')?3:actor.raidForm?1.15:1);
+ const scale=battleSpriteScale*(actor.raidForm?.startsWith('Gigantamax')?1.45:actor.raidForm==='Mega Rayquaza'?2:actor.raidForm?.startsWith('Mega ')?3:actor.raidForm?1.15:1);
  const width=art.width*scale;
  const height=art.height*scale;
  const radius = Math.max(10,Math.min(52,width*0.37));
@@ -8585,6 +8586,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.14.5',changes:['Fixed raid fighter confirmation, capped Pokédex previews, and reduced Mega Rayquaza to 2× size.']},
  {version:'0.14.4',changes:['Replaced the Co-op raid Pokémon dropdown with the PC grid, filters, and sorting.']},
  {version:'0.14.3',changes:['Reduced Mega raid bosses to 3× sprite size and tuned their builds and moves.']},
  {version:'0.14.2',changes:['Updated Mega raid art, boss stats and moves, and added first-clear rewards.']},
@@ -8701,4 +8703,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.14.4"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.14.5"></script></html>
