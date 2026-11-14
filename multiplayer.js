@@ -14,7 +14,7 @@
   (event.shiftKey?'shift+':'')+(event.metaKey?'meta+':'')+event.key.toLowerCase();
  function editPvpKeys() {
   const rows=Object.keys(commands).map(action=>{
-   const label=element('label',action+' ');
+   const label=element('label',(action==='Select'?'Quick swap':action)+' ');
    const key=element('button',bindings[action]);
    key.onclick=()=>{
     key.textContent='Press a key…';
@@ -40,43 +40,55 @@
   });
   show('PvP hotkeys',...rows,reset);
  }
- function chooseBattleUnit(actor,card) {
+ function chooseBattleUnit(actor) {
+  if(actor.hp<=0)return;
   if(commandMode==='Attack' && actor.side!==active.side && selectedUnit) {
-   commandSend({ai:{actor:selectedUnit,target:actor.onlineId}});
-   commandMode=null;updateOnlineRoster(commandSend);return;
-  }
-  if(commandMode==='Select' && actor.side===active.side) {
-   selectedUnit=actor.onlineId;commandMode=null;
+   commandMode=null;
    updateOnlineRoster(commandSend);
-   byId('status').textContent=actor.name+' selected for commands.';
+   commandSend({ai:{actor:selectedUnit,target:actor.onlineId}});
    return;
   }
-  if(!commandMode && actor.side===active.side && actor.hp>0) {
-   if(!card.disabled)card.click();
-   else selectedUnit=actor.onlineId;
+  if(actor.side!==active.side || commandMode==='Attack')return;
+  const slots=trainerFields.flat().filter(slot=>slot.owner===active.side);
+  const fieldIndex=slots.findIndex(slot=>trainerOnField(actor,[slot]));
+  if(!commandMode && fieldIndex>=0 && !slots[fieldIndex].transition) {
+   selectedUnit=actor.onlineId;
+   updateOnlineRoster(commandSend);
+   return;
   }
+  if(fieldIndex>=0)return;
+  const index=slots.length===1?0:commandMode==='Select'?
+   slots.findIndex(slot=>slot.actor?.onlineId===selectedUnit):
+   slots.findIndex(slot=>!slot.transition && !(slot.actor?.hp>0));
+  const slot=slots[index];
+  if(!slot || slot.transition || battleSnapshot.recall>0 && slot.actor?.hp>0)return;
+  commandMode=null;
+  updateOnlineRoster(commandSend);
+  commandSend({incoming:actor.onlineId,slot:index});
  }
  document.addEventListener('keydown',event=>{
   if(phase!=='online-battle' || active?.result || active?.mode==='coop' || !battleSnapshot ||
      event.repeat || event.target.closest?.('input,textarea,select,dialog,[contenteditable]'))return;
+  if(event.key==='Escape' && commandMode){
+   commandMode=null;updateOnlineRoster(commandSend);return;
+  }
   const action=Object.keys(bindings).find(key=>bindings[key]===keyName(event));
   if(!action)return;
   event.preventDefault();
   if(action==='Attack' || action==='Select'){
+   if(action==='Select' && !selectedUnit) {
+    byId('status').textContent='Select a field Pokémon first.';
+    return;
+   }
    commandMode=action;
-   for(const row of rosterRows.values())row.card.disabled=false;
-   byId('status').textContent=action==='Attack'?'Choose an enemy target.':'Choose an ally to command.';
+   updateOnlineRoster(commandSend);
    return;
   }
   if(/^(Ally|Enemy) /.test(action)){
    const [side,number]=action.split(' ');
    const id=(side==='Ally'?active.side:active.side==='host'?'guest':'host')+':'+(Number(number)-1);
-   const actor=arenaActors.get(id), row=rosterRows.get(id);
-   if(actor && row){
-    if(!commandMode && side==='Ally' && !row.card.disabled)row.card.click();
-    else if(!commandMode && side==='Ally'){commandMode='Select';chooseBattleUnit(actor,row.card);}
-    else chooseBattleUnit(actor,row.card);
-   }
+   const actor=arenaActors.get(id);
+   if(actor)chooseBattleUnit(actor);
    return;
   }
   if(selectedUnit)commandSend({ai:{actor:selectedUnit,...(['Aggressive','Balanced','Defensive'].includes(action)?
@@ -215,7 +227,7 @@
   const selectedSlot=ownSlots[recallSlotOnline];
   if(recallSlotOnline!==null && (!selectedSlot?.actor?.hp || selectedSlot.transition))recallSlotOnline=null;
   const openSlot=ownSlots.findIndex(slot=>!slot.transition && !(slot.actor?.hp>0));
-  const reserveSlot=openSlot>=0?openSlot:recallSlotOnline;
+  const reserveSlot=openSlot>=0?openSlot:ownSlots.length===1?0:recallSlotOnline;
   const canReserve=[...arenaActors.values()].some(actor=>actor.side===active.side && actor.hp>0 &&
    !ownSlots.some(slot=>trainerOnField(actor,[slot])));
   const status=ownSlots.some(slot=>slot.transition)?'Sending out Pokémon…':
@@ -223,7 +235,7 @@
    !canReserve?'Battle in progress.':
    battleSnapshot.recall>0?'Recall ready in '+Math.ceil(battleSnapshot.recall)+'s.':
    recallSlotOnline!==null?'Choose a reserve to send out.':'Select an active Pokémon to recall it.';
-  byId('status').textContent=status;
+  byId('status').textContent=commandMode==='Attack'?'Choose an enemy target.':commandMode==='Select'?'Choose a healthy reserve to swap in.':status;
   for(const [friendly,id] of [[true,'player-roster'],[false,'enemy-roster']]) {
    const container=byId(id);
    if(!container.dataset.onlineRoster) {
@@ -254,10 +266,18 @@
     row.card.setAttribute('aria-pressed',String(actor.onlineId===selectedUnit || index>=0 && recallSlotOnline===index));
     row.card.disabled=!own || actor.hp<=0 || (index>=0?!canReserve || Boolean(ownSlots[index].transition):
      reserveSlot===null || (openSlot<0 && battleSnapshot.recall>0));
-    if(commandMode)row.card.disabled=false;
+    if(active.mode!=='coop'){
+     const outgoing=ownSlots.find(slot=>slot.actor?.onlineId===selectedUnit);
+     const swapSlot=ownSlots.length===1?ownSlots[0]:outgoing;
+     const canQuickSwap=index<0 && Boolean(swapSlot) && !swapSlot.transition &&
+      (!(swapSlot.actor?.hp>0) || battleSnapshot.recall<=0);
+     row.card.disabled=actor.hp<=0 || (commandMode==='Attack'?own:!own ||
+      (commandMode==='Select'?!canQuickSwap:index>=0?Boolean(ownSlots[index].transition):
+       ownSlots.length===1?!canQuickSwap:openSlot<0));
+    }
     row.card.onclick=()=>{
-     if(commandMode){
-      chooseBattleUnit(actor,row.card);
+     if(commandMode || (active.mode!=='coop' && (index>=0 || ownSlots.length===1))){
+      chooseBattleUnit(actor);
       return;
      }
      if(index>=0) {
