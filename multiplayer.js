@@ -238,12 +238,14 @@
  function lobby(coop) {
   stop();
   const title=coop?'Co-op':'PvP';
-  const mode=select('Match type',[['unranked','Unranked'],['free_fight','Free Fight · Lv. 100'],['ranked','Ranked']]);
+  const mode=select('Match type',[['unranked','Unranked'],['ranked','Ranked']]);
   const format=select('Battle format',[[1,'1v1'],[2,'2v2'],[3,'3v3']]);
+  const freeFight=element('input');freeFight.type='checkbox';
+  const freeFightLabel=element('label','Free Fight · Lv. 100 ');freeFightLabel.append(freeFight);
   const code=input('Room code');
   const begin=async action=>{
    if(cloudAccount && dirty) await flushArenaSave();
-   const match=await rpc(action,{mode:coop?'coop':mode.value,format:Number(format.value),code:code.value});
+   const match=await rpc(action,{mode:coop?'coop':mode.value==='unranked' && freeFight.checked?'free_fight':mode.value,format:Number(format.value),code:code.value});
    if(!dialog.open) return;
    active=match;
    showMatch(title);
@@ -253,13 +255,12 @@
   if(!coop) {
    const six=element('option','6v6');six.value='6';
    format.append(six);
-   mode.onchange=()=>{
+   mode.onchange=freeFight.onchange=()=>{
     create.hidden=join.hidden=code.hidden=mode.value==='ranked';
-    six.disabled=mode.value==='free_fight';
-    if(six.disabled && format.value==='6')format.value='3';
+    freeFightLabel.hidden=mode.value!=='unranked';
    };
   }
-  show(title,...(coop?[]:[mode]),format,button('Find match',()=>begin('queue')),create,code,join);
+  show(title,...(coop?[]:[mode,freeFightLabel]),format,button('Find match',()=>begin('queue')),create,code,join);
  }
  function showMatch(title) {
   if(active.mode==='free_fight')title='Free Fight';
