@@ -2278,8 +2278,8 @@ function skillDescription(move) {
  const [type,power,accuracy,priority,status,drain,recoil]=moveCatalog[move];
  const rules=moveRules(move);
  const {shape,selfCentered:selfArea,radius,warning}=arenaMoveGeometry(move,rules);
- const target=rules.scope==='ally' ? ([13,15].includes(rules.target)?(move==='Coaching'?'all other active allies':'all active allies'):
-  [3,5].includes(rules.target)?'a low-HP active ally':'the user') :
+ const target=rules.scope==='ally' ? ([13,15].includes(rules.target)?(allyOnlyBuffMoves.has(move)?'all other living allies':partyBuffMoves.has(move) || rules.changes.some(([,change])=>change>0)?'all living allies':'all active allies'):
+  [3,5].includes(rules.target)?(allyOnlyBuffMoves.has(move)?'a living ally, including reserves':'a low-HP active ally'):'the user') :
   rules.scope==='area' ? (selfArea?'enemies around the user':'enemies around the target') : 'one enemy';
  const notes=[status?'Targets '+target+'.':
   'Deals '+skillCategory(rules).toLowerCase()+' '+type+' damage to '+target+'.'];
@@ -2323,7 +2323,7 @@ function skillDescription(move) {
  if(!status && recoil) notes.push('User takes recoil equal to '+Math.round(recoil*100)+'% of damage dealt.');
  if(weatherMoves[move]) notes.push('Sets '+weatherMoves[move].toLowerCase()+' weather for 25 battle seconds.');
  if(terrainMoves[move]) notes.push('Sets '+terrainMoves[move].toLowerCase()+' terrain for 25 battle seconds.');
- if(move==='Tailwind') notes.push('Raises the Speed of all active teammates by two stages.');
+ if(move==='Tailwind') notes.push('Raises the Speed of all living teammates, including reserves, by two stages.');
  if(['Seismic Toss','Night Shade'].includes(move)) notes.push('Fixed damage scales with the user’s level after the Arena damage reduction, with a minimum of 1 HP.');
  if(move==='Dragon Rage') notes.push('Deals '+scaledBattleDamage(40)+' base fixed HP damage on a hit.');
  if(move==='Sonic Boom') notes.push('Deals '+scaledBattleDamage(20)+' base fixed HP damage on a hit.');
@@ -5433,7 +5433,7 @@ function tickStatus(actor,dt) {
  }
  if(actor.wishAt && clock>=actor.wishAt){actor.wishAt=0;healActor(actor,actor.max*battleDamageScale/2);}
  if(actor.ingrainAt && clock>=actor.ingrainAt){actor.ingrainAt+=1;healActor(actor,actor.max*battleDamageScale/32);}
- actor.guard = Math.max(0,actor.guard-dt);
+
  if(!actor.guard)actor.contactShield=null;
  if(!actor.ailment) return;
  if(actor.ailment===2)return;
@@ -5695,7 +5695,10 @@ function clearArenaAilment(actor) {
  actor.ailmentSource=null;
 }
 function supportRecipients(actor,move,rules) {
- const living=activeTeammates(actor).filter(member=>!allyOnlyBuffMoves.has(move) || member!==actor);
+ const supportsReserve=partyBuffMoves.has(move) || allyOnlyBuffMoves.has(move) ||
+  ([13,15].includes(rules.target) && rules.changes.some(([,change])=>change>0));
+ const living=(supportsReserve?livingTeam(actor):activeTeammates(actor))
+  .filter(member=>!allyOnlyBuffMoves.has(move) || member!==actor);
  if(move==='Magnetic Flux' || move==='Gear Up')
   return living.filter(member=>['Plus','Minus'].includes(activeAbility(member)));
  if([13,15].includes(rules.target))return living;
@@ -5739,9 +5742,12 @@ function lastUsedSlot(actor) {return actor.moves.indexOf(actor.lastUsedMove);}
 function activeTeammates(actor) {
  return fieldActors().filter(member=>member?.hp>0 && member.friendly===actor.friendly);
 }
+function livingTeam(actor) {
+ return (actor.friendly?allies:enemies).filter(member=>member.hp>0);
+}
 function teamWard(description,key,duration) {
- return {description,score:actor=>activeTeammates(actor).some(member=>!(member[key]>clock))?34:0,
-  apply:actor=>{for(const member of activeTeammates(actor))member[key]=clock+duration;}};
+ return {description,score:actor=>livingTeam(actor).some(member=>!(member[key]>clock))?34:0,
+  apply:actor=>{for(const member of livingTeam(actor))member[key]=clock+duration;}};
 }
 function contactShield(description,reaction) {
  return {description,score:actor=>actor.guard<=0?42:0,
@@ -6061,16 +6067,16 @@ const additionalStatusMoves={
   score:(_,target)=>target.heldItem?50:0,
   apply:(_,target)=>{target.heldItem=null;}},
 
- Safeguard:teamWard('Protects active teammates from new status conditions for 8 seconds.','safeguardUntil',8),
- Mist:teamWard('Prevents opponents from lowering active teammates’ stat stages for 8 seconds.','mistUntil',8),
- 'Lucky Chant':teamWard('Protects active teammates from critical hits for 8 seconds.','luckyChantUntil',8),
- 'Crafty Shield':teamWard('Protects active teammates from enemy status moves for 2.5 seconds.','craftyShieldUntil',2.5),
- 'Aurora Veil':{description:'In snow, halves damage taken by active teammates for 2.5 seconds.',
-  score:actor=>abilityWeather()==='Snow' && activeTeammates(actor).some(member=>member.guard<=0)?48:0,
-  apply:actor=>{if(abilityWeather()==='Snow')for(const member of activeTeammates(actor))member.guard=Math.max(member.guard,2.5);}},
- 'Mat Block':{description:'On the user’s first action after entering, halves damage taken by active teammates for 2.5 seconds.',
+ Safeguard:teamWard('Protects living teammates from new status conditions for 8 seconds.','safeguardUntil',8),
+ Mist:teamWard('Prevents opponents from lowering living teammates’ stat stages for 8 seconds.','mistUntil',8),
+ 'Lucky Chant':teamWard('Protects living teammates from critical hits for 8 seconds.','luckyChantUntil',8),
+ 'Crafty Shield':teamWard('Protects living teammates from enemy status moves for 2.5 seconds.','craftyShieldUntil',2.5),
+ 'Aurora Veil':{description:'In snow, halves damage taken by living teammates for 2.5 seconds.',
+  score:actor=>abilityWeather()==='Snow' && livingTeam(actor).some(member=>member.guard<=0)?48:0,
+  apply:actor=>{if(abilityWeather()==='Snow')for(const member of livingTeam(actor))member.guard=Math.max(member.guard,2.5);}},
+ 'Mat Block':{description:'On the user’s first action after entering, halves damage taken by living teammates for 2.5 seconds.',
   score:actor=>!actor.actedSinceEntry?40:0,
-  apply:actor=>{if(actor.firstAction)for(const member of activeTeammates(actor))member.guard=Math.max(member.guard,2.5);}},
+  apply:actor=>{if(actor.firstAction)for(const member of livingTeam(actor))member.guard=Math.max(member.guard,2.5);}},
  'Helping Hand':{description:'Boosts another active ally’s next damaging move by 50% if used within 5 seconds.',
   score:actor=>activeTeammates(actor).some(member=>member!==actor && !(member.helpingHandUntil>clock) &&
    member.moves.some(move=>!moveCatalog[move][4]))?44:0,
@@ -6827,7 +6833,7 @@ function act(actor, opponents, dt) {
    if(healing) healActor(recipient,Math.round(recipient.max*healing/100));
    const guard=guardMoves.has(move);
    if(guard) recipient.guard=Math.max(recipient.guard,move==='Protect' || move==='Detect' ? 1 : 2.5);
-   effect(recipient,move==='Tailwind' || rules.changes.length ? 'Buff' : healing ? 'Heal' : guard ? 'Guard' : '',1,{status:true});
+   if(fieldActors().includes(recipient))effect(recipient,move==='Tailwind' || rules.changes.length ? 'Buff' : healing ? 'Heal' : guard ? 'Guard' : '',1,{status:true});
   }
   return;
  }
@@ -7246,7 +7252,9 @@ function cooldownElapsed(actor,dt) {
  }
  return elapsed;
 }
+const reserveBuffTimers=['safeguardUntil','mistUntil','luckyChantUntil','craftyShieldUntil'];
 function advanceCombat(dt,realDt,sides) {
+ const onField=new Set(sides.flat());
  clock+=dt;
  tickPillars(dt);
  weatherTime=Math.max(0,weatherTime-dt);
@@ -7259,6 +7267,11 @@ function advanceCombat(dt,realDt,sides) {
   actor.labelTime=Math.max(0,actor.labelTime-realDt);
   actor.attack=Math.max(0,actor.attack-dt);
   if(actor.attack===0) actor.hit=Math.max(0,actor.hit-dt);
+  const active=onField.has(actor);
+  actor.guard=Math.max(0,(actor.guard ?? 0)-dt*(active?1:0.5));
+  if(!active)for(const key of reserveBuffTimers) {
+   if(actor[key]>clock-dt)actor[key]+=dt/2;
+  }
   tickExhaustion(actor,dt);
   const cooldownDt=cooldownElapsed(actor,dt);
   for(let i=0;i<actor.moveTimers.length;i++) {
@@ -8448,6 +8461,8 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.4.8',changes:['Timed Pokémon buffs run at half speed while the recipient is in reserve.']},
+ {version:'0.4.7',changes:['Team buffs can reach healthy reserves, including in singles battles.']},
  {version:'0.4.6',changes:['Expanded the in-game Pokédex descriptions to cover Kanto through Unova.']},
  {version:'0.4.5',changes:['Gave Oran Berry and Sitrus Berry distinct pixel-art sprites.']},
  {version:'0.4.4',changes:['Added descriptions for all 151 Kanto Pokémon from the supplied Pokédex spreadsheet.']},
