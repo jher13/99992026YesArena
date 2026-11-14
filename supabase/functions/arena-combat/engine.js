@@ -3649,11 +3649,12 @@ byId('battle-settings-button').onclick=()=>{
  byId('battle-settings').showModal();
 };
 function showScreen(screen) {
+ byId('raid-boss-hud').hidden=true;
  byId('battle-settings-button').hidden=screen!=='battle';
  if(screen!=='battle' && byId('battle-settings').open)byId('battle-settings').close();
  if(screen!=='home')stopHomeSprite();
  stopBattleMusic();
- for(const id of ['home','login','roguelit','starter-setup','wild-regions','wild-result','trainer-regions','gyms','gym-collection','pokedex','item-bag','shop','skill-shop','skillset','abilities','menu','battle']) byId(id).hidden=id!==screen;
+ for(const id of ['home','login','raid-lobby','roguelit','starter-setup','wild-regions','wild-result','trainer-regions','gyms','gym-collection','pokedex','item-bag','shop','skill-shop','skillset','abilities','menu','battle']) byId(id).hidden=id!==screen;
  byId('arena-header').hidden=screen==='home' || screen==='login' || screen==='starter-setup';
  byId('score').hidden=screen!=='battle';
 }
@@ -7922,7 +7923,13 @@ function setToolbarUnread(id,count) {
  icon.setAttribute('aria-label',icon.title+(count>0?', '+count+' unread':''));
 }
 // Add each release to the top. The newest version also drives the subtitle.
+const megaRaidTiers={
+ coop_mega:{tier:1,name:'Mega Charizard X',species:'Charizard',hp:4},
+ coop_mega_2:{tier:2,name:'Mega Gengar',species:'Gengar',hp:5},
+ coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',hp:6},
+};
 const updateLogEntries=[
+ {version:'0.10.0',changes:['Added an illustrated Co-op raid room, three Mega boss tiers, and a dedicated boss health bar.']},
  {version:'0.9.0',changes:['Added raid-only Mega and Gigantamax encounters to Co-op.']},
  {version:'0.8.3',changes:['Extended configurable battle hotkeys to local battle modes.']},
  {version:'0.8.2',changes:['Updated PvP keyboard handling and displayed each binding on a separate Hotkey Settings row.']},
@@ -8066,7 +8073,7 @@ function placeOnline(slot,actor) {
  slot.transition.incoming.y=slot.y;
  if(slot.transition.stage==='send')actor.revealed=true;
 }
-function isCoopMode(mode) {return ['coop','coop_mega','coop_gigantamax'].includes(mode);}
+function isCoopMode(mode) {return mode==='coop' || mode==='coop_gigantamax' || Object.hasOwn(megaRaidTiers,mode);}
 const raidFormRoster={
  coop_mega:['Gengar','Charizard','Lucario','Gardevoir','Tyranitar','Rayquaza'],
  coop_gigantamax:['Charizard','Gengar','Lapras','Snorlax','Machamp','Corviknight'],
@@ -8077,10 +8084,17 @@ function initializeOnline(match) {
  const guest=match.guest_pick.map((name,i)=>onlineActor(name,match.guest_entries,'guest',i,undefined,levelOverride));
  const coop=isCoopMode(match.mode);
  const bossLevel=Math.min(100,Math.ceil(Math.max(...host.map(a=>a.level),...guest.map(a=>a.level))*1.1)+2);
+ const raid=Object.hasOwn(megaRaidTiers,match.mode)?megaRaidTiers[match.mode]:null;
  const forms=raidFormRoster[match.mode];
  const guardians=forms ?? ['Onix','Steelix','Golem','Aggron','Tyranitar','Rhyperior'];
- const boss=coop?Array.from({length:match.format*2},(_,i)=>{
-  const actor=onlineActor(guardians[i],{},'boss',i,bossLevel);
+ const boss=coop?Array.from({length:raid?1:match.format*2},(_,i)=>{
+  const actor=onlineActor(raid?.species ?? guardians[i],{},'boss',i,raid?Math.min(100,bossLevel+(raid.tier-1)*5):bossLevel);
+  if(raid) {
+   actor.raidForm=raid.name;
+   actor.hp=actor.max=actor.stats[0]=Math.round(actor.max*raid.hp*(1+(match.format-1)*0.7));
+   for(const stat of [1,2,4,5])actor.stats[stat]=Math.round(actor.stats[stat]*(1+raid.tier*0.12));
+   return actor;
+  }
   if(forms) {
    const mega=match.mode==='coop_mega';
    actor.raidForm=mega?(actor.name==='Charizard'?'Mega Charizard X':'Mega '+actor.name):'Gigantamax '+actor.name;

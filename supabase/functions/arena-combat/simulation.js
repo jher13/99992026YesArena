@@ -34,7 +34,7 @@ function placeOnline(slot,actor) {
  slot.transition.incoming.y=slot.y;
  if(slot.transition.stage==='send')actor.revealed=true;
 }
-function isCoopMode(mode) {return ['coop','coop_mega','coop_gigantamax'].includes(mode);}
+function isCoopMode(mode) {return mode==='coop' || mode==='coop_gigantamax' || Object.hasOwn(megaRaidTiers,mode);}
 const raidFormRoster={
  coop_mega:['Gengar','Charizard','Lucario','Gardevoir','Tyranitar','Rayquaza'],
  coop_gigantamax:['Charizard','Gengar','Lapras','Snorlax','Machamp','Corviknight'],
@@ -45,10 +45,17 @@ function initializeOnline(match) {
  const guest=match.guest_pick.map((name,i)=>onlineActor(name,match.guest_entries,'guest',i,undefined,levelOverride));
  const coop=isCoopMode(match.mode);
  const bossLevel=Math.min(100,Math.ceil(Math.max(...host.map(a=>a.level),...guest.map(a=>a.level))*1.1)+2);
+ const raid=Object.hasOwn(megaRaidTiers,match.mode)?megaRaidTiers[match.mode]:null;
  const forms=raidFormRoster[match.mode];
  const guardians=forms ?? ['Onix','Steelix','Golem','Aggron','Tyranitar','Rhyperior'];
- const boss=coop?Array.from({length:match.format*2},(_,i)=>{
-  const actor=onlineActor(guardians[i],{},'boss',i,bossLevel);
+ const boss=coop?Array.from({length:raid?1:match.format*2},(_,i)=>{
+  const actor=onlineActor(raid?.species ?? guardians[i],{},'boss',i,raid?Math.min(100,bossLevel+(raid.tier-1)*5):bossLevel);
+  if(raid) {
+   actor.raidForm=raid.name;
+   actor.hp=actor.max=actor.stats[0]=Math.round(actor.max*raid.hp*(1+(match.format-1)*0.7));
+   for(const stat of [1,2,4,5])actor.stats[stat]=Math.round(actor.stats[stat]*(1+raid.tier*0.12));
+   return actor;
+  }
   if(forms) {
    const mega=match.mode==='coop_mega';
    actor.raidForm=mega?(actor.name==='Charizard'?'Mega Charizard X':'Mega '+actor.name):'Gigantamax '+actor.name;
