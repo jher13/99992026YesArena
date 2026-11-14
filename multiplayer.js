@@ -1,5 +1,5 @@
 (() => {
- const isCoop=mode=>['coop','coop_mega','coop_gigantamax'].includes(mode);
+ const isCoop=mode=>mode==='coop' || mode==='coop_gigantamax' || Object.hasOwn(megaRaidTiers,mode);
  const dialog=byId('home-dialog');
  let generation=0, timer, active;
  let arenaActors=new Map(), rosterRows=new Map(), displayedTurn=-1, recallSlotOnline=null;
@@ -304,6 +304,13 @@
    freshSounds.add(key);
   }
   soundsPlayed=freshSounds;
+  const boss=data.actors.find(actor=>actor.side==='boss' && actor.raidForm?.startsWith('Mega '));
+  byId('raid-boss-hud').hidden=!boss;
+  if(boss){
+   byId('raid-boss-name').textContent=boss.raidForm;
+   const hp=byId('raid-boss-hp');hp.max=boss.max;hp.value=boss.hp;
+   byId('raid-boss-value').textContent=boss.hp.toLocaleString()+' / '+boss.max.toLocaleString()+' HP';
+  }
   battleSnapshot=data;
   onlineMatchDuration=data.clock;
   renderBattleDps(data.clock,data.damageBuckets ?? [],mirror);
@@ -437,7 +444,7 @@
  };
  dialog.addEventListener('close',()=>{
   if(phase==='online-battle' && active?.result)openMenu();
-  else if(phase!=='online-battle')stop();
+  else if(phase!=='online-battle' && phase!=='raid-lobby')stop();
  });
  async function rpc(action,args={}) {
   const client=await cloudClient();
@@ -487,11 +494,28 @@
    if(token===generation) await view();
   } catch(error){if(token===generation)show(title,element('p',error.message));}
  }
+ function raidRoom(title,visibility,leave) {
+  phase='raid-lobby';
+  showScreen('raid-lobby');
+  if(dialog.open)dialog.close();
+  const root=byId('raid-lobby');
+  const top=element('div',null,'raid-room-top');
+  const actions=element('div',null,'raid-room-actions');
+  actions.append(button('Settings',()=>byId('toolbar-settings').click()),button(leave?'Leave room':'Main menu',leave ?? openMenu));
+  top.append(element('span',visibility),element('h2',title),actions);
+  const seats=element('div',null,'raid-room-seats');
+  const controls=element('div',null,'raid-room-controls');
+  root.replaceChildren(top,seats,controls);
+  return {seats,controls};
+ }
  function lobby(coop) {
   stop();
   const title=coop?'Co-op':'PvP';
   const mode=select('Match type',[['unranked','Unranked'],['ranked','Ranked']]);
-  const raid=select('Raid type',[['coop','Guardians'],['coop_mega','Mega Raid'],['coop_gigantamax','Gigantamax Raid']]);
+  const raid=select('Raid tier',[
+   ...Object.entries(megaRaidTiers).map(([mode,entry])=>[mode,'Tier '+entry.tier+' · '+entry.name]),
+   ['coop','Guardians'],['coop_gigantamax','Gigantamax Raid'],
+  ]);
   const format=select('Battle format',[[1,'1v1'],[2,'2v2'],[3,'3v3']]);
   const freeFight=element('input');freeFight.type='checkbox';
   const freeFightLabel=element('label','Free Fight · Lv. 100 ');freeFightLabel.append(freeFight);
@@ -499,7 +523,7 @@
   const begin=async action=>{
    if(cloudAccount && dirty) await flushArenaSave();
    const match=await rpc(action,{mode:coop?raid.value:mode.value==='unranked' && freeFight.checked?'free_fight':mode.value,format:Number(format.value),code:code.value});
-   if(!dialog.open) return;
+   if(coop?phase!=='raid-lobby':!dialog.open)return;
    active=match;
    showMatch(title);
   };
@@ -513,7 +537,13 @@
     freeFightLabel.hidden=mode.value!=='unranked';
    };
   }
-  show(title,...(coop?[raid]:[mode,freeFightLabel]),format,button('Find match',()=>begin('queue')),create,code,join);
+  const find=button('Find match',()=>begin('queue'));
+  if(coop){
+   const room=raidRoom('Co-op Raids','Raid selection');
+   room.controls.append(raid,format,find,create,code,join);
+   return;
+  }
+  show(title,mode,freeFightLabel,format,find,create,code,join);
  }
  function showMatch(title) {
   if(active.mode==='free_fight')title='Free Fight';
@@ -528,7 +558,11 @@
     openMenu();if(dialog.open)dialog.close();
    } catch(error) {byId('status').textContent=error.message;view.append(element('p',error.message));}
   };
-  show(title,view,button('Leave match',leave));
+  const coOp=isCoop(active.mode);
+  const tier=megaRaidTiers[active.mode];
+  const raid=coOp?raidRoom(tier?tier.name+' · Tier '+tier.tier:title,active.code?'Private room':'Public room',leave):null;
+  if(raid)raid.controls.append(view);
+  else show(title,view,button('Leave match',leave));
   let picks=[], submitting=false, sending=false;
   let joiningChannel=false, live=false, lastPush=0;
   async function joinBattleChannel() {
@@ -633,6 +667,7 @@
     }
     else view.append(element('strong',result));return;
    }
+   if(raid && !m.joined)raid.seats.replaceChildren(element('div','You','raid-seat'),element('div','Open seat','raid-seat'));
    if(!m.joined){
     view.append(element('p','Waiting for another player…'));
     if(m.code && m.side==='host') view.append(button('Invite friend or guild member',async()=>{
@@ -642,6 +677,22 @@
       await rpc('invite',{id:m.id,name:recipient.value});view.append(element('p','Invitation sent.'));
      })]:[element('p','No friends or guild members to invite.')]));
     }));
+    return;
+   }
+   if(raid && !m.started){
+    raid.seats.replaceChildren(...[
+     ['You',m.locked], [m.joined?'Partner':'Open seat',m.opponentLocked],
+    ].map(([name,ready])=>element('div',name+' · '+(ready?'Ready':'Not ready'),'raid-seat')));
+    if(!m.locked){
+     const teamChoices=element('div',null,'raid-room-actions');
+     teamChoices.append(...team.map(name=>{
+      const choice=button(name,()=>togglePick(name));
+      choice.setAttribute('aria-pressed',String(picks.includes(name)));
+      return choice;
+     }));
+     const confirm=button('Ready up',ready);confirm.disabled=picks.length!==m.format;
+     view.append(element('p','Choose '+m.format+' lead Pokémon.'),teamChoices,confirm);
+    } else view.append(element('p','Ready. Waiting for your partner…'));
     return;
    }
    arenaView(m,picks,togglePick,ready,leave);
@@ -663,7 +714,7 @@
      acceptBattle(packet);
     } else {
      const next=await rpc('poll',{id:active.id});
-     if(token!==generation || (!dialog.open && phase!=='online-battle'))return;
+     if(token!==generation || (!dialog.open && phase!=='online-battle' && phase!=='raid-lobby'))return;
      if(!submitting && (!active.locked || next.locked || next.result) && !active.started &&
        JSON.stringify(next)!==JSON.stringify(active)){active=next;render();}
     }

@@ -338,6 +338,17 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .friend-presence{display:inline-block;width:9px;height:9px;margin-right:7px;border-radius:50%;background:#87919d;vertical-align:middle}.friend-presence.is-online{background:#69e78d}
 .battle-slot.is-command-selected{outline:2px solid #8bdfff;outline-offset:-2px}
 .hotkey-setting-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid #ffffff24}
+ .raid-lobby{position:relative;min-height:min(710px,85dvh);padding:clamp(14px,3vw,32px);border:1px solid #8b748e;border-radius:16px;background:#1e2336 url('./assets/raid-lobby.webp') center/cover;color:#fff;display:flex;flex-direction:column;gap:16px}
+.raid-room-top,.raid-room-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.raid-room-top{justify-content:space-between}.raid-room-top h2{margin:0;text-align:center}
+.raid-room-seats{display:flex;justify-content:space-around;align-items:end;gap:10px;flex:1;min-height:200px}
+.raid-seat{text-align:center;min-width:105px;text-shadow:0 2px #101522}
+.raid-seat::before{content:"";display:block;width:78px;height:34px;margin:0 auto 6px;border:2px solid #d9c6f5;border-radius:50%;background:#28253fc9;box-shadow:0 0 18px #bf8cea77}
+.raid-seat:nth-child(2){transform:translateY(-20px)}
+.raid-room-controls{display:grid;gap:8px;justify-items:start;margin-top:auto;background:#131926d9;padding:12px;border-radius:10px}
+.raid-room-controls p{margin:0}.raid-room-controls input{max-width:100%}
+#raid-boss-hud{display:grid;gap:4px;text-align:center;margin:0 auto 8px;width:min(100%,960px);color:#ffe3da}
+#raid-boss-hp{width:100%;height:20px;accent-color:#ee4d57}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -563,7 +574,8 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 <section id="pokemon-detail" class="detail-panel" aria-label="Selected Pokémon"></section>
 </div>
 </section>
-<div id="battle" hidden><p id="status" role="status"></p><div class="battle-board"><div id="legendary-intro" role="status" aria-live="polite" hidden><strong>Legendary Encounter!</strong></div><div class="arena-header-info"><div id="arena-conditions" class="arena-conditions"></div><div id="arena-weather" class="arena-conditions"></div><div id="arena-duration" class="arena-conditions"></div></div><div class="arena-stage"><div id="player-roster" class="arena-roster"></div><canvas id="arena" width="960" height="480" aria-label="Battle arena. Choose your lead Pokémon from the team roster."></canvas><div id="enemy-roster" class="arena-roster"></div></div>
+<section id="raid-lobby" class="raid-lobby" hidden></section>
+<div id="battle" hidden><section id="raid-boss-hud" hidden aria-label="Raid boss health"><strong id="raid-boss-name"></strong><progress id="raid-boss-hp"></progress><span id="raid-boss-value"></span></section><p id="status" role="status"></p><div class="battle-board"><div id="legendary-intro" role="status" aria-live="polite" hidden><strong>Legendary Encounter!</strong></div><div class="arena-header-info"><div id="arena-conditions" class="arena-conditions"></div><div id="arena-weather" class="arena-conditions"></div><div id="arena-duration" class="arena-conditions"></div></div><div class="arena-stage"><div id="player-roster" class="arena-roster"></div><canvas id="arena" width="960" height="480" aria-label="Battle arena. Choose your lead Pokémon from the team roster."></canvas><div id="enemy-roster" class="arena-roster"></div></div>
 <section id="battle-dps" aria-label="Live battle damage"></section>
 <section class="active-hud" aria-label="Active Pokémon and move cooldowns">
 <div id="player-active" class="active-panel" data-side="player"></div>
@@ -4213,11 +4225,12 @@ byId('battle-settings-button').onclick=()=>{
  byId('battle-settings').showModal();
 };
 function showScreen(screen) {
+ byId('raid-boss-hud').hidden=true;
  byId('battle-settings-button').hidden=screen!=='battle';
  if(screen!=='battle' && byId('battle-settings').open)byId('battle-settings').close();
  if(screen!=='home')stopHomeSprite();
  stopBattleMusic();
- for(const id of ['home','login','roguelit','starter-setup','wild-regions','wild-result','trainer-regions','gyms','gym-collection','pokedex','item-bag','shop','skill-shop','skillset','abilities','menu','battle']) byId(id).hidden=id!==screen;
+ for(const id of ['home','login','raid-lobby','roguelit','starter-setup','wild-regions','wild-result','trainer-regions','gyms','gym-collection','pokedex','item-bag','shop','skill-shop','skillset','abilities','menu','battle']) byId(id).hidden=id!==screen;
  byId('arena-header').hidden=screen==='home' || screen==='login' || screen==='starter-setup';
  byId('score').hidden=screen!=='battle';
 }
@@ -8486,7 +8499,13 @@ function setToolbarUnread(id,count) {
  icon.setAttribute('aria-label',icon.title+(count>0?', '+count+' unread':''));
 }
 // Add each release to the top. The newest version also drives the subtitle.
+const megaRaidTiers={
+ coop_mega:{tier:1,name:'Mega Charizard X',species:'Charizard',hp:4},
+ coop_mega_2:{tier:2,name:'Mega Gengar',species:'Gengar',hp:5},
+ coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',hp:6},
+};
 const updateLogEntries=[
+ {version:'0.10.0',changes:['Added an illustrated Co-op raid room, three Mega boss tiers, and a dedicated boss health bar.']},
  {version:'0.9.0',changes:['Added raid-only Mega and Gigantamax encounters to Co-op.']},
  {version:'0.8.3',changes:['Extended configurable battle hotkeys to local battle modes.']},
  {version:'0.8.2',changes:['Updated PvP keyboard handling and displayed each binding on a separate Hotkey Settings row.']},
@@ -8594,4 +8613,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.9.0"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.10.0"></script></html>
