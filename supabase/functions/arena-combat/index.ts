@@ -38,13 +38,14 @@ Deno.serve(async request => {
       const match = await db("arena_combat_read", { match_id: id, player_id: player });
       if (!match) return reply({ error: "Match unavailable." }, 404);
       const side = match.host === player ? "host" : "guest";
-      if (match.result) return reply({ result: match.result, turn: match.turn });
+      if (match.result) return reply({ result: match.result, turn: match.turn,
+        battle: match.combat_state ? onlineView(match.combat_state, side, match.mode) : undefined });
       if (!match.field || !match.host_entries || !match.guest_entries)
         return reply({ error: "Both players must be ready." }, 409);
       const elapsed = Date.parse(match.server_now) - Date.parse(match.next_tick);
       const steps = match.combat_state ? Math.min(60, Math.max(0, Math.floor(elapsed * 0.06))) : 0;
-      if (!command && match.combat_state && steps < 6)
-        return reply({ turn: match.turn, battle: onlineView(match.combat_state, side) });
+      if (!command && match.combat_state && steps < 4)
+        return reply({ turn: match.turn, battle: onlineView(match.combat_state, side, match.mode) });
 
       let next;
       try { next = simulateOnline(match, match.combat_state, steps, command, side); }
@@ -56,7 +57,7 @@ Deno.serve(async request => {
         match_id: id, revision: match.turn, state: next.state, outcome: next.result, steps,
       });
       if (saved) return reply({ turn: match.turn + 1, result: next.result,
-        battle: onlineView(next.state, side) });
+        battle: onlineView(next.state, side, match.mode) });
     }
     return reply({ error: "Match is busy. Try again." }, 409);
   } catch (error) {

@@ -23,6 +23,7 @@ function onlineActor(name,entries,side,index,bossLevel) {
  const equipped=Object.entries(progress.held ?? {}).filter(([,item])=>item===held).map(([holder])=>holder);
  actor.heldItem=Object.hasOwn(heldItems,held) && equipped.indexOf(name)<progress.items?.[held]?held:null;
  if(!bossLevel)actor.ai=normalizeBattleAI(progress.ai?.[name]);
+ actor.normalAttacksEnabled=true;
  actor.onlineId=side+':'+index;
  actor.side=side;
  actor.revealed=false;
@@ -37,6 +38,7 @@ function initializeOnline(match) {
  const host=match.host_pick.map((name,i)=>onlineActor(name,match.host_entries,'host',i));
  const guest=match.guest_pick.map((name,i)=>onlineActor(name,match.guest_entries,'guest',i));
  const coop=match.mode==='coop';
+ if(match.mode==='free_fight')for(const actor of [...host,...guest])actor.level=100;
  const bossLevel=Math.min(100,Math.ceil(Math.max(...host.map(a=>a.level),...guest.map(a=>a.level))*1.1)+2);
  const boss=coop?Array.from({length:match.format*2},(_,i)=>onlineActor(
   ['Onix','Steelix','Golem','Aggron','Tyranitar','Rhyperior'][i],{},'boss',i,bossLevel)):[];
@@ -142,19 +144,32 @@ function onlineFrame(dt) {
 export function simulateOnline(match,state,steps,command,side) {
  onlineSounds=[];
  if(state)loadOnlineState(state);else initializeOnline(match);
- if(command)onlineSend(side,command.incoming,command.slot);
+ if(match.mode==='free_fight')for(const actor of [...allies,...enemies])actor.level=100;
+ if(typeof command?.normalAttacks==='boolean') {
+  for(const actor of [...allies,...enemies])if(actor.side===side)actor.normalAttacksEnabled=command.normalAttacks;
+ } else if(command)onlineSend(side,command.incoming,command.slot);
  let result=null;
  for(let i=0;i<steps && !result;i++)result=onlineFrame(1/60);
  if(match.mode==='coop' && result && result!=='draw')result=result==='host'?'coop_win':'coop_loss';
  return {state:saveOnlineState(),result};
 }
-export function onlineView(state,side) {
+function compactOnlineDamage(buckets) {
+ const aggregate={dealt:{},taken:{}};
+ for(const bucket of buckets ?? [])for(const kind of ['dealt','taken']) {
+  for(const [id,entry] of Object.entries(bucket[kind] ?? {})) {
+   const row=aggregate[kind][id] ??= {...entry,damage:0};
+   row.damage+=entry.damage;
+  }
+ }
+ return [aggregate];
+}
+export function onlineView(state,side,mode) {
  const allowed=actor=>actor.side===side || actor.revealed;
  const visible=[...state.allies,...state.enemies].filter(allowed).map(actor=>{
   const {name,side,onlineId,hp,max,level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
    hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil}=actor;
-  return {name,side,onlineId,hp,max,level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
+  return {name,side,onlineId,hp,max,level:mode==='free_fight'?100:level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
    hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil};
  });
@@ -164,7 +179,8 @@ export function onlineView(state,side) {
   if(!transition || ids.has(transition.incoming))return slot;
   return {...slot,transition:{...transition,incoming:null}};
  }));
- return {actors:visible,fields,arenaMap:state.arenaMap ?? null,damageBuckets:state.damageBuckets ?? [],casts:state.casts,effects:state.effects,
+ return {actors:visible,fields,arenaMap:state.arenaMap ?? null,damageBuckets:compactOnlineDamage(state.damageBuckets),casts:state.casts,effects:state.effects,
   weather:state.battleWeather,weatherTime:state.weatherTime,terrain:state.battleTerrain,clock:state.clock,
+  normalAttacks:[...state.allies,...state.enemies].find(actor=>actor.side===side)?.normalAttacksEnabled ?? true,
   recall:Math.max(0,(state.recalls[side] ?? 0)-state.clock),sounds:state.sounds};
 }
