@@ -4747,6 +4747,7 @@ function updateActivePanels(onlineFields) {
    const heading=element('div',null,'active-heading');
    panel.activity=element('small',panel.label);
    const title=pokemonNameplate(actor.name,' · Lv. '+actor.level,'h2');
+   if(actor.raidForm)heading.append(element('small',actor.raidForm));
    panel.statusBadge=element('span',null,'battle-status-badge');
    panel.statusBadge.hidden=true;
    title.append(panel.statusBadge);
@@ -7616,7 +7617,7 @@ function drawUnit(actor) {
  const {x,y,name,type} = actor;
  const sprite = getSprite(name);
  const art=battleArt(name);
- const scale=battleSpriteScale;
+ const scale=battleSpriteScale*(actor.raidForm?.startsWith('Gigantamax')?1.45:actor.raidForm?1.15:1);
  const width=art.width*scale;
  const height=art.height*scale;
  const radius = Math.max(10,Math.min(52,width*0.37));
@@ -8486,6 +8487,7 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.9.0',changes:['Added raid-only Mega and Gigantamax encounters to Co-op.']},
  {version:'0.8.3',changes:['Extended configurable battle hotkeys to local battle modes.']},
  {version:'0.8.2',changes:['Updated PvP keyboard handling and displayed each binding on a separate Hotkey Settings row.']},
  {version:'0.8.1',changes:['Updated PvP shortcuts for direct 1v1 send-outs and selected-slot quick swaps.']},
@@ -8592,4 +8594,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.8.3"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.9.0"></script></html>

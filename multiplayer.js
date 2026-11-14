@@ -1,4 +1,5 @@
 (() => {
+ const isCoop=mode=>['coop','coop_mega','coop_gigantamax'].includes(mode);
  const dialog=byId('home-dialog');
  let generation=0, timer, active;
  let arenaActors=new Map(), rosterRows=new Map(), displayedTurn=-1, recallSlotOnline=null;
@@ -158,7 +159,7 @@
    }
    return;
   }
-  if(!commandSend || active.mode==='coop' && !(/^(Ally |Select$)/.test(action)))return;
+  if(!commandSend || isCoop(active.mode) && !(/^(Ally |Select$)/.test(action)))return;
   event.preventDefault();
   if(action==='Attack' || action==='Select'){
    if(!selectedUnit) {
@@ -256,7 +257,7 @@
   }
   playbackClock ??= data.clock-playbackDelay;
   updateNormalAttackToggle(data.normalAttacks ?? true,normalAttacks=>send({normalAttacks}));
-  const mirror=active.mode!=='coop' && active.side==='guest';
+  const mirror=!isCoop(active.mode) && active.side==='guest';
   const mx=x=>mirror?canvas.width-x:x;
   const dx=x=>mirror?-x:x;
   const lineView=line=>!line?line:{...line,x:mx(line.x),dx:dx(line.dx),
@@ -327,7 +328,7 @@
   for(const [friendly,id] of [[true,'player-roster'],[false,'enemy-roster']]) {
    const container=byId(id);
    if(!container.dataset.onlineRoster) {
-    container.replaceChildren(element('h2',friendly?'Your side':active.mode==='coop'?'Guardians':'Opponent'));
+    container.replaceChildren(element('h2',friendly?'Your side':isCoop(active.mode)?'Guardians':'Opponent'));
     container.dataset.onlineRoster='true';
    }
    for(const actor of arenaActors.values()) {
@@ -337,7 +338,7 @@
     let row=rosterRows.get(actor.onlineId);
     if(!row || row.form!==actor.name) {
      const card=element('button',null,'battle-slot');
-     const identity=battleRosterIdentity(actor.name,actor.level);
+     const identity=battleRosterIdentity(actor.raidForm ?? actor.name,actor.level);
      const hp=element('progress');hp.max=actor.max;hp.setAttribute('aria-label',actor.name+' HP');
      const stages=element('span',null,'battle-stage-icons');
      const exhaustion=makeExhaustionBar(actor);
@@ -354,7 +355,7 @@
     row.card.setAttribute('aria-pressed',String(actor.onlineId===selectedUnit || index>=0 && recallSlotOnline===index));
     row.card.disabled=!own || actor.hp<=0 || (index>=0?!canReserve || Boolean(ownSlots[index].transition):
      reserveSlot===null || (openSlot<0 && battleSnapshot.recall>0));
-    if(active.mode!=='coop' || commandMode==='Select'){
+    if(!isCoop(active.mode) || commandMode==='Select'){
      const outgoing=ownSlots.find(slot=>slot.actor?.onlineId===selectedUnit);
      const swapSlot=ownSlots.length===1?ownSlots[0]:outgoing;
      const canQuickSwap=index<0 && Boolean(swapSlot) && !swapSlot.transition &&
@@ -364,7 +365,7 @@
        ownSlots.length===1?!canQuickSwap:openSlot<0));
     }
     row.card.onclick=()=>{
-     if(commandMode || (active.mode!=='coop' && (index>=0 || ownSlots.length===1))){
+     if(commandMode || (!isCoop(active.mode) && (index>=0 || ownSlots.length===1))){
       chooseBattleUnit(actor);
       return;
      }
@@ -490,13 +491,14 @@
   stop();
   const title=coop?'Co-op':'PvP';
   const mode=select('Match type',[['unranked','Unranked'],['ranked','Ranked']]);
+  const raid=select('Raid type',[['coop','Guardians'],['coop_mega','Mega Raid'],['coop_gigantamax','Gigantamax Raid']]);
   const format=select('Battle format',[[1,'1v1'],[2,'2v2'],[3,'3v3']]);
   const freeFight=element('input');freeFight.type='checkbox';
   const freeFightLabel=element('label','Free Fight · Lv. 100 ');freeFightLabel.append(freeFight);
   const code=input('Room code');
   const begin=async action=>{
    if(cloudAccount && dirty) await flushArenaSave();
-   const match=await rpc(action,{mode:coop?'coop':mode.value==='unranked' && freeFight.checked?'free_fight':mode.value,format:Number(format.value),code:code.value});
+   const match=await rpc(action,{mode:coop?raid.value:mode.value==='unranked' && freeFight.checked?'free_fight':mode.value,format:Number(format.value),code:code.value});
    if(!dialog.open) return;
    active=match;
    showMatch(title);
@@ -511,7 +513,7 @@
     freeFightLabel.hidden=mode.value!=='unranked';
    };
   }
-  show(title,...(coop?[]:[mode,freeFightLabel]),format,button('Find match',()=>begin('queue')),create,code,join);
+  show(title,...(coop?[raid]:[mode,freeFightLabel]),format,button('Find match',()=>begin('queue')),create,code,join);
  }
  function showMatch(title) {
   if(active.mode==='free_fight')title='Free Fight';
@@ -530,7 +532,7 @@
   let picks=[], submitting=false, sending=false;
   let joiningChannel=false, live=false, lastPush=0;
   async function joinBattleChannel() {
-   if(joiningChannel || active.mode==='coop')return;
+   if(joiningChannel || isCoop(active.mode))return;
    joiningChannel=true;
    try {
     const client=await cloudClient();
@@ -604,7 +606,7 @@
      if(data) {
       const seconds=Math.floor(data.clock);
       stats.push(element('p','Duration · '+Math.floor(seconds/60)+'m '+seconds%60+'s'));
-      const mirror=m.mode!=='coop' && m.side==='guest';
+      const mirror=!isCoop(m.mode) && m.side==='guest';
       const chart=element('section');
       const tabs=element('div',null,'damage-tabs');
       const bars=element('div');
@@ -724,7 +726,7 @@
   show('Notifications',...data.friends.map(name=>element('div',name+' sent a friend request.')),
    ...data.friends.map(name=>button('Accept '+name,async()=>{await rpc('friend_request',{name});await notifications();})),
    ...data.invites.map(invite=>button('Join '+invite.name+' · '+invite.mode,async()=>{
-    active=await rpc('join',{code:invite.code});showMatch(invite.mode==='coop'?'Co-op':'PvP');
+    active=await rpc('join',{code:invite.code});showMatch(isCoop(invite.mode)?'Co-op':'PvP');
    })),
    ...(!data.friends.length&&!data.invites.length?[element('p','No new notifications.')]:[]));
  }
