@@ -6,18 +6,24 @@ function onlineRandom() {
  onlineRandomState=(Math.imul(1664525,onlineRandomState)+1013904223)>>>0;
  return onlineRandomState/4294967296;
 }
-function onlineActor(name,entries,side,index,bossLevel,levelOverride) {
+function onlineActor(name,entries,side,index,bossLevel,levelOverride,raid=null) {
  if(!isAvailablePokemon(name)) throw Error('A Pokémon in this team is unavailable.');
  const progress=JSON.parse(entries['pokemon-arena-wild-progress'] ?? '{}') ?? {};
  const starter=JSON.parse(entries['pokemon-arena-starter'] ?? '{}') ?? {};
  const profileData=JSON.parse(entries['pokemon-arena-profiles'] ?? '{}') ?? {};
- const profile=profileData[dex[name][0]];
+ let profile=profileData[dex[name][0]];
+ if(raid) {
+  const traitOrder=[0,1,2,3,5,4];
+  let pid=natureNames.indexOf(raid.nature);
+  while(traitOrder[pid%traitOrder.length]!==raid.trait)pid+=natureNames.length;
+  profile={ivs:Array(6).fill(31),evs:[...raid.evs],pid,abilityOverride:raid.ability};
+ }
  const savedLevel=progress.owned?.[name]?.level;
  const level=levelOverride ?? bossLevel ?? (Number.isInteger(savedLevel)?clamp(savedLevel,1,100):name===starter.name?1:5);
  const fallback={ivs:Array(6).fill(bossLevel?23:0),evs:Array(6).fill(0),pid:0};
  savedMoves=JSON.parse(entries['pokemon-arena-moves'] ?? '{}') ?? {};
  delete loadouts[name];
- const moves=bossLevel?wildMoves(name):movesFor(name);
+ const moves=raid?legalLoadout(name,raid.moves,8):bossLevel?wildMoves(name):movesFor(name);
  const actor=unit(name,0,0,side!=='boss',level,{profile:validProfile(profile)?profile:fallback,moves});
  const held=progress.held?.[name];
  const equipped=Object.entries(progress.held ?? {}).filter(([,item])=>item===held).map(([holder])=>holder);
@@ -55,13 +61,11 @@ function initializeOnline(match) {
  const forms=raidFormRoster[match.mode];
  const guardians=forms ?? ['Onix','Steelix','Golem','Aggron','Tyranitar','Rhyperior'];
  const boss=coop?Array.from({length:raid?1:match.format*2},(_,i)=>{
-  const actor=onlineActor(raid?.species ?? guardians[i],{},'boss',i,raid?.level ?? bossLevel);
+  const actor=onlineActor(raid?.species ?? guardians[i],{},'boss',i,raid?.level ?? bossLevel,undefined,raid);
   if(raid) {
    actor.raidForm=raid.name;
    actor.hp=actor.max=actor.stats[0]=raid.hp;
-   actor.moves=legalLoadout(raid.species,raid.moves,8);
-   actor.moveCooldowns=actor.moves.map(move=>moveRules(move).cooldown);
-   actor.moveTimers=actor.moves.map(()=>0);
+   actor.raidSecondary=raid.secondary;
    for(const stat of [1,2,4,5])actor.stats[stat]=Math.round(actor.stats[stat]*(1+raid.tier*0.12));
    return actor;
   }
@@ -131,6 +135,9 @@ function onlineSend(side,incomingId,fieldIndex) {
  if(!slot || slot.transition || !incoming || trainerFields.flat().some(field=>trainerOnField(incoming,[field])))
   throw Error('Choose an available reserve and field slot.');
  if(slot.actor?.hp>0 && blocksExhaustionRecall(slot.actor))throw Error('This Pokémon is exhausted.');
+ if(slot.actor?.hp>0 && !arenaDefenseTypes(slot.actor).includes('Ghost') &&
+    enemies.some(actor=>actor.raidForm==='Mega Gengar' && actor.hp>0 && fieldActors().includes(actor) &&
+     activeAbility(actor)==='Shadow Tag'))throw Error('Mega Gengar’s Shadow Tag prevents recalls.');
  if(slot.actor?.hp>0 && fieldMoveActive('Fairy Lock'))throw Error('Fairy Lock prevents recalls.');
  if(slot.actor?.hp>0 && (slot.actor.trappedUntil>clock || slot.actor.octolockUntil>clock))throw Error('This Pokémon is trapped.');
  if(slot.actor?.hp>0 && slot.actor.ingrainAt)throw Error('This Pokémon is rooted by Ingrain.');
@@ -213,10 +220,10 @@ export function onlineView(state,side,mode) {
  const visible=[...state.allies,...state.enemies].filter(allowed).map(actor=>{
   const {name,side,onlineId,hp,max,level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,raidForm}=actor;
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,raidForm,raidSecondary}=actor;
   return {name,side,onlineId,hp,max,level:mode==='free_fight'?100:level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,raidForm};
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,raidForm,raidSecondary};
  });
  const ids=new Set(visible.map(actor=>actor.onlineId));
  const fields=state.fields.map(slots=>slots.map(slot=>{
