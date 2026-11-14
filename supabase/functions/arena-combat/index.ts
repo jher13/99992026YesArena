@@ -51,7 +51,7 @@ Deno.serve(async request => {
     const { id: player } = await auth.json();
     const { id, command } = await request.json();
     if (typeof id !== "string" || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) return reply({ error: "Invalid match." }, 400);
-    if (command && typeof command.normalAttacks !== "boolean" && (!/^(host|guest):[0-5]$/.test(command.incoming) ||
+    if (command && !command.ai && typeof command.normalAttacks !== "boolean" && (!/^(host|guest):[0-5]$/.test(command.incoming) ||
       !Number.isInteger(command.slot) || command.slot < 0 || command.slot > 5))
       return reply({ error: "Invalid send-out." }, 400);
 

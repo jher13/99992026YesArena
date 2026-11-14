@@ -5860,6 +5860,7 @@ function readyKnockout(actor,target,gap) {
  });
 }
 function targetPreference(actor,opponent,gap) {
+ if(actor.manualTarget && actor.manualTarget===opponent.onlineId)return -50000;
  if(opponent.friendly!==actor.friendly && (opponent.redirectUntil>clock ||
   opponent.powderRedirectUntil>clock && !arenaDefenseTypes(actor).includes('Grass') && activeAbility(actor)!=='Overcoat'))return -1e6;
  const enemyDepth=opponent.friendly?canvas.width-opponent.x:opponent.x;
@@ -6068,7 +6069,7 @@ function act(actor, opponents, dt) {
   ![...allies,...enemies].some(member=>member.side==='boss');
  if(preparing){target=actor;gap=0;distance=0;}
  if(!target) return;
- const gambit=gambitChoice(actor,opponents,target);
+ const gambit=gambitChoice(actor,!preparing && actor.manualTarget===target.onlineId && actor.manualTarget?[target]:opponents,target);
  if(gambit?.hold)return;
  if(gambit)({target,distance,gap}=gambit);
  actor.committedTarget=preparing?null:battleActorId(target);
@@ -7917,6 +7918,7 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.8.0',changes:['Added configurable PvP commands and one-click Ready for full teams in 6v6.']},
  {version:'0.7.4',changes:['PvP Pokémon can use support moves while their opponent chooses a reserve.']},
  {version:'0.7.3',changes:['Restored manual PvP reserve selection and synchronized battle effects with buffered movement.']},
  {version:'0.7.2',changes:['Fixed stale PvP queue settings, automatic reserve deployment, and final match statistics.']},
@@ -8168,6 +8170,18 @@ export function simulateOnline(match,state,steps,command,side) {
  if(state)loadOnlineState(state);else initializeOnline(match);
  if(typeof command?.normalAttacks==='boolean') {
   for(const actor of [...allies,...enemies])if(actor.side===side)actor.normalAttacksEnabled=command.normalAttacks;
+ } else if(command?.ai) {
+  const {actor:id,target,position,style}=command.ai;
+  const team=side==='host'?allies:enemies;
+  const opposing=side==='host'?enemies:allies;
+  const actor=team.find(member=>member.onlineId===id && member.side===side && member.hp>0);
+  if(!actor || match.mode==='coop')throw Error('Choose a healthy Pokémon on your side.');
+  if(position!==undefined && !Object.hasOwn(battlePositions,position))throw Error('Invalid position.');
+  if(style!==undefined && !['Aggressive','Balanced','Defensive'].includes(style))throw Error('Invalid style.');
+  if(target!==undefined && !opposing.some(member=>member.onlineId===target && member.revealed && member.hp>0))
+   throw Error('Choose a revealed opponent.');
+  actor.ai=normalizeBattleAI({...actor.ai,...(position!==undefined?{position}:{}),...(style!==undefined?{style}:{})});
+  if(target!==undefined)actor.manualTarget=target;
  } else if(command)onlineSend(side,command.incoming,command.slot);
  let result=null;
  for(let i=0;i<steps && !result;i++)result=onlineFrame(1/60);

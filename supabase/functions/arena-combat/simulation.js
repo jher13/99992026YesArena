@@ -147,6 +147,18 @@ export function simulateOnline(match,state,steps,command,side) {
  if(state)loadOnlineState(state);else initializeOnline(match);
  if(typeof command?.normalAttacks==='boolean') {
   for(const actor of [...allies,...enemies])if(actor.side===side)actor.normalAttacksEnabled=command.normalAttacks;
+ } else if(command?.ai) {
+  const {actor:id,target,position,style}=command.ai;
+  const team=side==='host'?allies:enemies;
+  const opposing=side==='host'?enemies:allies;
+  const actor=team.find(member=>member.onlineId===id && member.side===side && member.hp>0);
+  if(!actor || match.mode==='coop')throw Error('Choose a healthy Pokémon on your side.');
+  if(position!==undefined && !Object.hasOwn(battlePositions,position))throw Error('Invalid position.');
+  if(style!==undefined && !['Aggressive','Balanced','Defensive'].includes(style))throw Error('Invalid style.');
+  if(target!==undefined && !opposing.some(member=>member.onlineId===target && member.revealed && member.hp>0))
+   throw Error('Choose a revealed opponent.');
+  actor.ai=normalizeBattleAI({...actor.ai,...(position!==undefined?{position}:{}),...(style!==undefined?{style}:{})});
+  if(target!==undefined)actor.manualTarget=target;
  } else if(command)onlineSend(side,command.incoming,command.slot);
  let result=null;
  for(let i=0;i<steps && !result;i++)result=onlineFrame(1/60);
