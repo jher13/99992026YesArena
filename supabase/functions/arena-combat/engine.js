@@ -7904,6 +7904,7 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const updateLogEntries=[
+ {version:'0.7.3',changes:['Restored manual PvP reserve selection and synchronized battle effects with buffered movement.']},
  {version:'0.7.2',changes:['Fixed stale PvP queue settings, automatic reserve deployment, and final match statistics.']},
  {version:'0.7.1',changes:['Improved PvP movement buffering for irregular live updates.']},
  {version:'0.7.0',changes:['Added private live PvP snapshots with polling fallback.']},
@@ -8130,11 +8131,10 @@ function onlineFrame(dt) {
  if(sides.some(side=>!side.length))lastDamageClock+=dt;
  advanceCombat(dt,dt,sides);
  refreshBerriesAfterKnockout();
- // Fill empty slots so a team with reserves can keep fighting even if its player takes no action.
- for(const slots of trainerFields)for(const slot of slots) {
-  if(slot.transition || slot.actor?.hp>0)continue;
-  const reserve=[...allies,...enemies].find(actor=>actor.side===slot.owner && actor.hp>0 &&
-   !slots.some(field=>trainerOnField(actor,[field])));
+ // Co-op guardians replace themselves. PvP players choose their reserves.
+ for(const slot of trainerFields[1]) {
+  if(slot.owner!=='boss' || slot.transition || slot.actor?.hp>0)continue;
+  const reserve=enemies.find(actor=>actor.hp>0 && !trainerOnField(actor,trainerFields[1]));
   if(reserve)placeOnline(slot,reserve);
  }
  onlineSounds=onlineSounds.filter(sound=>clock-sound.clock<1);
