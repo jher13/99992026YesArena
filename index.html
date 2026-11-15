@@ -372,7 +372,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .raid-room-controls{background:transparent;padding:0}.raid-room-info{display:grid;gap:4px;text-shadow:0 2px #101522}.raid-room-info small{max-width:100%;overflow-wrap:anywhere}
 
 .raid-boss-types{display:flex;justify-content:center;gap:5px;margin-top:5px;text-shadow:none}
-.raid-chat{justify-self:end;width:min(100%,280px);padding:8px;background:#172035ed;border:1px solid #7587ae;border-radius:10px;display:grid;gap:5px}
+.raid-chat{align-self:end;justify-self:end;width:min(100%,280px);padding:8px;background:#172035ed;border:1px solid #7587ae;border-radius:10px;display:grid;gap:5px}
 .raid-chat-log{height:94px;overflow:auto;overflow-wrap:anywhere;font-size:13px}
 .raid-chat-log time{color:#bdcdea;font-size:11px;font-variant-numeric:tabular-nums}
 .raid-tier-buttons{display:grid;justify-items:stretch;gap:5px}
@@ -7879,11 +7879,15 @@ function renderBattleDps(time,buckets,mirror=false) {
   panel.rows.scrollTop=offset;
  }
 }
-let onlineMatchDuration=0;
+let onlineMatchDuration=0,onlineRaidCountdown=false;
+const raidTimeLimit=30*60;
 function paintArenaWeather() {
  const elapsed=phase==='online-battle'?onlineMatchDuration:phase==='setup'?0:clock ?? 0;
  const seconds=Math.min(phase!=='online-battle' && selectedGym && (selectedMasterGym || !clearedGyms.includes(selectedGym.id))?firstBadgeTimeLimit:battleTimeLimit,Math.floor(elapsed+1e-8));
- const duration='Match Duration: '+Math.floor(seconds/3600)+'h, '+Math.floor(seconds%3600/60)+'m, '+seconds%60+'s';
+ const raid=phase==='online-battle' && onlineRaidCountdown;
+ const left=Math.max(0,raidTimeLimit-Math.floor(elapsed+1e-8));
+ const duration=raid?'Match Duration: '+String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0'):
+  'Match Duration: '+Math.floor(seconds/3600)+'h, '+Math.floor(seconds%3600/60)+'m, '+seconds%60+'s';
  const timer=byId('arena-duration');
  if(timer.textContent!==duration)timer.textContent=duration;
  const weather=battleWeather;
@@ -8620,6 +8624,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.15.4',changes:['Fixed raid snapshots, filtered occupied fighters, and added a 30-minute raid countdown.']},
  {version:'0.15.3',changes:['Aligned raid seat controls above START and moved tier buttons under Main menu.']},
  {version:'0.15.2',changes:['Added raid seat levels, chat timestamps, and tier selection buttons. Refined ring alignment above START.']},
  {version:'0.15.1',changes:['Lowered the raid lobby rings and added room chat and Mega boss type badges.']},
@@ -8741,4 +8746,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.15.3"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.15.4"></script></html>

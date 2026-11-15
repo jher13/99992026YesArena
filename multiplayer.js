@@ -314,6 +314,7 @@
   }
   battleSnapshot=data;
   onlineMatchDuration=data.clock;
+  onlineRaidCountdown=isCoop(active.mode);
   renderBattleDps(data.clock,data.damageBuckets ?? [],mirror);
   frameAge=0;
   updateOnlineRoster(send);
@@ -346,7 +347,8 @@
     let row=rosterRows.get(actor.onlineId);
     if(!row || row.form!==actor.name) {
      const card=element('button',null,'battle-slot');
-     const identity=battleRosterIdentity(actor.raidForm ?? actor.name,actor.level);
+     const identity=battleRosterIdentity(actor.name,actor.level);
+     if(actor.raidForm)identity.querySelector('.battle-name').textContent=actor.raidForm;
      const hp=element('progress');hp.max=actor.max;hp.setAttribute('aria-label',actor.name+' HP');
      const stages=element('span',null,'battle-stage-icons');
      const exhaustion=makeExhaustionBar(actor);
@@ -642,7 +644,12 @@
   const available=Object.keys(wildProgress.owned).filter(isAvailablePokemon).sort((a,b)=>a.localeCompare(b));
   let fighter=match.seats[match.ownSlot]?.pokemon ?? team[0] ?? available[0] ?? '';
   let kickMode=false;
-  function editFighter(initial,save) {
+  function editFighter(initial,save,slot=match.ownSlot) {
+   const eligible=available.filter(name=>{
+    const used=match.seats.filter((seat,index)=>index!==slot && seat?.pokemon===name).length;
+    const pending=slot!==match.ownSlot && !match.seats[match.ownSlot]?.pokemon && fighter===name?1:0;
+    return used+pending<1+(wildProgress.copies[name]?.length ?? 0);
+   });
    const editor=element('dialog',null,'raid-pc-dialog');
    const panel=byId('pokemon-detail');
    const anchor=document.createComment('PC detail position');
@@ -664,7 +671,7 @@
    }
    const control=id=>controls.get(id);
    const grid=control('box-grid');
-   let chosen=available.includes(initial)?initial:available[0] ?? '';
+   let chosen=eligible.includes(initial)?initial:eligible[0] ?? '';
    let page=0;
    const preview=()=>{
     panel.hidden=!chosen;
@@ -686,7 +693,7 @@
     } finally {use.disabled=!chosen;}
    };
    function renderPicker() {
-    const names=pcCandidates(available,control('box-search').value.trim().toLowerCase(),Number(control('box-generation').value),control);
+    const names=pcCandidates(eligible,control('box-search').value.trim().toLowerCase(),Number(control('box-generation').value),control);
     const pages=Math.ceil(names.length/boxSize);
     page=clamp(page,0,Math.max(0,pages-1));
     control('box-prev').disabled=page===0;
@@ -701,7 +708,7 @@
       renderPicker();
       grid.children[index]?.focus();
      })));
-    if(!names.length)grid.append(element('p',available.length?'No Pokémon match these filters.':'Catch a Pokémon to join a raid.'));
+    if(!names.length)grid.append(element('p',eligible.length?'No Pokémon match these filters.':'Catch a Pokémon to join a raid.'));
    }
    function refreshPicker() {
     const single=control('pc-stat').value!=='';
@@ -725,7 +732,7 @@
    control('box-next').onclick=()=>{page++;renderPicker();};
    reset();
    if(chosen) {
-    const ordered=pcCandidates(available,'',0,control);
+    const ordered=pcCandidates(eligible,'',0,control);
     page=Math.floor(ordered.indexOf(chosen)/boxSize);
     renderPicker();
    }
@@ -748,7 +755,7 @@
    status.textContent='';
    try{
     if(action==='pick' || action==='fill'){
-     if(args.pokemon){profileFor(args.pokemon);saveTeam();await flushArenaSave();}
+     if(args.pokemon){profileFor(args.pokemon);saveTeam();saveWildProgress();await flushArenaSave();}
     }
     const next=await raidRpc(action,{id:match.id,...args});
     if(token!==generation)return false;
@@ -768,14 +775,14 @@
     const tile=element('div',null,'raid-seat');
     const pad=element('div',null,'raid-seat-pad');
     const shown=index===match.ownSlot?fighter:seat?.pokemon;
-    const level=shown && (index===match.ownSlot || seat?.substitute ? ownedPokemon(shown)?.level : seat?.level);
+    const level=shown && (seat?.pokemon===shown && seat.level || ownedPokemon(shown)?.level);
     if(shown)pad.append(idlePokemonPortrait(shown,null,(index===match.ownSlot || seat?.substitute) && profileFor(shown).shiny?spriteVariants(shown).shiny:null,true));
     tile.append(pad,element('strong',seat?.name ?? 'Open seat'),
      element('small',shown ? shown+(level?' · Lv. '+level:'')+(seat?.ready?' · Ready':' · Not ready') : seat?'Not ready':''));
     if(kickMode && match.side==='host' && seat?.uid && index!==match.ownSlot)
      tile.append(button('Remove player',()=>{kickMode=false;return act('kick',{slot:index});}));
     if(match.side==='host' && (!seat || seat.substitute)){
-     tile.append(button(seat?'Edit substitute':'Choose Pokémon',()=>editFighter(shown,pokemon=>act('fill',{slot:index,pokemon}))));
+     tile.append(button(seat?'Edit substitute':'Choose Pokémon',()=>editFighter(shown,pokemon=>act('fill',{slot:index,pokemon}),index)));
      if(seat)tile.append(button('Clear',()=>act('fill',{slot:index,pokemon:''})));
     }
     return tile;
