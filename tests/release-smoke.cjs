@@ -49,7 +49,7 @@ const context=vm.createContext({
 });
 context.button=(label,onclick,disabled)=>Object.assign(element('button',label),{onclick,disabled});
 const source=read('tactics.js');
-const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,receiveDamage,heal,equip,sell,ignite,setRound:round=>{run.round=round;},getRun:()=>run};';
+const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,receiveDamage,heal,equip,sell,ignite,fusionPlan,applyFusion,setRound:round=>{run.round=round;},getRun:()=>run};';
 new vm.Script(data+'\n'+source.replace(/\}\)\(\);\s*$/,auditExports+'})();'),{filename:'tactics.js'}).runInContext(context);
 const a=context.audit;
 byId('home-tactics').onclick();
@@ -78,6 +78,19 @@ assert(a.sell(trainer,trainer.units[0]));
 assert(a.sell(trainer,captain));
 assert.equal(trainer.units.filter(unit=>unit.position===null).length,9);
 trainer.units=originalUnits;
+const fusionTrainer=a.makeTrainer('Fusion test');
+fusionTrainer.units=[
+ {name:'Pikachu',star:1,position:{x:0,y:4},items:['Captain’s Crown']},
+ {name:'Charmander',star:1,position:{x:1,y:4}},
+ {name:'Squirtle',star:1,position:{x:2,y:4}},
+ {name:'Pikachu',star:1,position:null,items:['Mirage Goggles']}
+];
+const fusion=a.fusionPlan(fusionTrainer,{name:'Pikachu',star:1,position:null});
+assert.deepEqual(Array.from(fusion.displaced,unit=>unit.name),['Squirtle']);
+assert.deepEqual(Array.from(fusion.returned),['Captain’s Crown']);
+assert.equal(fusionTrainer.units.filter(unit=>unit.position!==null).length,3);
+a.applyFusion(fusionTrainer,fusion);
+assert.equal(fusionTrainer.units.filter(unit=>unit.position!==null).length,2);
 const afflicted={hp:100,elapsed:500,woundUntil:9000};
 a.ignite(afflicted,5,{});
 assert.equal(afflicted.burnUntil,5500);
@@ -105,6 +118,26 @@ const invalid=structuredClone(backup);
 invalid.entries['pokemon-arena-team']='{}';
 assert.throws(()=>backups.restoreArenaSave(invalid),/invalid team/);
 assert.equal(storage.get('pokemon-arena-team'),'["Pikachu"]');
+
+const updatedBackup=structuredClone(backup);
+updatedBackup.version=2;
+updatedBackup.entries['pokemon-arena-gym-badges/master']='["brock"]';
+updatedBackup.entries['pokemon-arena-gym-badges/clean-records']='{"misty":true}';
+backups.restoreArenaSave(updatedBackup);
+assert.equal(storage.get('pokemon-arena-gym-badges/master'),'["brock"]');
+assert.equal(storage.get('pokemon-arena-gym-badges/clean-records'),'{"misty":true}');
+backups.restoreArenaSave(backup);
+assert.equal(storage.get('pokemon-arena-gym-badges/master'),'["brock"]');
+
+const captureSettings={autoCaptureBall:6,autoCaptureFallback:'standard',reservePremiumBalls:true,balls:[1,0,0,0,0,0,1,1]};
+const captureCode=html.slice(html.indexOf('function autoCaptureChoice('),html.indexOf('function renderAutoOptions('));
+const chooseBall=new Function('wildProgress','ballTypes','isLegendaryEncounter',captureCode+'return autoCaptureChoice')(
+ captureSettings,Array.from({length:8},()=>({})),name=>name==='Mewtwo');
+assert.equal(chooseBall({name:'Pikachu'}),0);
+assert.equal(chooseBall({name:'Pikachu',profile:{shiny:true}}),6);
+assert.equal(chooseBall({name:'Mewtwo'}),6);
+captureSettings.autoCaptureFallback='none';
+assert.equal(chooseBall({name:'Pikachu'}),-1);
 
 const passCode=html.slice(html.indexOf('const passTierXP='),html.indexOf('let selectedPassReward='));
 const progress={battlePass:{xp:0,claimed:[]},balls:[0]};
