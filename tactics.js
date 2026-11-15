@@ -751,6 +751,44 @@
   header.append(timeline);
   return header;
  }
+ function damageChart(report){
+  const panel=element('section',null,'tactics-damage-chart');
+  const controls=element('div',null,'tactics-damage-tabs');
+  const rows=element('div',null,'tactics-damage-rows');
+  const tabs=['Damage dealt','Damage taken'].map((label,index)=>{
+   const tab=element('button',label);
+   tab.type='button';
+   tab.onclick=()=>{run.damageMode=index;update();};
+   return tab;
+  });
+  const entries=report.units.filter(unit=>!unit.opponent).map(unit=>{
+   const row=element('div',null,'tactics-damage-row');
+   const bar=element('progress');
+   bar.setAttribute('aria-label',unit.name+' damage share');
+   const value=element('small');
+   row.append(element('strong',unit.name+' '+'★'.repeat(unit.star)),value,bar);
+   return {unit,row,value,bar};
+  });
+  function update(){
+   const taken=Boolean(run.damageMode);
+   const metric=taken?'damageTaken':'damageDealt';
+   tabs.forEach((tab,index)=>tab.setAttribute('aria-pressed',String(index===Number(taken))));
+   const total=entries.reduce((sum,entry)=>sum+(entry.unit[metric] ?? 0),0);
+   const seconds=report.ticks*combatStepMs/1000;
+   for(const {unit,value,bar} of entries){
+    const amount=unit[metric] ?? 0;
+    const rate=seconds>0?amount/seconds:0;
+    value.textContent=amount.toLocaleString()+' damage · '+rate.toFixed(1)+(taken?' /s':' DPS');
+    bar.max=total || 1;
+    bar.value=amount;
+   }
+  }
+  controls.append(...tabs);
+  rows.append(...entries.map(entry=>entry.row));
+  panel.append(element('h3','Your team damage'),controls,rows);
+  update();
+  return {panel,update};
+ }
  function battleLayout(player,units,rival=null,traitTrainer=null){
   const inspected=traitTrainer ?? run.scout ?? player;
   const layout=element('div',null,'tactics-layout'+(rival?' is-combat':''));
@@ -823,6 +861,7 @@
    summary.append(element('span','Level '+player.level),element('strong',player.gold+' gold'));
    middle.append(summary);
   }else middle.append(stageHeader(player,run.scout?'Scouting · '+run.scout.name:neutralRound(run.round)?'Planning · Neutral round':'Planning'),arena);
+  if(!rival && run.damageReport)middle.append(damageChart(run.damageReport).panel);
   const rankings=element('aside',null,'tactics-sidebar');
   rankings.append(heading('Standings'),standingsPanel());
   layout.append(sidebar,middle,rankings);
@@ -858,7 +897,7 @@
  function render(){
   const player=run.trainers[0];
   if(player.hp<=0 || run.trainers.every(t=>t===player || !t.hp)){
-   content.replaceChildren(heading(player.hp?'First place':'Place '+run.place),standingsPanel(),button('Play again',start),button('Back to Poke Fight Tactics',openTactics));
+   content.replaceChildren(heading(player.hp?'First place':'Place '+run.place),standingsPanel(),...(run.damageReport?[damageChart(run.damageReport).panel]:[]),button('Play again',start),button('Back to Poke Fight Tactics',openTactics));
    return;
   }
   if(run.choice){renderChoice(run.choice);return;}
@@ -1043,7 +1082,11 @@
   const alive=[units.some(unit=>unit.hp>0 && !unit.opponent),units.some(unit=>unit.hp>0 && unit.opponent)];
   for(const unit of units){
    const source=unit.opponent?0:1;
-   if(unit.hp>0 && alive[source])unit.hp=Math.max(0,unit.hp-effects.weather[source]);
+   if(unit.hp>0 && alive[source]){
+    const damage=Math.min(unit.hp,effects.weather[source]);
+    unit.hp-=damage;
+    unit.damageTaken=(unit.damageTaken ?? 0)+damage;
+   }
   }
  }
  function heal(unit,amount){
@@ -1052,11 +1095,11 @@
  function gainMana(unit,amount){
   if(unit.manaLock<=0)unit.mana=Math.min(60,unit.mana+amount*(1+(unit.gear.manaRate ?? 0)));
  }
- function receiveDamage(target,damage,now=null,critical=false,source=null){
+ function receiveDamage(target,damage,now=null,critical=false,source=null,periodic=false){
   if(damage<=0 || target.hp<=0)return 0;
   if(target.guard){target.guard=false;return 0;}
-  if(source && target.role==='Reaper' && target.target!==source)damage*=.85;
-  if(source)damage*=1-Math.min(.75,(target.gear.durability ?? 0)+(target.hp>target.max/2?(target.gear.healthyGuard ?? 0):0));
+  if(source && !periodic && target.role==='Reaper' && target.target!==source)damage*=.85;
+  if(source && !periodic)damage*=1-Math.min(.75,(target.gear.durability ?? 0)+(target.hp>target.max/2?(target.gear.healthyGuard ?? 0):0));
   damage=Math.max(1,Math.round(damage));
   if(target.shield>0){
    const blocked=Math.min(target.shield,damage);
@@ -1065,6 +1108,8 @@
   }
   const actualDamage=Math.min(target.hp,Math.ceil(damage));
   target.hp-=actualDamage;
+  target.damageTaken=(target.damageTaken ?? 0)+actualDamage;
+  if(source)source.damageDealt=(source.damageDealt ?? 0)+actualDamage;
   if(actualDamage && now!==null)(target.damageEvents ??= []).push({amount:actualDamage,critical,started:now});
   if(target.hp<=0 || !actualDamage)return actualDamage;
   if(target.gear.hitStack)target.gearStacks=Math.min(25,target.gearStacks+1);
@@ -1086,10 +1131,11 @@
   gainMana(target,target.manaOnDamage);
   return actualDamage;
  }
- function ignite(target,seconds){
+ function ignite(target,seconds,source){
   if(target.hp<=0)return;
   target.burnUntil=target.woundUntil=Math.max(target.burnUntil ?? 0,target.elapsed+seconds*1000);
   target.nextBurn ??= target.elapsed+1000;
+  target.burnSource=source;
  }
  function updateGear(unit,units,now){
   unit.elapsed+=combatStepMs;
@@ -1098,7 +1144,7 @@
   if(unit.critUntil<=elapsed)unit.critStacks=0;
   if(unit.nextBurn!==undefined && elapsed>=unit.nextBurn){
    if(unit.burnUntil>=elapsed){
-    receiveDamage(unit,Math.max(1,Math.round(unit.max*.01)),now);
+    receiveDamage(unit,Math.max(1,Math.round(unit.max*.01)),now,false,unit.burnSource,true);
     unit.nextBurn+=1000;
    }else unit.nextBurn=undefined;
   }
@@ -1108,7 +1154,7 @@
    heal(unit,unit.max*(unit.gear.maxHeal ?? 0));
    if(unit.gear.burnAura){
     const victim=units.find(other=>other.opponent!==unit.opponent && other.hp>0 && distance(unit.position,other.position)<=2);
-    if(victim)ignite(victim,10);
+    if(victim)ignite(victim,10,unit);
    }
   }
  }
@@ -1117,7 +1163,7 @@
   if(gear.hitStack)unit.gearStacks=Math.min(25,unit.gearStacks+1);
   if(gear.attackStack && !cast)unit.attackStacks=Math.min(15,unit.attackStacks+1);
   if(gear.critAmp && critical){unit.critStacks++;unit.critUntil=unit.elapsed+5000;}
-  if(gear.burn)ignite(target,gear.burn);
+  if(gear.burn)ignite(target,gear.burn,unit);
   if(gear.shred)target.shredUntil=target.elapsed+gear.shred*1000;
   if(gear.sunder)target.sunderUntil=target.elapsed+gear.sunder*1000;
   heal(unit,dealt*((gear.vamp ?? 0)+(gear.stance && unit.hp<=unit.max/2?.20:0)));
@@ -1375,7 +1421,7 @@
   const ghost={units:field(rival).map(unit=>({...unit})),mods:rival.mods};
   const matches=[];
   const addMatch=(a,b,mirror=false)=>{
-   const match={a,b,units:battle(a,b),mirror,sign:null};
+   const match={a,b,units:battle(a,b),mirror,sign:null,ticks:0};
    match.sign=outcome(match.units);
    matches.push(match);
   };
@@ -1385,7 +1431,7 @@
    for(let i=0;i+1<opponents.length;i+=2)addMatch(opponents[i],opponents[i+1]);
    if(opponents.length%2)addMatch(opponents.at(-1),ghost,true);
   }
-  let watched, watchedTrainer, view, timer, frame=0;
+  let watched, watchedTrainer, view, timer, chart, frame=0;
   run.spectate=trainer=>{
    const match=matches.find(entry=>entry.a===trainer || entry.b===trainer);
    if(!match || match===watched && trainer===watchedTrainer)return;
@@ -1395,6 +1441,8 @@
    timer=battleView.timer;
    view=combatLayer(match.units);
    battleView.arena.insertBefore(view.layer,battleView.arena.querySelector('.tactics-bench'));
+   chart=damageChart(matches[0]);
+   battleView.middle.append(chart.panel);
    content.replaceChildren(battleView.layout);
   };
   run.spectate(player);
@@ -1409,8 +1457,10 @@
    if(run!==current || phase!=='tactics')return;
    for(const match of matches)if(match.sign===null){
     tick(match.units,performance.now());
+    match.ticks++;
     match.sign=outcome(match.units);
    }
+   chart.update();
    timer.value=100*(1-(frame+1)/combatTicks);
    timer.title=matches.filter(match=>match.sign===null).length+' battles still in progress';
   }
@@ -1418,6 +1468,7 @@
   const remainingEffect=lastVisibleCast+620-performance.now();
   if(remainingEffect>0)await new Promise(resolve=>setTimeout(resolve,remainingEffect));
   if(run!==current || phase!=='tactics')return;
+  run.damageReport=matches[0];
   const sign=matches[0].sign ?? 0;
   if(neutral){
    for(const match of matches)completeNeutral(match.a,match.sign>0);

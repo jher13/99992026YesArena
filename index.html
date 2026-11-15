@@ -626,10 +626,17 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .tactics-trait{position:relative}
 .tactics-trait-tooltip{display:none;position:absolute;z-index:4;left:100%;top:0;width:min(230px,55vw);padding:8px;border:1px solid #aa925d;border-radius:5px;background:#172226;color:#f5e6c1;line-height:1.4;pointer-events:none}
 .tactics-trait:is(:hover,:focus-visible) .tactics-trait-tooltip,
-.tactics-item-slot:is(:hover,:focus-visible)>.tactics-item-slot>canvas{width:100%;height:100%;border:0;background:none;image-rendering:pixelated}
-.tactics-item-tooltip{display:block}
+.tactics-item-slot:is(:hover,:focus-visible)>.tactics-item-tooltip{display:block}
+.tactics-item-slot>canvas{width:100%;height:100%;border:0;background:none;image-rendering:pixelated}
 .tactics-item-slot{position:relative}
 .tactics-item-slot:is(:hover,:focus-visible){z-index:5}
+.tactics-damage-chart{background:#172226;color:#fff0d1;border:1px solid #876f48;border-radius:5px;margin-top:8px;padding:8px;min-width:0}
+.tactics-damage-chart h3{font-size:14px;margin:0 0 6px}
+.tactics-damage-tabs,.tactics-damage-row{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+#tactics .tactics-damage-tabs button[aria-pressed=true]{border-color:#ffd17e;background:#4b3a25;color:#fff0d1}
+.tactics-damage-row{font-size:12px;align-items:center;margin-top:6px}
+.tactics-damage-row small{text-align:right}
+.tactics-damage-row progress{grid-column:1/-1;width:100%;height:8px;accent-color:#eec97c}
 .tactics-item-tooltip{white-space:pre-line;text-align:left;font-size:12px;font-weight:400}
 @media(max-width:760px){.tactics-trait-tooltip{left:0;top:100%}}
 
@@ -9210,6 +9217,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.9',changes:['Fixed Fight Tactics item hover cards and added a live team damage chart.']},
  {version:'0.22.8',changes:['Added original Fight Tactics gear with 10 components, 36 completed items, and emblems.']},
  {version:'0.22.7',changes:['Added Fight Tactics combat roles, role-specific mana, and readable signature descriptions.']},
  {version:'0.22.6',changes:['Gave each Fight Tactics Pokémon a themed, star-scaling signature move with elemental particles.']},
@@ -9445,4 +9453,4 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.8"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+<script src="./tactics.js?v=0.22.9"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
