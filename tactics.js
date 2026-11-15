@@ -136,15 +136,64 @@
  const makeTrainer=(name)=>({name,hp:100,gold:0,level:2,xp:0,units:[],shop:[],streak:0,items:[],augments:[],mods:{}});
  let run=null, planningTimer=null, dragged=null, draggedItem=null;
  const components={
-  Claw:{power:.10}, Charm:{mana:12}, Berry:{health:.15}, Scale:{defense:16}
+  Claw:{attackPct:.10}, Wing:{speed:.10}, Orb:{spAttack:10}, Charm:{regen:1},
+  Scale:{armor:20}, Shell:{spDefense:20}, Berry:{flatHP:150}, Lens:{crit:.20},
+  Crest:{}, Totem:{}
  };
+ const recipeKey=(a,b)=>[a,b].sort().join('+');
  const recipes={
-  'Claw+Claw':['Razor Claws',{power:.30}], 'Charm+Claw':['Spell Claw',{power:.17,mana:22}],
-  'Berry+Claw':['Sitrus Blade',{power:.16,health:.24}], 'Claw+Scale':['Iron Claw',{power:.16,defense:26}],
-  'Charm+Charm':['Mystic Charm',{mana:40}], 'Berry+Charm':['Lucky Berry',{health:.25,mana:22}],
-  'Charm+Scale':['Runic Scale',{defense:26,mana:22}], 'Berry+Berry':['Berry Satchel',{health:.45}],
-  'Berry+Scale':['Berry Armor',{health:.25,defense:28}], 'Scale+Scale':['Dragon Armor',{defense:55}]
+  'Claw+Claw':['Razor Claws',{"attackPct":0.30,"amp":0.10}],
+  'Claw+Wing':['Predator Pinion',{"attackPct":0.15,"speed":0.15,"tankAmp":0.15}],
+  'Claw+Orb':['Aura Fang',{"attackPct":0.12,"spAttack":20,"allyHeal":0.15}],
+  'Charm+Claw':['Spirit Talon',{"attackPct":0.15,"regen":1,"hitMana":5}],
+  'Claw+Scale':['Night Carapace',{"attackPct":0.15,"defense":25,"thresholdGuard":1}],
+  'Claw+Shell':['Drain Fang',{"attackPct":0.15,"spDefense":25,"vamp":0.15}],
+  'Berry+Claw':['Bramble Fang',{"attackPct":0.15,"flatHP":220,"thresholdShield":0.30}],
+  'Claw+Lens':['Truefang Lens',{"attackPct":0.15,"crit":0.25,"critDamage":0.15}],
+  'Wing+Wing':['Cinder Pinions',{"speed":0.25,"burn":5}],
+  'Orb+Wing':['Cyclone Core',{"speed":0.12,"spAttack":15,"rampSpeed":0.04}],
+  'Charm+Wing':['Rift Feather',{"speed":0.15,"regen":1,"shred":5}],
+  'Scale+Wing':['Meteor Plating',{"speed":0.12,"defense":25,"hitStack":0.02}],
+  'Shell+Wing':['Storm Carapace',{"speed":0.15,"spDefense":25,"attackStack":0.035}],
+  'Berry+Wing':['Nectar Quill',{"speed":0.15,"flatHP":180,"hitMana":2,"critMana":2}],
+  'Lens+Wing':['Piercing Quill',{"speed":0.15,"crit":0.20,"sunder":3}],
+  'Orb+Orb':['Prism Crown',{"spAttack":45,"amp":0.10}],
+  'Charm+Orb':['Astral Battery',{"spAttack":18,"regen":1,"rampPower":12}],
+  'Orb+Scale':['Halo Plate',{"spAttack":18,"defense":25,"startShield":0.25}],
+  'Orb+Shell':['Dissonant Pearl',{"spAttack":18,"spDefense":25,"shredAura":1}],
+  'Berry+Orb':['Scorchbloom',{"spAttack":18,"flatHP":180,"burn":10}],
+  'Lens+Orb':['Prism Lens',{"spAttack":18,"crit":0.25,"critDamage":0.15}],
+  'Charm+Charm':['Mystic Charm',{"mana":20,"regen":3,"attackPct":0.10,"spAttackPct":0.10}],
+  'Charm+Scale':['Guardian Seal',{"mana":20,"defense":30,"thresholdShield":0.20,"thresholdMana":15}],
+  'Charm+Shell':['Tidal Seal',{"regen":1,"spDefense":30,"manaRate":0.15}],
+  'Berry+Charm':['Renewal Seed',{"regen":1,"flatHP":200,"missingHeal":0.02,"durability":0.05}],
+  'Charm+Lens':['Twin-Tide Lens',{"regen":1,"crit":0.20,"stance":1}],
+  'Scale+Scale':['Thorn Carapace',{"defense":50,"flatHP":120,"retaliate":30}],
+  'Scale+Shell':['Bastion Shell',{"defense":25,"spDefense":25,"focusArmor":10}],
+  'Berry+Scale':['Ember Husk',{"defense":25,"flatHP":220,"burnAura":1}],
+  'Lens+Scale':['Ironwatch Lens',{"defense":25,"crit":0.20,"durability":0.08,"healthyGuard":0.08}],
+  'Shell+Shell':['Pearl Bulwark',{"spDefense":55,"flatHP":120,"maxHeal":0.025}],
+  'Berry+Shell':['Dusk Husk',{"spDefense":25,"flatHP":220,"sunderAura":1}],
+  'Lens+Shell':['Jetstream Visor',{"spDefense":25,"crit":0.20,"rampSpeed":0.03}],
+  'Berry+Berry':['Berry Satchel',{"flatHP":360,"health":0.18}],
+  'Berry+Lens':['Wildgrowth Lens',{"flatHP":200,"crit":0.20,"critAmp":0.04}],
+  'Lens+Lens':['Mirage Goggles',{"crit":0.25,"randomGear":1}],
  };
+ const standardGear=Object.values(recipes).map(([name])=>name).filter(name=>name!=='Mirage Goggles');
+ const ordinaryComponents=Object.keys(components).slice(0,8);
+ for(const [catalyst,types] of [
+  ['Crest',['Fire','Flying','Psychic','Water','Steel','Ice','Grass','Electric']],
+  ['Totem',['Fighting','Bug','Ghost','Fairy','Rock','Ground','Poison','Dragon']]
+ ]){
+  ordinaryComponents.forEach((item,index)=>{
+   const type=types[index];
+   recipes[recipeKey(item,catalyst)]=[type+' Emblem',{...components[item]},type];
+  });
+ }
+ for(const [a,b,name] of [['Crest','Crest','Captain’s Crown'],['Totem','Totem','Captain’s Shield'],['Crest','Totem','Captain’s Banner']]){
+  recipes[recipeKey(a,b)]=[name,{teamSize:1}];
+ }
+ const completedItems=new Map(Object.values(recipes).map(([name,stats,type])=>[name,{stats,type}]));
  const augments=[
   ['Opening Guard','Each ally blocks the first damaging hit it takes.','guard'],
   ['Echo Cast','Each ally’s first signature move hits again for 35% damage.','echo'],
@@ -164,20 +213,54 @@
  }
  function equip(trainer,unit,item){
   const items=unit.items ??= [];
-  if(!Object.hasOwn(components,item)){if(items.length>=3)return false;items.push(item);return true;}
+  if(items.includes('Mirage Goggles'))return false;
+  if(!Object.hasOwn(components,item)){if(items.length>=3 || item==='Mirage Goggles' && items.length)return false;items.push(item);return true;}
   const component=items.find(name=>Object.hasOwn(components,name));
   if(items.length>=3 && !component)return false;
   if(component){
-   const recipe=recipes[[component,item].sort().join('+')];
+   const recipe=recipes[recipeKey(component,item)];
+   if(recipe[0]==='Mirage Goggles' && items.length>1)return false;
    items[items.indexOf(component)]=recipe[0];
   }else items.push(item);
   return true;
  }
  function itemBonuses(item){
-  return components[item] ?? Object.values(recipes).find(entry=>entry[0]===item)?.[1] ?? {};
+  return components[item] ?? completedItems.get(item)?.stats ?? {};
  }
  function describeBonuses(bonuses){
+  const labels={
+   attackPct:'ATK',spAttackPct:'S.ATK',speed:'attack speed',crit:'crit chance',critDamage:'crit damage',
+   amp:'damage amp',tankAmp:'damage against tanks',vamp:'omnivamp',manaRate:'mana gain',durability:'durability'
+  };
+  const effects={
+   allyHeal:'Heals the lowest-health ally for 15% of damage dealt.',hitMana:' mana per basic attack.',critMana:' extra mana on a critical basic attack.',
+   thresholdGuard:'Below 50% HP, blocks the next hit and clears Burn, Wound, Sunder and Shred once.',
+   thresholdShield:' max HP shield below half health, once.',thresholdMana:' mana below half health, once.',
+   burn:'Burns for 1% max HP per second and reduces healing by 33% for ',rampSpeed:' stacking attack speed per second.',
+   shred:'Shreds 30% S.DEF for ',sunder:'Sunders 30% DEF for ',
+   hitStack:' ATK and S.ATK per hit dealt or taken, up to 25 stacks.',
+   attackStack:' ATK per basic attack, up to 15 stacks.',
+   rampPower:' S.ATK every 5 seconds.',startShield:' max HP shield for the first 8 seconds.',
+   shredAura:'Shreds 30% S.DEF within range 2.',sunderAura:'Sunders 30% DEF within range 2.',
+   missingHeal:' missing HP healed each second.',maxHeal:' max HP healed every 2 seconds.',
+   retaliate:' retaliation damage to adjacent attackers, once per 2 seconds.',
+   focusArmor:' DEF and S.DEF per enemy targeting this Pokémon.',
+   burnAura:'Every 2 seconds, burns and wounds a nearby enemy for 10 seconds.',
+   healthyGuard:' extra durability above half health.',stance:'Above half HP, +20% ATK and S.ATK. Below half, +20% omnivamp.',
+   critAmp:' stacking damage amp on critical hits until 5 seconds after the last crit.',
+   randomGear:'Occupies all 3 slots. Rolls 2 completed items each fight.',
+   teamSize:' maximum deployed Pokémon while equipped.'
+  };
+  const percentages=new Set(['thresholdShield','rampSpeed','hitStack','attackStack','startShield','missingHeal','maxHeal','healthyGuard','critAmp']);
   return Object.entries(bonuses).map(([stat,value])=>{
+   if(labels[stat])return '+'+Math.round(value*100)+'% '+labels[stat];
+   if(['burn','shred','sunder'].includes(stat))return effects[stat]+value+' seconds.';
+   if(effects[stat])return /^[a-zA-Z]/.test(effects[stat])?effects[stat]:(percentages.has(stat)?Math.round(value*100)+'%':value)+effects[stat];
+   if(stat==='flatHP')return '+'+value+' max HP';
+   if(stat==='spAttack')return '+'+value+' S.ATK';
+   if(stat==='spDefense')return '+'+value+' S.DEF';
+   if(stat==='armor')return '+'+value+' DEF';
+   if(stat==='defense')return '+'+value+' DEF and S.DEF';
    if(stat==='health')return '+'+Math.round(value*100)+'% max HP';
    if(stat==='power')return '+'+Math.round(value*100)+'% attack power';
    if(stat==='regen')return value+' mana per second';
@@ -187,18 +270,14 @@
  }
  function itemIcon(item){
   const icon=element('span',null,'tactics-item-slot');
-  const index=itemSprites.indexOf(item);
-  if(index>=0){
-   const sprite=element('span',null,'tactics-item-sprite');
-   sprite.style.setProperty('--item-index',String(index));
-   sprite.setAttribute('aria-hidden','true');
-   icon.append(sprite);
-  }
+  if(item)icon.append(tacticsItemArt(item));
   if(item){
-   let description=item+' · '+describeBonuses(itemBonuses(item));
+   const type=completedItems.get(item)?.type;
+   const bonuses=describeBonuses(itemBonuses(item));
+   let description=item+(bonuses?' · '+bonuses:' · Fusion catalyst')+(type?' · Adds the '+type+' trait.':'');
    if(Object.hasOwn(components,item)){
     const combinations=Object.keys(components).map(partner=>{
-     const [result]=recipes[[item,partner].sort().join('+')];
+     const [result]=recipes[recipeKey(item,partner)];
      return partner+' → '+result;
     });
     description+='\nFuses with\n'+combinations.join('\n');
@@ -219,7 +298,7 @@
  }
  function itemMods(unit,trainer){
   const mods={...trainer.mods};
-  for(const item of unit.items ?? []){
+  for(const item of unit.combatItems ?? unit.items ?? []){
    const bonuses=itemBonuses(item);
    for(const [stat,value] of Object.entries(bonuses))mods[stat]=(mods[stat] ?? 0)+value;
   }
@@ -444,7 +523,23 @@
   visual.append(idlePokemonPortrait(unit.name,null,null,true,direction),element('small','★'.repeat(unit.star)));
   return visual;
  }
- const itemSprites=[...Object.keys(components),...Object.values(recipes).map(([name])=>name)];
+ function tacticsItemArt(item){
+  const parts=Object.keys(components);
+  const baseIndex=parts.indexOf(item);
+  const recipe=Object.entries(recipes).find(([,entry])=>entry[0]===item);
+  const oldArt=['Claw','Charm','Berry','Scale','Razor Claws','Spell Claw','Sitrus Blade','Iron Claw','Mystic Charm','Lucky Berry','Runic Scale','Berry Satchel','Berry Armor','Dragon Armor'];
+  if(oldArt.includes(item)){
+   const sprite=element('span',null,'tactics-item-sprite');
+   sprite.style.setProperty('--item-index',String(oldArt.indexOf(item)));
+   sprite.setAttribute('aria-hidden','true');
+   return sprite;
+  }
+  const [left,right]=recipe?recipe[0].split('+').map(part=>parts.indexOf(part)):[baseIndex,baseIndex];
+  const colors=['#ff8276','#91d9ff','#af8aff','#59a8ff','#b6bdcf','#f2e7b5','#ef7197','#f3bf59','#72ed9f','#e8a2fd'];
+  const shape=recipe?['....oo......','...ocgo.....','..occggo....','.occlgggo...','.occcgo.....','..ooo.......']:
+   ['....oo......','...ocdo.....','..oclco.....','..occco.....','...ooo......'];
+  return collectionPixelArt(shape,colors[left],colors[right]);
+ }
  function dropUnit(tile,callback,unit){
   tile.ondragover=event=>{if(dragged || (unit && draggedItem!==null))event.preventDefault();};
   tile.ondrop=event=>{
@@ -477,6 +572,9 @@
   trainer.lockedOffers?.clear();
  }
  const field=trainer=>trainer.units.filter(unit=>unit.position!==null);
+ const teamSize=trainer=>trainer.level+trainer.units.reduce((total,unit)=>total+
+  (unit.items ?? []).reduce((sum,item)=>sum+(itemBonuses(item).teamSize ?? 0),0),0);
+
  function merge(trainer,name){
   for(const star of [1,2]){
    const group=trainer.units.filter(unit=>unit.name===name && unit.star===star);
@@ -485,8 +583,13 @@
    const [keeper,...used]=groupToMerge;
    keeper.star++;
    const equipped=groupToMerge.flatMap(unit=>unit.items ?? []);
-   keeper.items=equipped.slice(0,3);
-   trainer.items.push(...equipped.slice(3));
+   keeper.items=equipped.includes('Mirage Goggles')?['Mirage Goggles']:equipped.slice(0,3);
+   const retained=[...keeper.items];
+   for(const item of equipped){
+    const index=retained.indexOf(item);
+    if(index>=0)retained.splice(index,1);
+    else trainer.items.push(item);
+   }
    if(used.includes(run.selected))run.selected=keeper;
    trainer.units=trainer.units.filter(unit=>!used.includes(unit));
   }
@@ -506,6 +609,8 @@
   run.pool.get(unit.name).copies+=3**(unit.star-1);
   trainer.items.push(...(unit.items ?? []));
   trainer.units.splice(trainer.units.indexOf(unit),1);
+  const deployed=field(trainer);
+  for(const extra of deployed.slice(teamSize(trainer)))extra.position=null;
   if(run.selected===unit)run.selected=null;
   return true;
  }
@@ -526,14 +631,22 @@
  function moveUnit(player,position,unit=run.selected){
   if(!unit || unit.position===position)return;
   const occupied=player.units.find(other=>other.position===position);
-  if(unit.position===null && !occupied && field(player).length>=player.level)return;
+  if(unit.position===null && !occupied && field(player).length>=teamSize(player))return;
   if(occupied)occupied.position=unit.position;
   unit.position=position;run.selected=null;render();
  }
  function traits(units){
   const counts={};
   const species=new Set(units.map(unit=>unit.name));
-  for(const name of species)for(const type of dex[name].slice(1,3).filter(Boolean))counts[type]=(counts[type] ?? 0)+1;
+  const typeMembers=new Map();
+  for(const unit of units){
+   const types=[...dex[unit.name].slice(1,3),...(unit.items ?? []).map(item=>completedItems.get(item)?.type)];
+   for(const type of types.filter(Boolean)){
+    if(!typeMembers.has(type))typeMembers.set(type,new Set());
+    typeMembers.get(type).add(unit.name);
+   }
+  }
+  for(const [type,members] of typeMembers)counts[type]=members.size;
   for(const [label,trait] of Object.entries(collectionTraits))counts[label]=trait.members.filter(name=>species.has(name)).length;
   return counts;
  }
@@ -623,7 +736,7 @@
  function stageHeader(player,mode){
   const header=element('header',null,'tactics-stage');
   header.append(element('strong','Stage '+stageLabel(run.round)),element('span',mode),
-   element('span',field(player).length+' / '+player.level+' deployed'));
+   element('span',field(player).length+' / '+teamSize(player)+' deployed'));
   if(!run.busy){
    const timer=element('span',Math.max(0,Math.ceil((run.deadline-Date.now())/1000))+'s','tactics-planning-clock');
    header.append(timer);
@@ -856,7 +969,7 @@
   trainer.units.sort((a,b)=>b.star-a.star || cost(b.name)-cost(a.name));
   trainer.units.forEach((unit,i)=>{
    const ranged=roleProfiles[roles.get(unit.name)]?.range>=3;
-   unit.position=i<trainer.level?cells[(ranged?42:28)+i]:null;
+   unit.position=i<teamSize(trainer)?cells[28+(ranged?14:0)+i]:null;
   });
  }
  function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
@@ -868,7 +981,7 @@
  }
  function fighter(unit,opponent,types,trainer){
   const base=dexStats[dex[unit.name][0]-1];
-  const bonus=Math.max(0,...dex[unit.name].slice(1,3).map(t=>(types[t] ?? 0)-1));
+  const bonus=Math.max(0,...[...dex[unit.name].slice(1,3),...(unit.items ?? []).map(item=>completedItems.get(item)?.type)].map(t=>(types[t] ?? 0)-1));
   const mods=itemMods(unit,trainer);
   for(const [label,group] of Object.entries(collectionTraits)){
    if(!group.members.includes(unit.name))continue;
@@ -881,7 +994,7 @@
   const role=specialist?'Specialist':roles.get(unit.name);
   const profile=roleProfiles[role];
   const rarity=rarities.get(unit.name) ?? 0;
-  const hp=Math.round((base[0]*4+180)*profile.hp*(1+rarity*.045)*1.65**(unit.star-1)*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
+  const hp=Math.round(((base[0]*4+180)*profile.hp*(1+rarity*.045)*1.65**(unit.star-1)+(mods.flatHP ?? 0))*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
   const [move,moveType,moveSpecial]=signatures[unit.name];
   const movePowers=unit.name==='Squirtle'?[150,255,450]:signaturePowerByTier[rarity];
   const attackScale=profile.attack*(1+rarity*.055)*1.5**(unit.star-1);
@@ -897,8 +1010,12 @@
    attackSpeed,critChance:.10,critDamage:1.5
   };
   return {...unit,...baseStats,baseStats,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),role,roleLabel:(moveSpecial?'S.ATK ':'ATK ')+role,roleRule:specialist?.rule ?? profile.rule,range:profile.range,
-   attack:baseStats.attack*powerMultiplier,specialAttack:baseStats.specialAttack*powerMultiplier,
-   defense:Math.round(baseDefense+(mods.defense ?? 0)),specialDefense:Math.round(baseSpecialDefense+(mods.defense ?? 0)),
+   attack:baseStats.attack*(powerMultiplier+(mods.attackPct ?? 0)),
+   specialAttack:baseStats.specialAttack*(powerMultiplier+(mods.spAttackPct ?? 0))+(mods.spAttack ?? 0),
+   attackSpeed:attackSpeed*(1+(mods.speed ?? 0)),critChance:Math.min(1,baseStats.critChance+(mods.crit ?? 0)),
+   critDamage:baseStats.critDamage+(mods.critDamage ?? 0),gear:mods,
+   elapsed:0,gearStacks:0,attackStacks:0,critStacks:0,shield:hp*(mods.startShield ?? 0),shieldUntil:8000,
+   defense:Math.round(baseDefense+(mods.defense ?? 0)+(mods.armor ?? 0)),specialDefense:Math.round(baseSpecialDefense+(mods.defense ?? 0)+(mods.spDefense ?? 0)),
    direction:opponent?0:4,move,moveType,moveSpecial,movePowers,wait:0,manaRegen:(specialist?.regen ?? profile.regen)+(mods.regen ?? 0),
    manaOnHit:specialist?.hit ?? profile.mana,manaOnDamage:specialist?.incoming ?? (role==='Tank'?5:0),
    manaOnTravel:specialist?.travel ?? 0,manaLock:0,manaLockMs:channeledSignatures.has(move)?1500:1000,
@@ -908,7 +1025,11 @@
  const battleEffects=new WeakMap();
  function battle(a,b){
   const first=field(a),second=field(b), firstTraits=traits(first),secondTraits=traits(second);
-  const units=[...first.map(unit=>fighter(unit,false,firstTraits,a)),...second.map(unit=>fighter(unit,true,secondTraits,b))];
+  const build=(unit,opponent,counts,trainer)=>{
+   const combatItems=unit.items?.includes('Mirage Goggles')?drawRogueChoices(standardGear,2):unit.items;
+   return fighter({...unit,combatItems},opponent,counts,trainer);
+  };
+  const units=[...first.map(unit=>build(unit,false,firstTraits,a)),...second.map(unit=>build(unit,true,secondTraits,b))];
   const storm=(trainer,counts)=>(counts['Weather Trio'] ?? 0)+(counts['Weather Trio'] && trainer.mods.weatherSurge?1:0);
   battleEffects.set(units,{elapsed:0,weather:[storm(a,firstTraits),storm(b,secondTraits)]});
   return units;
@@ -925,21 +1046,90 @@
    if(unit.hp>0 && alive[source])unit.hp=Math.max(0,unit.hp-effects.weather[source]);
   }
  }
+ function heal(unit,amount){
+  if(unit.hp>0)unit.hp=Math.min(unit.max,unit.hp+Math.round(amount*(unit.woundUntil>unit.elapsed?.67:1)));
+ }
  function gainMana(unit,amount){
-  if(unit.manaLock<=0)unit.mana=Math.min(60,unit.mana+amount);
+  if(unit.manaLock<=0)unit.mana=Math.min(60,unit.mana+amount*(1+(unit.gear.manaRate ?? 0)));
  }
  function receiveDamage(target,damage,now=null,critical=false,source=null){
-  if(damage<=0 || target.hp<=0)return;
-  if(target.guard){target.guard=false;return;}
-  if(source && target.role==='Reaper' && target.target!==source)damage=Math.max(1,Math.floor(damage*.85));
-  const actualDamage=Math.min(target.hp,damage);
-  target.hp-=actualDamage;
-  if(now!==null)(target.damageEvents ??= []).push({amount:actualDamage,critical,started:now});
-  if(target.secondWind && target.hp>0 && target.hp<target.max/2){
-   target.secondWind=false;
-   target.hp=Math.min(target.max,target.hp+Math.max(1,Math.round(target.max*.12)));
+  if(damage<=0 || target.hp<=0)return 0;
+  if(target.guard){target.guard=false;return 0;}
+  if(source && target.role==='Reaper' && target.target!==source)damage*=.85;
+  if(source)damage*=1-Math.min(.75,(target.gear.durability ?? 0)+(target.hp>target.max/2?(target.gear.healthyGuard ?? 0):0));
+  damage=Math.max(1,Math.round(damage));
+  if(target.shield>0){
+   const blocked=Math.min(target.shield,damage);
+   target.shield-=blocked;
+   damage-=blocked;
   }
-  if(target.hp>0)gainMana(target,target.manaOnDamage);
+  const actualDamage=Math.min(target.hp,Math.ceil(damage));
+  target.hp-=actualDamage;
+  if(actualDamage && now!==null)(target.damageEvents ??= []).push({amount:actualDamage,critical,started:now});
+  if(target.hp<=0 || !actualDamage)return actualDamage;
+  if(target.gear.hitStack)target.gearStacks=Math.min(25,target.gearStacks+1);
+  if(target.hp<=target.max/2){
+   if(target.secondWind){
+    target.secondWind=false;
+    heal(target,target.max*.12);
+   }
+   if(!target.thresholdUsed){
+    target.thresholdUsed=true;
+    if(target.gear.thresholdGuard){target.guard=true;target.woundUntil=target.burnUntil=target.shredUntil=target.sunderUntil=0;}
+    if(target.gear.thresholdShield){
+     target.shield+=target.max*target.gear.thresholdShield;
+     target.shieldUntil=target.elapsed+4000;
+    }
+    gainMana(target,target.gear.thresholdMana ?? 0);
+   }
+  }
+  gainMana(target,target.manaOnDamage);
+  return actualDamage;
+ }
+ function ignite(target,seconds){
+  if(target.hp<=0)return;
+  target.burnUntil=target.woundUntil=Math.max(target.burnUntil ?? 0,target.elapsed+seconds*1000);
+  target.nextBurn ??= target.elapsed+1000;
+ }
+ function updateGear(unit,units,now){
+  unit.elapsed+=combatStepMs;
+  const elapsed=unit.elapsed;
+  if(elapsed>=unit.shieldUntil)unit.shield=0;
+  if(unit.critUntil<=elapsed)unit.critStacks=0;
+  if(unit.nextBurn!==undefined && elapsed>=unit.nextBurn){
+   if(unit.burnUntil>=elapsed){
+    receiveDamage(unit,Math.max(1,Math.round(unit.max*.01)),now);
+    unit.nextBurn+=1000;
+   }else unit.nextBurn=undefined;
+  }
+  const previous=elapsed-combatStepMs;
+  if(Math.floor(previous/1000)!==Math.floor(elapsed/1000))heal(unit,(unit.max-unit.hp)*(unit.gear.missingHeal ?? 0));
+  if(Math.floor(previous/2000)!==Math.floor(elapsed/2000)){
+   heal(unit,unit.max*(unit.gear.maxHeal ?? 0));
+   if(unit.gear.burnAura){
+    const victim=units.find(other=>other.opponent!==unit.opponent && other.hp>0 && distance(unit.position,other.position)<=2);
+    if(victim)ignite(victim,10);
+   }
+  }
+ }
+ function gearHit(unit,target,units,dealt,cast,critical,now){
+  const gear=unit.gear;
+  if(gear.hitStack)unit.gearStacks=Math.min(25,unit.gearStacks+1);
+  if(gear.attackStack && !cast)unit.attackStacks=Math.min(15,unit.attackStacks+1);
+  if(gear.critAmp && critical){unit.critStacks++;unit.critUntil=unit.elapsed+5000;}
+  if(gear.burn)ignite(target,gear.burn);
+  if(gear.shred)target.shredUntil=target.elapsed+gear.shred*1000;
+  if(gear.sunder)target.sunderUntil=target.elapsed+gear.sunder*1000;
+  heal(unit,dealt*((gear.vamp ?? 0)+(gear.stance && unit.hp<=unit.max/2?.20:0)));
+  if(gear.allyHeal){
+   const ally=units.filter(other=>other.opponent===unit.opponent && other.hp>0).sort((a,b)=>a.hp/a.max-b.hp/b.max)[0];
+   if(ally)heal(ally,dealt*gear.allyHeal);
+  }
+  if(!cast && target.hp>0 && target.gear.retaliate && (target.retaliateAfter ?? 0)<=target.elapsed &&
+     distance(unit.position,target.position)<=1.5){
+   target.retaliateAfter=target.elapsed+2000;
+   receiveDamage(unit,target.gear.retaliate,now,false,target);
+  }
  }
  function nextStep(unit,target,units){
   const {x,y}=unit.position;
@@ -971,6 +1161,7 @@
  }
  function tick(units,now=null){
   tickWeather(units);
+  for(const unit of units)if(unit.hp>0)updateGear(unit,units,now);
   for(const unit of units)if(unit.hp>0)unit.target=chooseTarget(unit,units);
   for(const unit of units){
    if(unit.hp<=0)continue;
@@ -995,28 +1186,38 @@
    const type=cast?unit.moveType:dex[unit.name][1];
    const match=elementalMultiplier(type,dex[target.name].slice(1,3));
    const special=cast && unit.moveSpecial;
-   const offense=special?unit.specialAttack:unit.attack;
-   const defense=special?target.specialDefense:target.defense;
+   const gear=unit.gear;
+   const stackBonus=unit.gearStacks*(gear.hitStack ?? 0);
+   const stance=gear.stance && unit.hp>unit.max/2?.2:0;
+   const offense=special?(unit.specialAttack+Math.floor(unit.elapsed/5000)*(gear.rampPower ?? 0))*(1+stackBonus+stance):
+    unit.attack*(1+stackBonus+stance+unit.attackStacks*(gear.attackStack ?? 0));
+   const aura=special?'shredAura':'sunderAura';
+   const defenseDown=(special?target.shredUntil:target.sunderUntil)>target.elapsed ||
+    units.some(other=>other.hp>0 && other.opponent===unit.opponent && other.gear[aura] && distance(target.position,other.position)<=2);
+   const focus=target.gear.focusArmor?units.filter(other=>other.hp>0 && other.target===target).length*target.gear.focusArmor:0;
+   const defense=((special?target.specialDefense:target.defense)+focus)*(defenseDown?.7:1);
    const critical=Math.random()<unit.critChance?unit.critDamage:1;
-   const damage=Math.max(1,Math.round(combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*match*critical*100/(100+defense)));
+   const amp=1+(gear.amp ?? 0)+unit.critStacks*(gear.critAmp ?? 0)+(target.role==='Tank'?(gear.tankAmp ?? 0):0);
+   const damage=Math.max(1,Math.round(combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*match*critical*amp*100/(100+defense)));
    if(now!==null){
     setBattlerMotion(unit,target.position,cast?'cast':unit.range>1?'attack':'lunge',now);
     if(cast)unit.lastCast={started:now,move:unit.move,from:unit.position,to:target.position};
     if(!target.animation || now-target.animation.started>=target.animation.duration || target.animation.motion==='walk')
      setBattlerMotion(target,unit.position,'hit',now);
    }
-   receiveDamage(target,damage,now,critical>1,unit);
+   let dealt=receiveDamage(target,damage,now,critical>1,unit);
    if(cast && unit.echo){
     unit.echo=false;
-    if(damage)receiveDamage(target,Math.max(1,Math.round(damage*.35)),now,critical>1,unit);
+    dealt+=receiveDamage(target,Math.max(1,Math.round(damage*.35)),now,critical>1,unit);
    }
-   if(target.hp<=0 && unit.momentum)unit.hp=Math.min(unit.max,unit.hp+Math.max(1,Math.round(unit.max*.08)));
+   gearHit(unit,target,units,dealt,cast,critical>1,now);
+   if(target.hp<=0 && unit.momentum)heal(unit,unit.max*.08);
    if(cast){
     unit.mana=unit.overcharge?10:0;
     unit.overcharge=false;
     unit.manaLock=unit.manaLockMs;
-   }else gainMana(unit,unit.manaOnHit);
-   unit.wait+=1000/unit.attackSpeed;
+   }else gainMana(unit,unit.manaOnHit+(gear.hitMana ?? 0)+(critical>1?(gear.critMana ?? 0):0));
+   unit.wait+=1000/(unit.attackSpeed*(1+Math.floor(unit.elapsed/1000)*(gear.rampSpeed ?? 0)));
   }
  }
  function outcome(units){
@@ -1100,7 +1301,7 @@
    hp.setAttribute('aria-label',unit.name+' health');
    mana.setAttribute('aria-label',unit.name+' mana');
    bars.append(hp,mana);
-   if(unit.items?.length)node.append(equippedItems(unit));
+   if(unit.combatItems?.length)node.append(equippedItems({...unit,items:unit.combatItems}));
    const bubble=element('span',null,'tactics-cast-bubble');
    bubble.hidden=true;
    node.append(bars,battlerSprite(unit),element('span','★'.repeat(unit.star),'tactics-combat-stars'),bubble);
