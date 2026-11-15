@@ -97,7 +97,7 @@
   const grid=element('div',null,'shop-grid');
   for(const [index,offer] of choice.offers.entries()){
    const tile=choice.kind==='carousel'?card(offer,offer.item):element('div',null,'bag-item');
-   if(choice.kind==='augment')tile.append(element('strong',offer[0]),element('small',offer[1]));
+   if(choice.kind==='augment'){tile.classList.add('tactics-augment-card');tile.append(element('span',['✦','◆','✹'][index],'tactics-augment-icon'),element('strong',offer[0]),element('small',offer[1]));}
    tile.append(button('Choose',()=>{
     if(choice.kind==='augment')grantAugment(player,offer);
     else {draftCarousel(player,choice.offers.splice(index,1)[0]);choice.complete();}
@@ -106,8 +106,8 @@
    }));
    grid.append(tile);
   }
-  const panel=element('section',null,'tactics-choice');
-  panel.append(heading(choice.kind==='augment'?'Choose an augment':'Shared carousel'),grid);
+  const panel=element('section',null,'tactics-choice'+(choice.kind==='augment'?' tactics-augment-screen':''));
+  panel.append(choice.kind==='augment'?element('h2','Choose one'):heading('Shared carousel'),grid);
   content.replaceChildren(panel);
  }
  function neutralTrainer(){
@@ -186,24 +186,77 @@
    }
   },250);
  }
+ function statCard(unit){
+  const trainer=run.scout ?? run.trainers[0];
+  const stats=unit.hp===undefined?fighter(unit,false,traits(field(trainer)),trainer):unit;
+  const details=element('aside',null,'tactics-stat-card');
+  const art=element('div',null,'tactics-stat-art');
+  art.append(idlePokemonPortrait(unit.name,null,null,true,0));
+  const types=element('div',null,'tactics-stat-types');
+  for(const type of dex[unit.name].slice(1,3).filter(Boolean))types.append(element('span',type));
+  art.append(types);
+  const title=element('header');
+  title.append(element('strong',unit.name+' '+ '★'.repeat(unit.star)),
+   element('small',run.pool.has(unit.name)?'● '+cost(unit.name):'Wild'));
+  const meter=(value,max,label,style)=>{
+   const row=element('div',null,'tactics-stat-meter '+style);
+   const bar=element('progress');bar.max=max;bar.value=value;
+   bar.setAttribute('aria-label',label);
+   row.append(bar,element('span',label+' '+Math.ceil(value)+' / '+max));
+   return row;
+  };
+  const items=element('div',null,'tactics-stat-items');
+  for(let i=0;i<3;i++){
+   const item=unit.items?.[i];
+   const slot=element('span',item?itemGlyph(item):'','tactics-item-slot');
+   if(item)slot.title=item;
+   items.append(slot);
+  }
+  const numbers=element('div',null,'tactics-stat-numbers');
+  for(const [label,value] of [['Attack',Math.round(stats.power)],['Defense',stats.defense],['Range',stats.range]]){
+   const cell=element('span');cell.append(element('small',label),element('strong',String(value)));numbers.append(cell);
+  }
+  details.append(art,title,meter(stats.hp,stats.max,'HP','is-hp'),meter(stats.mana,60,'Mana','is-mana'),
+   element('p',stats.move ?? 'No signature move'),items,numbers);
+  return details;
+ }
  function inspectUnit(unit){
-  const stats=unit.hp===undefined?fighter(unit,false,{},run.trainers[0]):unit;
   const details=element('dialog',null,'tactics-inspect');
-  const close=button('Done',()=>details.close());
-  details.append(element('h2',unit.name+' '+ '★'.repeat(unit.star)),
-   pokemonPortrait(unit.name),element('p',dex[unit.name].slice(1,3).filter(Boolean).join(' / ')+(run.pool.has(unit.name)?' · '+cost(unit.name)+' gold':'')),
-   element('p',Math.ceil(stats.hp)+' / '+stats.max+' HP · '+Math.floor(stats.mana)+' / 60 mana · Range '+stats.range),
-   element('p','Skill · '+(stats.move ?? 'None')),element('p','Items · '+((unit.items ?? []).join(' · ') || 'None')),close);
+  details.append(statCard(unit),button('Done',()=>details.close()));
   details.addEventListener('close',()=>details.remove(),{once:true});
   content.append(details);details.showModal();
  }
- function unitControls(tile,unit,editable){
+ function unitControls(tile,unit,editable,visual){
   tile.oncontextmenu=event=>{event.preventDefault();inspectUnit(unit);};
-  if(!editable)return;
-  tile.draggable=true;
-  tile.ondragstart=event=>{dragged=unit;event.dataTransfer.setData('text/plain',unit.name);};
-  tile.ondragend=()=>{dragged=null;};
+  let hoverCard;
+  const hide=()=>{hoverCard?.remove();hoverCard=null;};
+  const show=()=>{
+   if(dragged || hoverCard)return;
+   hoverCard=statCard(unit);
+   hoverCard.classList.add('is-hover');
+   content.append(hoverCard);
+   const rect=tile.getBoundingClientRect(),box=hoverCard.getBoundingClientRect();
+   hoverCard.style.left=Math.max(8,Math.min(rect.right+8,innerWidth-box.width-8))+'px';
+   hoverCard.style.top=Math.max(8,Math.min(rect.top,innerHeight-box.height-8))+'px';
+  };
+  tile.addEventListener('pointerenter',show);
+  tile.addEventListener('pointerleave',hide);
+  tile.addEventListener('focus',show);
+  tile.addEventListener('blur',hide);
+  if(!editable || !visual)return;
+  visual.draggable=true;
+  visual.ondragstart=event=>{
+   hide();dragged=unit;event.dataTransfer.setData('text/plain',unit.name);
+   event.dataTransfer.setDragImage(visual,visual.offsetWidth/2,visual.offsetHeight/2);
+  };
+  visual.ondragend=()=>{dragged=null;};
  }
+ function unitVisual(unit,direction){
+  const visual=element('span',null,'tactics-unit-visual');
+  visual.append(idlePokemonPortrait(unit.name,null,null,true,direction),element('small','★'.repeat(unit.star)));
+  return visual;
+ }
+ function itemGlyph(item){return ({Claw:'✦',Charm:'✧',Berry:'●',Scale:'◆'})[item] ?? '✹';}
  function dropUnit(tile,callback){
   tile.ondragover=event=>{if(dragged)event.preventDefault();};
   tile.ondrop=event=>{
@@ -344,7 +397,8 @@
     if(unit || !combat)tile.setAttribute('aria-label',unit?unit.name+' '+unit.star+' star':'Empty hex '+(x+1)+', '+(y+1));
     if(!combat && !scouting && y>=4)dropUnit(tile,unit=>moveUnit(player,position,unit));
     if(unit){
-     unitControls(tile,unit,!combat && !scouting);
+     const visual=unitVisual(unit,4);
+     unitControls(tile,unit,!combat && !scouting,visual);
      if(combat){
       const bars=element('span',null,'tactics-unit-bars');
       const hp=element('progress');
@@ -354,7 +408,7 @@
       bars.append(hp,mana);
       tile.append(bars);
      }
-     tile.append(combat?battlerSprite(unit):idlePokemonPortrait(unit.name,null,null,true,4),element('small','★'.repeat(unit.star)));
+     tile.append(visual);
      if(!combat)tile.setAttribute('aria-pressed',String(run.selected===unit));
     }
     row.append(tile);
@@ -396,7 +450,18 @@
  function battleLayout(player,units,rival=null){
   const layout=element('div',null,'tactics-layout'+(rival?' is-combat':''));
   const sidebar=element('aside',null,'tactics-sidebar');
-  sidebar.append(heading('Traits'));
+  sidebar.classList.add('tactics-loadout');
+  const inventory=element('div',null,'tactics-item-rail');
+  inventory.setAttribute('aria-label','Item inventory');
+  for(let i=0;i<Math.max(9,player.items.length);i++){
+   const item=player.items[i];
+   const slot=element('span',item?itemGlyph(item):'','tactics-item-slot');
+   if(item){slot.title=item;slot.tabIndex=0;slot.setAttribute('aria-label',item);}
+   inventory.append(slot);
+  }
+  const traitList=element('div',null,'tactics-trait-list');
+  traitList.append(heading('Traits'));
+  sidebar.append(inventory,traitList);
   const types=Object.entries(traits(field(player))).sort((a,b)=>b[1]-a[1]);
   for(const [type,count] of types){
    const entry=element('div',null,'tactics-trait'+(count>=2?' is-active':''));
@@ -413,11 +478,10 @@
    entry.tabIndex=0;
    entry.setAttribute('aria-label',type+' trait. '+tip.textContent);
    entry.append(badge,element('span',progress),tip);
-   sidebar.append(entry);
+   traitList.append(entry);
   }
-  if(!types.length)sidebar.append(element('small','Deploy Pokémon to activate traits.'));
-  sidebar.append(heading('Items'),element('small',player.items.join(' · ') || 'Empty'),
-   heading('Augments'),element('small',player.augments.join(' · ') || 'None yet'));
+  if(!types.length)traitList.append(element('small','No active traits.'));
+  if(player.augments.length)traitList.append(heading('Augments'),element('small',player.augments.join(' · ')));
   const middle=element('div',null,'tactics-center');
   const arena=element('div',null,'tactics-field');
   if(!rival)arena.append(board(run.scout?run.scout.units:units,player,false,Boolean(run.scout)));
@@ -456,9 +520,10 @@
    });
    tile.setAttribute('aria-label',unit?'Select '+unit.name:'Empty bench slot');
    if(unit){
-    unitControls(tile,unit,!combat);
+    const visual=unitVisual(unit,0);
+    unitControls(tile,unit,!combat,visual);
     tile.setAttribute('aria-pressed',String(run.selected===unit));
-    tile.append(idlePokemonPortrait(unit.name,null,null,true,0),element('small','★'.repeat(unit.star)));
+    tile.append(visual);
    }
    bench.append(tile);
   }
@@ -690,7 +755,7 @@
    mana.setAttribute('aria-label',unit.name+' mana');
    bars.append(hp,mana);
    node.append(bars,battlerSprite(unit));
-   node.oncontextmenu=event=>{event.preventDefault();inspectUnit(unit);};
+   unitControls(node,unit,false);
    layer.append(node);
    return {unit,node,hp,mana};
   });
