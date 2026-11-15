@@ -25,6 +25,11 @@ jobs:
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run release checks
+        run: node tests/release-smoke.cjs
       - uses: supabase/setup-cli@v3
       - name: Check deployment credentials
         run: |
