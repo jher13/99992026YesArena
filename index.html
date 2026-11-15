@@ -210,7 +210,7 @@ main{max-width:1190px}h1{font-size:clamp(26px,5vw,48px);color:#eff8ff}
 .damage-fill{display:block;height:100%;border-radius:4px}
 @media(max-width:560px){.damage-bar-row{grid-template-columns:1fr}}
 @media(min-width:760px) and (orientation:landscape){
- #battle #arena,#battle-dps{max-width:max(220px,calc((100dvh - 255px)*2))}
+ #battle #arena,#battle-dps{max-width:var(--battle-viewport-width)}
  #battle-dps{grid-column:3;grid-row:3;justify-self:center;width:100%;margin:0}
 }
 @media(max-width:759px), (orientation:portrait){
@@ -393,23 +393,23 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
  .has-room-chat .raid-seat:nth-child(1),.has-room-chat .raid-seat:nth-child(6){transform:translateY(-158px)}
 }
 @media(max-width:700px){.raid-chat{width:100%;justify-self:stretch}}
-#raid-boss-hud{width:min(100%,960px)}
+#raid-boss-hud{width:min(100%,var(--battle-viewport-width,960px))}
 .raid-boss-reading{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px;min-height:24px}
 #raid-boss-value{grid-column:2;grid-row:1;white-space:nowrap}
 #raid-boss-effects{grid-column:1;grid-row:1;display:flex;justify-content:flex-start;align-items:center;gap:4px;flex-wrap:wrap}
 #raid-boss-stages{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 #raid-boss-effects .battle-status-badge{margin:0}
 #battle.is-mega-raid #enemy-active,#battle.is-mega-raid #enemy-roster{display:none}
-#battle.is-mega-raid #arena{aspect-ratio:960/480;object-fit:contain;background:#101827;width:100%;max-width:960px;height:auto;justify-self:center}
+#battle.is-mega-raid #arena{aspect-ratio:2/1;object-fit:contain;background:#101827;height:auto;justify-self:center}
 @media(min-width:760px) and (orientation:landscape){
- #battle.is-mega-raid .battle-board{max-width:1196px;margin-inline:auto;grid-template-columns:minmax(64px,82px) minmax(98px,140px) minmax(0,960px);gap:4px 7px}
- #battle.is-mega-raid #battle-dps{grid-column:3;grid-row:4;max-width:960px}
- #battle.is-mega-raid #status{max-width:1196px;margin:2px auto}
+ #battle .battle-board{--battle-viewport-width:max(220px,calc((100dvh - 255px)*2))}
+ #battle.is-mega-raid #battle-dps{grid-column:3;grid-row:4}
+ #battle.is-mega-raid #status{margin-block:2px}
  #battle.is-mega-raid #raid-boss-hud{gap:2px}
  #battle.is-mega-raid #raid-boss-hp{height:12px}
  #battle.is-mega-raid .raid-boss-reading{min-height:18px}
  #battle.is-mega-raid #raid-boss-hud{grid-column:3;grid-row:1;margin-bottom:0}
- #battle.is-mega-raid .arena-header-info{grid-column:3;grid-row:2;width:min(100%,960px);justify-self:center}
+ #battle.is-mega-raid .arena-header-info{grid-column:3;grid-row:2;width:min(100%,var(--battle-viewport-width));justify-self:center}
  #battle.is-mega-raid :is(#arena,#player-roster,#player-active){grid-row:3}
 }
 .client-update-dialog{max-width:min(420px,90vw);border:1px solid #798bb3;border-radius:12px;background:#17243a;color:#fff;padding:20px}
@@ -8663,6 +8663,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.15.10',changes:['Matched the Mega raid viewport to standard battles with opponent cards hidden.']},
  {version:'0.15.9',changes:['Restored the 960 × 480 raid viewport while keeping the 1080 × 600 playable arena.']},
  {version:'0.15.8',changes:['Compacted the Mega raid HUD, moved the DPS meter below the arena, and added automatic client update checks.']},
  {version:'0.15.7',changes:['Centered the raid HUD, resized the arena, and added tier-scaled daily Co-op ticket rewards.']},
