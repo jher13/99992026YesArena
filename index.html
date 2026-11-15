@@ -505,6 +505,26 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .gambit-dialog .gambit-list li{background:#eaf3e7;border:1px solid #c4d6c8;border-radius:8px;margin:7px 0;padding:8px}
 .gambit-dialog .gambit-unavailable{color:#8c4828}
 @media(max-width:700px){#home .feature-orb{width:min(100%,130px)}}
+
+:where(#home,#menu,#pokedex,#skillset,#abilities,#item-bag,#shop,#skill-shop,#friendlist,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page,#wild-regions,#wild-result,#roguelit,#battle-settings,#home-dialog.collection-dialog,.gambit-dialog,#shop-purchase,#bag-craft-results){
+ color-scheme:light;
+}
+:where(#home,#menu,#pokedex,#skillset,#abilities,#item-bag,#shop,#skill-shop,#friendlist,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page,#wild-regions,#wild-result,#roguelit,#battle-settings,#home-dialog.collection-dialog,.gambit-dialog,#shop-purchase,#bag-craft-results) input::placeholder{color:#52675d;opacity:1}
+:is(#menu,#pokedex,#skillset,#abilities,#battle-settings,#home-dialog.collection-dialog,.gambit-dialog,#friendlist,#guild-directory,#shop-purchase) :is(input,select,button):focus-visible{outline:2px solid #397257;outline-offset:2px}
+#menu :is(.detail-actions,.team-unowned,.skill-teach small,.pc-learnable-skills small){color:#354f44}
+#menu .skill-lesson-status{color:#2a622e}
+#menu .stat-chart{background:#1b3040}
+#pokedex :is(.dex-status,.dex-summary){color:#354f44}
+#pokedex .dex-tile.is-uncaught{color:#354f44;background:#e1e9df}
+#pokedex .dex-tile.is-uncaught[aria-pressed=true]{color:#253d36;background:#c7dfcb;border-color:#426e54}
+:is(#wild-regions,#wild-result) .wild-panel{background:#eaf3e7;border-color:#c4d6c8;color:#253d36}
+:is(#wild-regions,#wild-result) .wild-panel p{color:#354f44}
+:is(#wild-regions,#wild-result) .wild-actions button small,#roguelit .gym-card:disabled small{color:#fff}
+#home-dialog.collection-dialog :is(.damage-team,.damage-tabs button,.damage-bar-row){color:#fff}
+#home-dialog.collection-dialog .damage-team h3{color:#f2f8f4}
+#home-dialog.collection-dialog button small{color:inherit}
+#home-dialog.collection-dialog a{color:#245944}
+#shop-purchase input:not([type=range]){background:#fff;color:#253d36;border:1px solid #9db5a3}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -8792,6 +8812,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.15.18',changes:['Improved text contrast across the light theme, including PC stats, Pokédex states, and result screens.']},
  {version:'0.15.17',changes:['Restyled Gambits, Abilities, and the main menu to match the shops.']},
  {version:'0.15.16',changes:['Restyled Pokébattle, Roguelit, and Skillset to match the shops.']},
  {version:'0.15.15',changes:['Restyled the Pokédex, PC, PvP menus, and Settings to match the shops.']},
