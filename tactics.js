@@ -104,7 +104,9 @@
    }));
    grid.append(tile);
   }
-  content.replaceChildren(heading(choice.kind==='augment'?'Choose an augment':'Shared carousel'),grid);
+  const panel=element('section',null,'tactics-choice');
+  panel.append(heading(choice.kind==='augment'?'Choose an augment':'Shared carousel'),grid);
+  content.replaceChildren(panel);
  }
  function neutralTrainer(){
   const count=run.round<=3?run.round:Math.min(6,Math.floor(run.round/3)+1);
@@ -228,7 +230,16 @@
     tile.className='tactics-hex'+(unit?.opponent?' is-opponent':'');
     tile.setAttribute('aria-label',unit?unit.name+' '+unit.star+' star':'Empty hex '+(x+1)+', '+(y+1));
     if(unit){
-     tile.append(pokemonPortrait(unit.name),element('small',combat?Math.ceil(unit.hp)+' HP · '+Math.floor(unit.mana)+' MP':'★'.repeat(unit.star)));
+     if(combat){
+      const bars=element('span',null,'tactics-unit-bars');
+      const hp=element('progress');
+      hp.max=unit.max;hp.value=unit.hp;hp.setAttribute('aria-label',unit.name+' HP');
+      const mana=element('progress');
+      mana.max=60;mana.value=unit.mana;mana.setAttribute('aria-label',unit.name+' mana');
+      bars.append(hp,mana);
+      tile.append(bars);
+     }
+     tile.append(pokemonPortrait(unit.name),element('small','★'.repeat(unit.star)));
      if(!combat)tile.setAttribute('aria-pressed',String(run.selected===unit));
     }
     row.append(tile);
@@ -237,33 +248,88 @@
   }
   return grid;
  }
+ function standingsPanel(){
+  const standings=element('ol',null,'tactics-standings');
+  for(const trainer of [...run.trainers].sort((a,b)=>b.hp-a.hp)){
+   const entry=element('li',null,trainer===run.trainers[0]?'is-you':'');
+   entry.append(element('span',trainer.name),element('strong',String(trainer.hp)));
+   standings.append(entry);
+  }
+  return standings;
+ }
+ function stageHeader(player,mode){
+  const header=element('header',null,'tactics-stage');
+  header.append(element('strong','Stage '+stageLabel(run.round)),element('span',mode),
+   element('span',field(player).length+' / '+player.level+' deployed'));
+  return header;
+ }
+ function battleLayout(player,units,rival=null){
+  const layout=element('div',null,'tactics-layout');
+  const sidebar=element('aside',null,'tactics-sidebar');
+  sidebar.append(heading('Traits'));
+  const types=Object.entries(traits(field(player))).sort((a,b)=>b[1]-a[1]);
+  for(const [type,count] of types){
+   const entry=element('div',null,'tactics-trait'+(count>=2?' is-active':''));
+   const badge=element('span',type,'home-type-badge');
+   badge.style.setProperty('--type-color',moveColors[type] ?? '#b7c7dd');
+   entry.append(badge,element('span',count+' / 2'));
+   sidebar.append(entry);
+  }
+  if(!types.length)sidebar.append(element('small','Deploy Pokémon to activate traits.'));
+  sidebar.append(heading('Items'),element('small',player.items.join(' · ') || 'Empty'),
+   heading('Augments'),element('small',player.augments.join(' · ') || 'None yet'));
+  const middle=element('div',null,'tactics-center');
+  const arena=element('div',null,'tactics-field');
+  arena.append(board(units,player,Boolean(rival)));
+  middle.append(stageHeader(player,rival?'Combat · '+rival:neutralRound(run.round)?'Planning · Neutral round':'Planning'),arena);
+  const rankings=element('aside',null,'tactics-sidebar');
+  rankings.append(heading('Standings'),standingsPanel());
+  layout.append(sidebar,middle,rankings);
+  return {layout,middle,arena};
+ }
  function render(){
   const player=run.trainers[0];
-  const standings=element('ol',null,'tactics-standings');
-  for(const trainer of [...run.trainers].sort((a,b)=>b.hp-a.hp))standings.append(element('li',trainer.name+' · '+trainer.hp+' HP'));
   if(player.hp<=0 || run.trainers.every(t=>t===player || !t.hp)){
-   content.replaceChildren(heading(player.hp?'First place':'Place '+run.place),standings,button('Play again',start),button('Back to Events',events));
+   content.replaceChildren(heading(player.hp?'First place':'Place '+run.place),standingsPanel(),button('Play again',start),button('Back to Events',events));
    return;
   }
   if(run.choice){renderChoice(run.choice);return;}
-  const header=element('p','Stage '+stageLabel(run.round)+(neutralRound(run.round)?' · Neutral round':'')+' · '+player.gold+' gold · Level '+player.level+' · '+field(player).length+'/'+player.level+' deployed');
-  const shop=element('div',null,'shop-grid');
-  player.shop.forEach((name,i)=>{
-   if(!name){shop.append(element('div','—','bag-item'));return;}
-   const tile=card({name},'Cost '+cost(name)+' gold');
-   tile.append(button('Buy',()=>{if(buy(player,i))render();},player.gold<cost(name) ||
-    (player.units.filter(unit=>unit.position===null).length>=benchLimit && player.units.filter(unit=>unit.name===name && unit.star===1).length<2)));
-   shop.append(tile);
-  });
-  const bench=element('div',null,'shop-grid');
-  for(const unit of player.units.filter(unit=>unit.position===null)){
-   const tile=card(unit,'★'.repeat(unit.star));
-   tile.append(button(run.selected===unit?'Selected':'Select',()=>{run.selected=unit;render();}));
+  const {layout,middle}=battleLayout(player,player.units);
+  const bench=element('div',null,'tactics-bench');
+  const benched=player.units.filter(unit=>unit.position===null);
+  for(let i=0;i<benchLimit;i++){
+   const unit=benched[i];
+   const tile=button('',()=>{
+    if(unit){run.selected=unit;render();}
+   },!unit);
+   tile.className='tactics-bench-slot';
+   tile.setAttribute('aria-label',unit?'Select '+unit.name:'Empty bench slot');
+   if(unit){
+    tile.setAttribute('aria-pressed',String(run.selected===unit));
+    tile.append(pokemonPortrait(unit.name),element('small','★'.repeat(unit.star)));
+   }
    bench.append(tile);
   }
-  const controls=element('div',null,'menu-actions');
-  controls.append(button('Reroll · 2 gold',()=>{player.gold-=2;roll(player);render();},player.gold<2),
-   button('Buy 4 XP · 4 gold',()=>{player.gold-=4;xp(player,4);render();},player.gold<4 || player.level>=maxLevel));
+  const shop=element('div',null,'tactics-shop');
+  const economy=element('div',null,'tactics-economy');
+  economy.append(element('strong',player.gold+' gold'),element('small','Level '+player.level+(player.level>=maxLevel?' · Max':' · '+player.xp+'/'+levels[player.level]+' XP')),
+   button('Reroll · 2 gold',()=>{player.gold-=2;roll(player);render();},player.gold<2),
+   button('Buy XP · 4 gold',()=>{player.gold-=4;xp(player,4);render();},player.gold<4 || player.level>=maxLevel));
+  shop.append(economy);
+  for(const [index,name] of player.shop.entries()){
+   const tile=button('',()=>{if(buy(player,index))render();},!name || player.gold<cost(name) ||
+    (benched.length>=benchLimit && player.units.filter(unit=>unit.name===name && unit.star===1).length<2));
+   tile.className='tactics-offer'+(name?' tier-'+cost(name):'');
+   if(name){
+    tile.append(pokemonPortrait(name),element('small',dex[name].slice(1,3).filter(Boolean).join(' / ')),
+     element('strong',name),element('span',cost(name)+' gold','tactics-offer-cost'));
+    tile.setAttribute('aria-label','Buy '+name+' for '+cost(name)+' gold');
+   }else tile.append(element('small','Sold'));
+   shop.append(tile);
+  }
+  const controls=element('div',null,'tactics-unit-actions');
+  controls.append(button('Start combat',play,!field(player).length));
+  middle.append(bench,controls);
   const selected=run.selected;
   if(selected){
    controls.append(button('Sell '+selected.name,()=>{
@@ -279,12 +345,8 @@
     selected.position=null;run.selected=null;render();
    },player.units.filter(unit=>unit.position===null).length>=benchLimit));
   }
-  const bonuses=Object.entries(traits(field(player))).filter(([,count])=>count>=2).map(([type,count])=>type+' '+count);
-  content.replaceChildren(heading('Planning'),header,element('p',run.result || 'Select a Pokémon, then select a hex on your side.'),
-   board(player.units,player),element('p',bonuses.length?'Active traits · '+bonuses.join(' · '):'Deploy two Pokémon of the same type to activate a trait.'),
-   button('Start combat',play,!field(player).length),heading('Bench'),bench,heading('Shop'),shop,controls,
-   element('p',player.level>=maxLevel?'Max level':'XP '+player.xp+' / '+levels[player.level]),heading('Items & augments'),element('p',player.items.length?player.items.join(' · '):'No items in inventory.'),
-   element('p',player.augments.length?player.augments.join(' · '):'No augments selected.'),heading('Standings'),standings);
+  const hint=element('p',run.result || 'Select a Pokémon, then choose a hex on your side.','tactics-hint');
+  content.replaceChildren(layout,shop,hint);
  }
  function planAI(trainer){
   if(trainer.gold>=10 && trainer.level<maxLevel){trainer.gold-=4;xp(trainer,4);}
@@ -397,11 +459,13 @@
   const rival=neutral?neutralTrainer():opponents.shift();
   const ghost={units:field(rival).map(unit=>({...unit})),mods:rival.mods};
   const units=battle(player,rival);
+  const {layout,arena}=battleLayout(player,units,rival.name);
+  content.replaceChildren(layout);
   for(let i=0;i<100 && outcome(units)===null;i++){
-   content.replaceChildren(heading('You vs '+rival.name),board(units.filter(u=>u.hp>0),player,true));
    await new Promise(resolve=>setTimeout(resolve,115));
    if(run!==current || phase!=='events')return;
    tick(units);
+   arena.replaceChildren(board(units.filter(u=>u.hp>0),player,true));
   }
   const sign=outcome(units) ?? 0;
   if(neutral){

@@ -545,16 +545,58 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 #gym-collection .gym-badge-sprite{width:48px;height:48px;background:url('./assets/gym-badges.png') var(--badge-x) var(--badge-y)/480px 336px no-repeat;image-rendering:pixelated}
 #gym-collection .gym-badge-sprite.is-uncollected{filter:grayscale(1);opacity:.62}
 
-#events{max-width:1060px}
-.tactics-board{--hex:min(10vw,62px);width:max-content;max-width:100%;margin:10px auto;padding:6px}
+
+#events{max-width:1400px}
+#events:has(.tactics-layout,.tactics-choice){background:#101c20;color:#eee4c9;border:1px solid #786440;padding:10px clamp(6px,2vw,22px)}
+#events:has(.tactics-layout,.tactics-choice) .menu-heading h2{color:#ead6a7;font-size:18px}
+#events :is(.tactics-layout,.tactics-choice) .bag-section-title{color:#e5cc91;margin:8px 0}
+#events :is(.tactics-layout,.tactics-choice) .bag-section-title::before,
+#events :is(.tactics-layout,.tactics-choice) .bag-section-title::after{background:#887449}
+.tactics-layout{display:grid;grid-template-columns:minmax(112px,1fr) minmax(0,5fr) minmax(112px,1fr);gap:8px;align-items:start}
+.tactics-sidebar,.tactics-stage,.tactics-shop,.tactics-bench,.tactics-unit-actions,.tactics-choice{background:#172226;border:1px solid #806b44;border-radius:5px;color:#eee4c9}
+.tactics-sidebar{padding:6px;min-width:0}
+.tactics-sidebar small{display:block;overflow-wrap:anywhere}
+.tactics-trait,.tactics-standings li{display:flex;align-items:center;justify-content:space-between;gap:4px;padding:4px;background:#202d30;border-left:2px solid #6e786d;margin-bottom:4px;font-size:12px}
+.tactics-trait.is-active,.tactics-standings .is-you{border-color:#e3bc6c;background:#344339}
+.tactics-standings{list-style:none;margin:0;padding:0}
+.tactics-center{min-width:0}
+.tactics-stage{display:flex;justify-content:center;gap:clamp(6px,2vw,20px);padding:7px;font-size:12px;text-align:center}
+.tactics-stage strong{color:#f4d990}
+.tactics-field{background:#364f3b url('./assets/tactics-arena.webp') center/cover;border:1px solid #90784e;min-width:0;padding:10px 2px;display:grid;place-items:center;overflow:hidden}
+.tactics-board{--hex:min(9vw,clamp(32px,5.5dvh,62px));width:max-content;max-width:100%;padding:3px}
 .tactics-hex-row{display:flex;gap:2px;margin-top:-3px}
 .tactics-hex-row:nth-child(even){padding-left:calc(var(--hex)/2)}
-#events button.tactics-hex{padding:3px;width:var(--hex);height:calc(var(--hex)*.86);clip-path:polygon(12% 0,88% 0,100% 50%,88% 100%,12% 100%,0 50%);display:grid;place-items:center;background:#d0e3d3;color:#253d36;border:0;font-size:clamp(7px,1.65vw,11px)}
-#events button.tactics-hex:disabled{background:#dfe9e0;color:#253d36}
-#events button.tactics-hex.is-opponent{background:#efc9c5}
-#events button.tactics-hex[aria-pressed=true]{background:#8cbea2}
-.tactics-hex canvas{max-width:100%;max-height:30px;border:0;background:transparent}
-.tactics-standings{columns:2;padding-left:24px}
+#events button.tactics-hex{position:relative;padding:2px;width:var(--hex);height:calc(var(--hex)*.87);clip-path:polygon(12% 0,88% 0,100% 50%,88% 100%,12% 100%,0 50%);display:grid;place-items:center;background:#273e36a3;color:#fff0bb;border:0;font-size:clamp(7px,1.65vw,11px)}
+#events button.tactics-hex:disabled{background:#182a2466;color:#fff0bb}
+#events button.tactics-hex.is-opponent{background:#7439319e}
+#events button.tactics-hex[aria-pressed=true]{background:#6e7c3c}
+.tactics-hex canvas,.tactics-bench-slot canvas,.tactics-offer canvas{max-width:100%;max-height:30px;border:0;background:transparent;image-rendering:pixelated}
+.tactics-hex small{position:absolute;bottom:0;text-shadow:0 1px #111}
+.tactics-unit-bars{position:absolute;top:2px;left:19%;width:62%;display:grid;gap:1px}
+.tactics-unit-bars progress{width:100%;height:3px;accent-color:#9dde68}
+.tactics-unit-bars progress+progress{accent-color:#69beef}
+.tactics-bench{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:3px;padding:3px}
+#events .tactics-bench-slot{min-width:0;min-height:40px;display:grid;place-items:center;padding:2px;background:#293735;color:#f7db96;border-color:#786b50;border-radius:3px}
+#events .tactics-bench-slot[aria-pressed=true]{border-color:#f4cb77;background:#504526}
+.tactics-unit-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;padding:4px}
+.tactics-shop{display:grid;grid-template-columns:minmax(108px,.84fr) repeat(5,minmax(0,1fr));gap:4px;padding:5px;margin-top:6px}
+.tactics-economy{display:grid;gap:3px;text-align:center}
+.tactics-economy strong,.tactics-offer-cost{color:#f3d582}
+#events :is(.tactics-unit-actions,.tactics-economy,.tactics-choice) button{background:#243334;border-color:#88734e;color:#f7eaca;font-size:11px;padding:4px 6px}
+#events .tactics-offer{display:grid;gap:2px;grid-template-rows:auto auto 1fr auto;justify-items:center;min-width:0;padding:4px;background:linear-gradient(145deg,#33464c,#19252b);color:#f6ead0;border:1px solid #7b897b;border-bottom-width:3px;border-radius:3px;overflow-wrap:anywhere;font-size:12px}
+#events .tactics-offer:disabled{opacity:.68}
+#events .tactics-offer.tier-2{border-color:#7cbd85}
+#events .tactics-offer.tier-3{border-color:#79aee2}
+#events .tactics-offer small,.tactics-offer-cost{font-size:10px}
+#events .tactics-hint{color:#c8d3c7;text-align:center;font-size:12px;margin:6px 0}
+.tactics-choice{padding:12px}
+#events .tactics-choice .bag-item small{color:#d5dccc}
+@media(max-width:760px){
+ .tactics-layout{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .tactics-center{grid-column:1/-1;grid-row:1}
+ .tactics-shop{grid-template-columns:repeat(5,minmax(0,1fr))}
+ .tactics-economy{grid-column:1/-1;display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
+}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -8851,6 +8893,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.19.0',changes:['Reworked the TFT interface with a central arena, side panels, bench, and bottom shop.']},
  {version:'0.18.0',changes:['Added TFT item crafting, augments, carousels, and neutral rounds.']},
  {version:'0.17.0',changes:['Rebuilt Pokémon Teamfight Tactics as an eight-trainer elimination mode with hex combat and a shared shop.']},
  {version:'0.16.0',changes:['Added an eight-round Pokémon Teamfight Tactics event with a shop, bench, merges, and type bonuses.']},
@@ -9051,4 +9094,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.18.0"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.19.0"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
