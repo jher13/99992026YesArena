@@ -4,7 +4,7 @@
 <style>
 .currency-pixel{width:16px;height:16px;vertical-align:-3px;margin-right:6px;shape-rendering:crispEdges}
 .dex-art canvas.dex-preview{width:auto;height:auto;max-width:min(100%,120px);max-height:120px;object-fit:contain;transform:none}
-*{box-sizing:border-box}body{margin:0;background:#101b18;color:#eff6e9;font:16px system-ui}main{max-width:1060px;margin:auto;padding:24px}header,.toolbar,.choices{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}h1{font-size:clamp(32px,6vw,62px);letter-spacing:-.06em;margin:0}p{color:#c1d5c7}canvas{width:100%;display:block;background:#1c372d;border:1px solid #547869;border-radius:16px;touch-action:manipulation}button{font:inherit;background:#244438;color:inherit;border:1px solid #547869;border-radius:9px;padding:10px 15px;cursor:pointer}button:hover,button[aria-pressed=true]{border-color:#d5ed95;background:#35594a}button:disabled{opacity:.55;cursor:default}#start{background:#d5ed95;color:#142617;font-weight:750}section{margin:14px 0}.choices{justify-content:flex-start}.choices button{text-align:left}.choices small{display:block;color:#c1d5c7;margin-top:4px}#status{min-height:1.5em}#wave{color:#d5ed95;font-weight:700}
+*{box-sizing:border-box}body{margin:0;background:#101b18;color:#eff6e9;font:16px system-ui}main{max-width:1060px;margin:auto;padding:24px}header,.toolbar,.choices{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}h1{font-size:clamp(32px,6vw,62px);letter-spacing:-.06em;margin:0}p{color:inherit}canvas{width:100%;display:block;background:#1c372d;border:1px solid #547869;border-radius:16px;touch-action:manipulation}button{font:inherit;background:#244438;color:inherit;border:1px solid #547869;border-radius:9px;padding:10px 15px;cursor:pointer}button:hover,button[aria-pressed=true]{border-color:#d5ed95;background:#35594a}button:disabled{opacity:.55;cursor:default}#start{background:#d5ed95;color:#142617;font-weight:750}section{margin:14px 0}.choices{justify-content:flex-start}.choices button{text-align:left}.choices small{display:block;color:inherit;margin-top:4px}#status{min-height:1.5em}#wave{color:#d5ed95;font-weight:700}
 
 body{background:radial-gradient(ellipse at 75% 0,#304f61,transparent 48%),linear-gradient(135deg,#253653,#10182e 75%);min-height:100vh}
 main{max-width:1190px}h1{font-size:clamp(26px,5vw,48px);color:#eff8ff}
@@ -737,11 +737,31 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .tactics-item-slot{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);padding:1px}
 .tactics-choice .tactics-item-slot{width:25px;height:25px}
 
-#battle-pass>progress{display:block;width:min(100%,480px);height:14px;accent-color:#326b54}
-.pass-quests,.pass-rewards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:10px;margin-block:14px}
-.pass-panel{display:grid;gap:6px;padding:12px;background:#e4eee3;border:1px solid #b7cdbf;border-radius:9px;color:#203c32}
-.pass-panel :is(h4,p){margin:0}
-.pass-panel button{justify-self:start}
+#events{max-width:1400px;background:radial-gradient(ellipse at 42% 0%,#692617 0%,#32150f 43%,#1c100e 77%);color:#fff2df;border:1px solid #85462f}
+#events .menu-heading h2{color:#fff2df}
+#events button{background:#40231a;color:#fff2df;border:1px solid #a06146}
+#events button:disabled{background:#382620;color:#e3c6b4}
+#battle-pass :is(p,small){color:#f6d5bd}
+#battle-pass h3{margin:12px 0 8px}
+#battle-pass progress{display:block;width:100%;height:14px;accent-color:#ff9b49}
+.pass-hero,.pass-quests{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pass-hero{grid-template-columns:2fr 1fr}
+.pass-feature{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;padding:clamp(12px,3vw,32px);border:1px solid #a55736;border-radius:14px;background:linear-gradient(135deg,#351811,#672a17)}
+.pass-feature-copy h4{font-size:clamp(24px,5vw,54px);line-height:1.06;margin:8px 0 16px;color:#ffcf87}
+.pass-showcase{display:grid;place-items:center;flex:none;width:clamp(72px,20vw,190px);aspect-ratio:1;border:1px solid #c97545;border-radius:12px;background:repeating-conic-gradient(from 8deg,#ffc36e14 0deg 10deg,transparent 10deg 20deg),radial-gradient(#984023,#57221b 55%,#301615)}
+#battle-pass canvas{width:65%;height:auto;aspect-ratio:1;border:0;background:transparent;image-rendering:pixelated}
+.pass-panel{padding:14px;border-radius:12px;background:#2b1713;border:1px solid #824732}
+.pass-panel :is(h4,p){margin:0 0 6px}
+.pass-progress button{margin-top:12px}
+#events .pass-progress button:not(:disabled){background:#ffd086;color:#371b0e;border-color:#ffc06f}
+.pass-track{display:grid;grid-auto-flow:column;grid-auto-columns:clamp(124px,15vw,165px);gap:10px;overflow-x:auto;padding:4px 2px 10px;scrollbar-color:#be754b #301911}
+.pass-reward{display:grid;grid-template-rows:auto 1fr auto;gap:6px;text-align:center;min-width:0}
+.pass-tier{border-bottom:2px solid #b0613d;padding:4px}
+#events .pass-reward-preview{display:grid;justify-items:center;align-content:start;gap:4px;padding:8px 4px;width:100%;background:radial-gradient(at top,#80452c,#3d1f18 70%)}
+#events .pass-reward-preview[aria-pressed=true]{border-color:#ffc271;box-shadow:inset 0 0 0 1px #ffc271}
+.pass-quests{margin-top:8px}
+#events :is(button,.pass-track):focus-visible{outline:2px solid #ffcd89;outline-offset:2px}
+@media(max-width:620px){.pass-hero,.pass-quests{grid-template-columns:1fr}}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -2415,7 +2435,7 @@ function recordBattlePass(events) {
  pass.xp=Math.min(limit,pass.xp+earned);
  saveWildProgress();
 }
-function claimPassReward(index) {
+function claimPassReward(index,refresh=true) {
  const pass=battlePassState();
  const reward=passRewards[index];
  if(!reward || pass.claimed.includes(index) || pass.xp<(index+1)*passTierXP)return;
@@ -2425,21 +2445,63 @@ function claimPassReward(index) {
  else wildProgress[kind][name]=(wildProgress[kind][name] ?? 0)+amount;
  pass.claimed.push(index);
  saveWildProgress();
- renderBattlePass();
+ if(refresh)renderBattlePass();
 }
+let selectedPassReward=null;
 function renderBattlePass() {
  const pass=battlePassState();
- const level=Math.floor(pass.xp/passTierXP);
+ const level=Math.min(passRewards.length,Math.floor(pass.xp/passTierXP));
  const view=byId('battle-pass');
+ const scroll=view.querySelector('.pass-track')?.scrollLeft;
+ const makeButton=(label,action)=>{
+  const node=element('button',label);
+  node.type='button';
+  node.onclick=action;
+  return node;
+ };
+ const available=passRewards.map((_,index)=>index).filter(index=>index<level && !pass.claimed.includes(index));
+ const selected=selectedPassReward ?? available[0] ?? Math.min(level,passRewards.length-1);
+ const [,name,amount]=passRewards[selected];
+ const featured=element('div',null,'pass-feature');
+ const copy=element('div',null,'pass-feature-copy');
+ copy.append(element('h3','Battle Pass'),element('small','Tier '+(selected+1)+' reward'),element('h4',name+' ×'+amount),
+  makeButton('Item Bag',openItemBag));
+ const showcase=element('div',null,'pass-showcase');
+ showcase.append(bagItemIcon(name));
+ featured.append(copy,showcase);
  const meter=element('progress');
  meter.max=passTierXP;
  meter.value=level===passRewards.length?passTierXP:pass.xp%passTierXP;
  meter.setAttribute('aria-label','XP toward the next battle pass tier');
- const bag=element('button','Item Bag');
- bag.onclick=openItemBag;
- view.replaceChildren(element('h3','Battle Pass'),element('p',
-  level===passRewards.length?'Tier '+level+' · Pass complete':'Tier '+level+' · '+meter.value+' / '+passTierXP+' XP'),meter,
-  element('p','Earn 10 XP for finishing a battle, 5 extra XP for a win, and 5 XP per catch.'),bag);
+ const progress=element('section',null,'pass-panel pass-progress');
+ const claimAll=makeButton('Claim all ('+available.length+')',()=>{
+  for(const index of available)claimPassReward(index,false);
+  renderBattlePass();
+ });
+ claimAll.disabled=!available.length;
+ progress.append(element('h3','Tier '+level),element('p',level===passRewards.length?'Pass complete':meter.value+' / '+passTierXP+' XP to tier '+(level+1)),meter,claimAll);
+ const hero=element('div',null,'pass-hero');
+ hero.append(featured,progress);
+ const rewards=element('div',null,'pass-track');
+ rewards.tabIndex=0;
+ rewards.setAttribute('aria-label','Battle Pass tier rewards');
+ for(const [index,[,rewardName,count]] of passRewards.entries()) {
+  const card=element('section',null,'pass-reward');
+  const claimed=pass.claimed.includes(index);
+  const preview=makeButton('',()=>{
+   selectedPassReward=index;
+   renderBattlePass();
+   view.querySelectorAll('.pass-reward-preview')[index]?.focus({preventScroll:true});
+  });
+  preview.className='pass-reward-preview';
+  preview.setAttribute('aria-pressed',String(selected===index));
+  preview.append(bagItemIcon(rewardName),element('strong',rewardName+' ×'+count));
+  const claim=makeButton(claimed?'Claimed':level>index?'Claim':'Locked',()=>claimPassReward(index));
+  claim.disabled=claimed || level<=index;
+  claim.setAttribute('aria-label',claim.textContent+' tier '+(index+1)+' reward');
+  card.append(element('small','Tier '+(index+1),'pass-tier'),preview,claim);
+  rewards.append(card);
+ }
  const questsView=element('div',null,'pass-quests');
  for(const [period,quests] of Object.entries(passQuests)) {
   const section=element('section',null,'pass-panel');
@@ -2451,18 +2513,10 @@ function renderBattlePass() {
   }
   questsView.append(section);
  }
- const rewards=element('div',null,'pass-rewards');
- for(const [index,[,name,amount]] of passRewards.entries()) {
-  const card=element('section',null,'pass-panel');
-  const claimed=pass.claimed.includes(index);
-  const claim=element('button',claimed?'Claimed':level>index?'Claim':'Locked');
-  claim.disabled=claimed || level<=index;
-  claim.setAttribute('aria-label',claim.textContent+' tier '+(index+1)+' reward');
-  claim.onclick=()=>claimPassReward(index);
-  card.append(element('small','Tier '+(index+1)),element('strong',name+' ×'+amount),claim);
-  rewards.append(card);
- }
- view.append(questsView,element('h3','Tier rewards'),rewards);
+ view.replaceChildren(hero,element('h3','Tier rewards'),rewards,element('h3','Quests'),questsView,
+  element('p','Earn 10 XP per finished battle, 5 extra XP per win, and 5 XP per catch.'));
+ if(scroll===undefined)rewards.scrollLeft=rewards.children[selected].offsetLeft-rewards.children[0].offsetLeft;
+ else rewards.scrollLeft=scroll;
 }
 function normalizeBattleAI(ai) {
  const gambits=Array.isArray(ai?.gambits)?ai.gambits.flatMap(rule=>{
@@ -9136,6 +9190,8 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.2',changes:['Restyled the Battle Pass with a magma-themed featured reward and horizontal reward track.']},
+ {version:'0.22.1',changes:['Improved Battle Pass text contrast and made unstyled text inherit its surface color.']},
  {version:'0.22.0',changes:['Added the Events Battle Pass with daily quests, weekly quests, and claimable item rewards.']},
  {version:'0.21.9',changes:['Added floating damage numbers and orange critical hits in Fight Tactics.']},
  {version:'0.21.8',changes:['Updated Fight Tactics elemental damage, signature move animations and tooltips, and item recipe tooltips.']},
@@ -9360,7 +9416,7 @@ showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
 </script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script>
-byId('home-events').onclick=()=>{phase='events';showScreen('events');renderBattlePass();};
+byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
 <script src="./tactics.js?v=0.22.0"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
