@@ -217,18 +217,18 @@
   return counts;
  }
  function board(units,player,combat=false){
-  const grid=element('div',null,'tactics-board');
+  const grid=element('div',null,'tactics-board'+(combat?' is-combat':''));
   for(let y=0;y<8;y++){
    const row=element('div',null,'tactics-hex-row');
    for(let x=0;x<7;x++){
     const position=cells[y*7+x];
     const unit=units.find(unit=>unit.position?.x===x && unit.position?.y===y);
-    const tile=button('',()=>{
+    const tile=combat?element('div'):button('',()=>{
      if(run.selected && run.selected!==unit)moveUnit(player,position);
      else if(unit){run.selected=unit;render();}
     },combat || y<4);
-    tile.className='tactics-hex'+(unit?.opponent?' is-opponent':'');
-    tile.setAttribute('aria-label',unit?unit.name+' '+unit.star+' star':'Empty hex '+(x+1)+', '+(y+1));
+    tile.className='tactics-hex'+(unit?.opponent?' is-opponent':'')+(unit?' is-occupied':'');
+    if(unit || !combat)tile.setAttribute('aria-label',unit?unit.name+' '+unit.star+' star':'Empty hex '+(x+1)+', '+(y+1));
     if(unit){
      if(combat){
       const bars=element('span',null,'tactics-unit-bars');
@@ -239,7 +239,7 @@
       bars.append(hp,mana);
       tile.append(bars);
      }
-     tile.append(pokemonPortrait(unit.name),element('small','★'.repeat(unit.star)));
+     tile.append(pokemonPortrait(unit.name,null,combat,unit.opponent?0:4),element('small','★'.repeat(unit.star)));
      if(!combat)tile.setAttribute('aria-pressed',String(run.selected===unit));
     }
     row.append(tile);
@@ -252,7 +252,9 @@
   const standings=element('ol',null,'tactics-standings');
   for(const trainer of [...run.trainers].sort((a,b)=>b.hp-a.hp)){
    const entry=element('li',null,trainer===run.trainers[0]?'is-you':'');
-   entry.append(element('span',trainer.name),element('strong',String(trainer.hp)));
+   const health=element('progress');
+   health.max=100;health.value=trainer.hp;health.setAttribute('aria-label',trainer.name+' HP');
+   entry.append(element('span',trainer.name),element('strong',String(trainer.hp)),health);
    standings.append(entry);
   }
   return standings;
@@ -264,7 +266,7 @@
   return header;
  }
  function battleLayout(player,units,rival=null){
-  const layout=element('div',null,'tactics-layout');
+  const layout=element('div',null,'tactics-layout'+(rival?' is-combat':''));
   const sidebar=element('aside',null,'tactics-sidebar');
   sidebar.append(heading('Traits'));
   const types=Object.entries(traits(field(player))).sort((a,b)=>b[1]-a[1]);
@@ -281,11 +283,40 @@
   const middle=element('div',null,'tactics-center');
   const arena=element('div',null,'tactics-field');
   arena.append(board(units,player,Boolean(rival)));
-  middle.append(stageHeader(player,rival?'Combat · '+rival:neutralRound(run.round)?'Planning · Neutral round':'Planning'),arena);
+  let timer=null;
+  if(rival){
+   const banner=element('header',null,'tactics-combat-banner');
+   timer=element('progress');
+   timer.max=100;timer.value=100;timer.setAttribute('aria-label','Combat time remaining');
+   banner.append(timer,element('strong','Combat'),element('small','Stage '+stageLabel(run.round)+' · '+rival));
+   arena.prepend(banner);
+   middle.append(arena,benchView(player,true));
+   const summary=element('div',null,'tactics-combat-wallet');
+   summary.append(element('span','Level '+player.level),element('strong',player.gold+' gold'));
+   middle.append(summary);
+  }else middle.append(stageHeader(player,neutralRound(run.round)?'Planning · Neutral round':'Planning'),arena);
   const rankings=element('aside',null,'tactics-sidebar');
   rankings.append(heading('Standings'),standingsPanel());
   layout.append(sidebar,middle,rankings);
-  return {layout,middle,arena};
+  return {layout,middle,arena,timer};
+ }
+ function benchView(player,combat=false){
+  const bench=element('div',null,'tactics-bench');
+  const benched=player.units.filter(unit=>unit.position===null);
+  for(let i=0;i<benchLimit;i++){
+   const unit=benched[i];
+   const tile=button('',()=>{
+    if(unit){run.selected=unit;render();}
+   },combat || !unit);
+   tile.className='tactics-bench-slot';
+   tile.setAttribute('aria-label',unit?'Select '+unit.name:'Empty bench slot');
+   if(unit){
+    tile.setAttribute('aria-pressed',String(run.selected===unit));
+    tile.append(pokemonPortrait(unit.name),element('small','★'.repeat(unit.star)));
+   }
+   bench.append(tile);
+  }
+  return bench;
  }
  function render(){
   const player=run.trainers[0];
@@ -295,21 +326,8 @@
   }
   if(run.choice){renderChoice(run.choice);return;}
   const {layout,middle}=battleLayout(player,player.units);
-  const bench=element('div',null,'tactics-bench');
+  const bench=benchView(player);
   const benched=player.units.filter(unit=>unit.position===null);
-  for(let i=0;i<benchLimit;i++){
-   const unit=benched[i];
-   const tile=button('',()=>{
-    if(unit){run.selected=unit;render();}
-   },!unit);
-   tile.className='tactics-bench-slot';
-   tile.setAttribute('aria-label',unit?'Select '+unit.name:'Empty bench slot');
-   if(unit){
-    tile.setAttribute('aria-pressed',String(run.selected===unit));
-    tile.append(pokemonPortrait(unit.name),element('small','★'.repeat(unit.star)));
-   }
-   bench.append(tile);
-  }
   const shop=element('div',null,'tactics-shop');
   const economy=element('div',null,'tactics-economy');
   economy.append(element('strong',player.gold+' gold'),element('small','Level '+player.level+(player.level>=maxLevel?' · Max':' · '+player.xp+'/'+levels[player.level]+' XP')),
@@ -459,13 +477,14 @@
   const rival=neutral?neutralTrainer():opponents.shift();
   const ghost={units:field(rival).map(unit=>({...unit})),mods:rival.mods};
   const units=battle(player,rival);
-  const {layout,arena}=battleLayout(player,units,rival.name);
+  const {layout,arena,timer}=battleLayout(player,units,rival.name);
   content.replaceChildren(layout);
   for(let i=0;i<100 && outcome(units)===null;i++){
    await new Promise(resolve=>setTimeout(resolve,115));
    if(run!==current || phase!=='events')return;
    tick(units);
-   arena.replaceChildren(board(units.filter(u=>u.hp>0),player,true));
+   timer.value=99-i;
+   arena.querySelector('.tactics-board').replaceWith(board(units.filter(u=>u.hp>0),player,true));
   }
   const sign=outcome(units) ?? 0;
   if(neutral){

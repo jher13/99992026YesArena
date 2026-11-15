@@ -597,6 +597,22 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
  .tactics-shop{grid-template-columns:repeat(5,minmax(0,1fr))}
  .tactics-economy{grid-column:1/-1;display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
 }
+
+.tactics-layout.is-combat .tactics-field{position:relative;padding-top:54px;min-height:clamp(280px,55dvh,520px)}
+.tactics-combat-banner{position:absolute;z-index:2;top:5px;left:50%;transform:translateX(-50%);width:min(72%,330px);display:grid;justify-items:center;gap:1px;background:#12201fe8;color:#f2e4bd;border:1px solid #aa925d;border-radius:4px;padding:4px 12px;pointer-events:none}
+.tactics-combat-banner progress{width:100%;height:4px;accent-color:#80d9dc}
+.tactics-combat-banner small{font-size:10px;color:#dfd0ad}
+.tactics-board.is-combat .tactics-hex{position:relative;display:grid;place-items:center;width:var(--hex);height:calc(var(--hex)*.87);color:#ffe7a0}
+.tactics-board.is-combat .tactics-hex.is-occupied::before{content:"";position:absolute;bottom:8%;left:17%;width:66%;height:15%;border-radius:50%;background:#0a1515a8}
+.tactics-board.is-combat canvas{position:relative;width:82%;height:auto;max-height:80%;object-fit:contain;filter:drop-shadow(0 2px 1px #07140e)}
+.tactics-board.is-combat .tactics-unit-bars{top:0;z-index:1}
+.tactics-board.is-combat .is-opponent progress:first-child{accent-color:#ec837b}
+.tactics-layout.is-combat .tactics-bench{background:#454637;border-color:#96805a}
+#events .tactics-layout.is-combat .tactics-bench-slot{opacity:1;background:#2c3430}
+.tactics-combat-wallet{display:flex;justify-content:space-between;gap:8px;padding:5px 10px;color:#f3d582;background:#172226;border:1px solid #806b44;font-size:12px}
+.tactics-standings li{display:grid;grid-template-columns:minmax(0,1fr) auto}
+.tactics-standings progress{grid-column:1/-1;width:100%;height:3px;accent-color:#e8847c}
+.tactics-standings .is-you progress{accent-color:#e3bc6c}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -8893,6 +8909,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.19.1',changes:['Restyled the TFT combat phase with floating unit bars, a combat banner, and a visible bench.']},
  {version:'0.19.0',changes:['Reworked the TFT interface with a central arena, side panels, bench, and bottom shop.']},
  {version:'0.18.0',changes:['Added TFT item crafting, augments, carousels, and neutral rounds.']},
  {version:'0.17.0',changes:['Rebuilt Pokémon Teamfight Tactics as an eight-trainer elimination mode with hex combat and a shared shop.']},
@@ -9094,4 +9111,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.19.0"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.19.1"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
