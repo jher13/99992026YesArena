@@ -598,7 +598,16 @@
     const messages=data ?? [];
     if(messages.length && messages.at(-1).id>latest) {
      latest=messages.at(-1).id;
-     log.replaceChildren(...messages.map(row=>element('p',row.sender+': '+row.body)));
+     log.replaceChildren(...messages.map(row=>{
+      const line=element('p');
+      if(row.created_at) {
+       const time=element('time',new Date(row.created_at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}));
+       time.dateTime=row.created_at;
+       line.append(time,' ');
+      }
+      line.append(row.sender+': '+row.body);
+      return line;
+     }));
      log.scrollTop=log.scrollHeight;
     }
     feedback.textContent='';
@@ -757,9 +766,10 @@
     const tile=element('div',null,'raid-seat');
     const pad=element('div',null,'raid-seat-pad');
     const shown=index===match.ownSlot?fighter:seat?.pokemon;
+    const level=shown && (index===match.ownSlot || seat?.substitute ? ownedPokemon(shown)?.level : seat?.level);
     if(shown)pad.append(idlePokemonPortrait(shown,null,(index===match.ownSlot || seat?.substitute) && profileFor(shown).shiny?spriteVariants(shown).shiny:null,true));
     tile.append(pad,element('strong',seat?.name ?? 'Open seat'),
-     element('small',shown ? shown+(seat?.ready?' · Ready':' · Not ready') : seat?'Not ready':''));
+     element('small',shown ? shown+(level?' · Lv. '+level:'')+(seat?.ready?' · Ready':' · Not ready') : seat?'Not ready':''));
     if(kickMode && match.side==='host' && seat?.uid && index!==match.ownSlot)
      tile.append(button('Remove player',()=>{kickMode=false;return act('kick',{slot:index});}));
     if(match.side==='host' && (!seat || seat.substitute)){
@@ -824,16 +834,14 @@
   stop();
   const title=coop?'Co-op':'PvP';
   const mode=select('Match type',[['unranked','Unranked'],['ranked','Ranked']]);
-  const raid=select('Raid tier',[
-   ...Object.entries(megaRaidTiers).map(([mode,entry])=>[mode,'Tier '+entry.tier+' · '+entry.name+' · Lv. '+entry.level+' · '+entry.hp.toLocaleString()+' HP']),
-  ]);
+  let raidMode=Object.keys(megaRaidTiers)[0];
   const format=select('Battle format',[[1,'1v1'],[2,'2v2'],[3,'3v3']]);
   const freeFight=element('input');freeFight.type='checkbox';
   const freeFightLabel=element('label','Free Fight · Lv. 100 ');freeFightLabel.append(freeFight);
   const code=input('Room code');
   const begin=async (action,extra={})=>{
    if(cloudAccount && dirty) await flushArenaSave();
-   const match=await (coop?raidRpc:rpc)(action,{mode:coop?raid.value:mode.value==='unranked' && freeFight.checked?'free_fight':mode.value,format:Number(format.value),code:code.value,...extra});
+   const match=await (coop?raidRpc:rpc)(action,{mode:coop?raidMode:mode.value==='unranked' && freeFight.checked?'free_fight':mode.value,format:Number(format.value),code:code.value,...extra});
    if(coop?phase!=='raid-lobby':!dialog.open)return;
    if(coop){showRaidSeats(match);return;}
    active=match;
@@ -857,8 +865,19 @@
   if(coop){
    const room=raidRoom('Co-op Raids','Raid selection');
    collectMegaRaidRewards().then(rewards=>{for(const reward of rewards)room.controls.append(element('p',reward));}).catch(()=>{});
-   raid.onchange=()=>{room.root.dataset.tier=String(megaRaidTiers[raid.value].tier);};
-   raid.onchange();
+   const tiers=element('div',null,'raid-room-actions raid-tier-buttons');
+   tiers.setAttribute('aria-label','Raid tier');
+   for(const [key,tier] of Object.entries(megaRaidTiers)) {
+    const choice=element('button','Tier '+tier.tier+' · '+tier.name);
+    choice.type='button';
+    choice.setAttribute('aria-pressed',String(key===raidMode));
+    choice.onclick=()=>{
+     raidMode=key;
+     room.root.dataset.tier=String(tier.tier);
+     for(const node of tiers.children)node.setAttribute('aria-pressed',String(node===choice));
+    };
+    tiers.append(choice);
+   }
    const findRoom=button('Find Room',async()=>{
     const rooms=await raidRpc('list',{});
     const search=input('Search by host, tier, or boss');
@@ -878,7 +897,7 @@
     search.oninput=render;render();
     show('Find Room',search,results);
    });
-   room.controls.append(raid,find,create,findRoom,code,join);
+   room.controls.append(tiers,find,create,findRoom,code,join);
    return;
   }
   show(title,mode,freeFightLabel,format,find,create,code,join);
