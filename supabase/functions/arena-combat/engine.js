@@ -33,7 +33,11 @@ function playerSaveKey(key) {
 }
 const playerStorage={
  getItem:key=>localStorage.getItem(playerSaveKey(key)),
- setItem:(key,value)=>{localStorage.setItem(playerSaveKey(key),value);window.queueArenaSave?.();}
+ setItem:(key,value)=>{
+  try {localStorage.setItem(playerSaveKey(key),value);}
+  catch(error){window.reportLocalSaveError?.(error);throw error;}
+  window.queueArenaSave?.();
+ }
 };
 const profileSelect=byId('profile-select');
 const profileName=byId('profile-name');
@@ -267,6 +271,7 @@ function pmdImage(index) {
 }
 const pmdMotionOptions={
  idle:['Idle'],walk:['Walk'],run:['Run','Walk'],
+ cast:['Special','Charge','Shoot','Attack','Strike','Swing','Double'],
  attack:['Shoot','Attack','Swing','Double'],lunge:['Strike','Attack','Charge','Swing','Double'],hit:['Hurt','Pain']
 };
 function spriteVariants(name) {
@@ -537,10 +542,10 @@ function paintIdlePortraits(now) {
  }
  idlePortraitFrame=idlePortraits.size?requestAnimationFrame(paintIdlePortraits):null;
 }
-function idlePokemonPortrait(name,className,variant=null,fullSize=false) {
- const canvas=pokemonPortrait(name,className,fullSize,0,variant);
+function idlePokemonPortrait(name,className,variant=null,fullSize=false,direction=0) {
+ const canvas=pokemonPortrait(name,className,fullSize,direction,variant);
  const reduced=typeof matchMedia==='function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
- const clip=pmdMotion({name,direction:0,spriteVariant:variant},'idle');
+ const clip=pmdMotion({name,direction,spriteVariant:variant},'idle');
  if(clip?.duration && !reduced) {
   idlePortraits.set(canvas,clip);
   idlePortraitFrame ??= requestAnimationFrame(paintIdlePortraits);
@@ -1326,9 +1331,12 @@ const trainingItems=Object.fromEntries([
  ['IV Booster',{field:'ivs',delta:1,price:7500,category:'IV adjustments'}],
  ['IV Reducer',{field:'ivs',delta:-1,price:1500,category:'IV adjustments'}],
 ]);
-const wildProgress={capsules:0,vitamins:{},copies:{},ai:{},owned:{},registered:[],coins:0,megaRaidRewards:[],items:{},held:{},skills:{},balls:[12,1,3,1,1,0,1,0],wins:0,autoCapture:false,autoRepeat:false,autoReserve:false,speed:1};
+const wildProgress={autoCaptureBall:0,autoCaptureFallback:'standard',reservePremiumBalls:true,battlePass:{xp:0,claimed:[]},capsules:0,vitamins:{},copies:{},ai:{},owned:{},registered:[],coins:0,megaRaidRewards:[],items:{},held:{},skills:{},balls:[12,1,3,1,1,0,1,0],wins:0,autoCapture:false,autoRepeat:false,autoReserve:false,speed:1};
 try {
  const saved=JSON.parse(playerStorage.getItem(progressKey));
+ if(Number.isSafeInteger(saved?.battlePass?.xp) && saved.battlePass.xp>=0 && Array.isArray(saved.battlePass.claimed)){
+  wildProgress.battlePass=saved.battlePass;
+ }
  if(Number.isSafeInteger(saved?.capsules) && saved.capsules>0)wildProgress.capsules=saved.capsules;
  for(const item of Object.keys(trainingItems)) {
   const count=saved?.vitamins?.[item];
@@ -1352,6 +1360,9 @@ try {
  wildProgress.balls=migrateBallInventory(saved?.balls) ?? wildProgress.balls;
  if(Number.isInteger(saved?.wins)&&saved.wins>=0) wildProgress.wins=saved.wins;
  wildProgress.autoCapture=saved?.autoCapture===true;
+ if (Number.isInteger(saved?.autoCaptureBall) && ballTypes[saved.autoCaptureBall])wildProgress.autoCaptureBall=saved.autoCaptureBall;
+ if (['none','standard','any'].includes(saved?.autoCaptureFallback))wildProgress.autoCaptureFallback=saved.autoCaptureFallback;
+ wildProgress.reservePremiumBalls=saved?.reservePremiumBalls!==false;
  wildProgress.autoRepeat=saved?.autoRepeat===true;
  wildProgress.autoReserve=saved?.autoReserve===true;
  wildProgress.speed=[1,2,3,4].includes(saved?.speed)?saved.speed:1;
@@ -1374,7 +1385,169 @@ try {
 
 } catch {}
 function saveWildProgress() {
- try {playerStorage.setItem(progressKey,JSON.stringify(wildProgress));} catch {}
+ try {playerStorage.setItem(progressKey,JSON.stringify(wildProgress));} catch(error) {window.reportLocalSaveError?.(error);}
+}
+const passTierXP=200;
+const passRewards=[
+ ['balls','Great Ball',5],['vitamins','Protein',3],['items','Sitrus Berry',2],
+ ['balls','Ultra Ball',3],['capsules','Ability Capsule',1],['vitamins','IV Booster',2],
+ ['items','Leftovers',1],['balls','Ultra Ball',5],['capsules','Ability Capsule',2],
+ ['balls','Master Ball',1],
+ ['balls','Great Ball',6],['vitamins','Protein',4],['items','Sitrus Berry',3],
+ ['balls','Ultra Ball',4],['capsules','Ability Capsule',1],['vitamins','IV Booster',2],
+ ['items','Leftovers',1],['balls','Ultra Ball',6],['capsules','Ability Capsule',2],
+ ['balls','Master Ball',1],['balls','Great Ball',8],['vitamins','Iron',5],
+ ['items','Sitrus Berry',4],['balls','Ultra Ball',5],['capsules','Ability Capsule',1],
+ ['vitamins','IV Booster',3],['items','Leftovers',1],['balls','Ultra Ball',8],
+ ['capsules','Ability Capsule',2],['balls','Master Ball',1],['balls','Great Ball',10],
+ ['vitamins','Calcium',6],['items','Sitrus Berry',5],['balls','Ultra Ball',6],
+ ['capsules','Ability Capsule',1],['vitamins','IV Booster',4],['items','Leftovers',1],
+ ['balls','Ultra Ball',10],['capsules','Ability Capsule',3],['balls','Master Ball',1],
+ ['balls','Great Ball',12],['vitamins','Zinc',7],['items','Sitrus Berry',6],
+ ['balls','Ultra Ball',7],['capsules','Ability Capsule',1],['vitamins','IV Booster',5],
+ ['items','Leftovers',1],['balls','Ultra Ball',12],['capsules','Ability Capsule',3],
+ ['balls','Master Ball',1]
+];
+const passQuests={
+ daily:[['battles','Finish 3 battles',3,50],['wins','Win 2 battles',2,50],['catches','Catch a Pokémon',1,40],['trainerWins','Win a Trainer Battle',1,40]],
+ weekly:[['battles','Finish 20 battles',20,220],['wins','Win 12 battles',12,220],['catches','Catch 5 Pokémon',5,160],['tacticsMatches','Finish a Tactics match',1,160],['raidWins','Clear a co-op raid',1,160]]
+};
+function battlePassState(now=new Date()) {
+ const pass=wildProgress.battlePass;
+ const day=now.toISOString().slice(0,10);
+ const monday=new Date(now);
+ monday.setUTCDate(monday.getUTCDate()-(monday.getUTCDay()+6)%7);
+ const week=monday.toISOString().slice(0,10);
+ for(const [period,key] of [['daily',day],['weekly',week]]) {
+  if(pass[period]?.key!==key)pass[period]={key};
+ }
+ return pass;
+}
+let passNoticeTimer;
+function showPassBattleNotice(message){
+ const notice=byId('pass-battle-notice');
+ notice.textContent=message;
+ notice.hidden=false;
+ clearTimeout(passNoticeTimer);
+ passNoticeTimer=setTimeout(()=>{notice.hidden=true;},8000);
+}
+function battlePassProgressText() {
+ const pass=battlePassState();
+ const pending=Object.entries(passQuests).flatMap(([period,quests])=>{
+  const quest=quests.find(([id,,goal])=>(pass[period][id] ?? 0)<goal);
+  if(!quest)return [];
+  const [id,label,goal]=quest;
+  return [label+' '+(pass[period][id] ?? 0)+'/'+goal];
+ });
+ return pending.length?'Next quests · '+pending.join(' · '):'All daily and weekly quests complete.';
+}
+function recordBattlePass(events,raidId=null) {
+ const pass=battlePassState();
+ const limit=passRewards.length*passTierXP;
+ if(pass.xp>=limit)return '';
+ if(raidId!==null){
+  const raids=pass.creditedRaids ??= [];
+  if(raids.includes(raidId))return '';
+  raids.push(raidId);
+ }
+ const completed=[];
+ let earned=(events.battles ?? 0)*10+(events.wins ?? 0)*5+(events.catches ?? 0)*5;
+ for(const [period,quests] of Object.entries(passQuests)) {
+  const progress=pass[period];
+  for(const [id,label,goal,xp] of quests) {
+   const before=progress[id] ?? 0;
+   progress[id]=Math.min(goal,before+(events[id] ?? 0));
+   if(before<goal && progress[id]===goal){earned+=xp;completed.push(label);}
+  }
+ }
+ const added=Math.min(limit-pass.xp,earned);
+ pass.xp+=added;
+ saveWildProgress();
+ return added?'Battle Pass +'+added+' XP'+(completed.length?' · Quests completed: '+completed.join(', '):''):'';
+
+}
+function claimPassReward(index,refresh=true) {
+ const pass=battlePassState();
+ const reward=passRewards[index];
+ if(!reward || pass.claimed.includes(index) || pass.xp<(index+1)*passTierXP)return;
+ const [kind,name,amount]=reward;
+ if(kind==='capsules')wildProgress.capsules+=amount;
+ else if(kind==='balls')wildProgress.balls[ballTypes.findIndex(ball=>ball.name===name)]+=amount;
+ else wildProgress[kind][name]=(wildProgress[kind][name] ?? 0)+amount;
+ pass.claimed.push(index);
+ saveWildProgress();
+ if(refresh)renderBattlePass();
+}
+let selectedPassReward=null;
+function renderBattlePass() {
+ const pass=battlePassState();
+ const level=Math.min(passRewards.length,Math.floor(pass.xp/passTierXP));
+ const view=byId('battle-pass');
+ const scroll=view.querySelector('.pass-track')?.scrollLeft;
+ const makeButton=(label,action)=>{
+  const node=element('button',label);
+  node.type='button';
+  node.onclick=action;
+  return node;
+ };
+ const available=passRewards.map((_,index)=>index).filter(index=>index<level && !pass.claimed.includes(index));
+ const selected=selectedPassReward ?? available[0] ?? Math.min(level,passRewards.length-1);
+ const [,name,amount]=passRewards[selected];
+ const featured=element('div',null,'pass-feature');
+ const copy=element('div',null,'pass-feature-copy');
+ copy.append(element('h3','Battle Pass'),element('small','Tier '+(selected+1)+' reward'),element('h4',name+' ×'+amount),
+  makeButton('Item Bag',openItemBag));
+ const showcase=element('div',null,'pass-showcase');
+ showcase.append(bagItemIcon(name));
+ featured.append(copy,showcase);
+ const meter=element('progress');
+ meter.max=passTierXP;
+ meter.value=level===passRewards.length?passTierXP:pass.xp%passTierXP;
+ meter.setAttribute('aria-label','XP toward the next battle pass tier');
+ const progress=element('section',null,'pass-panel pass-progress');
+ const claimAll=makeButton('Claim all ('+available.length+')',()=>{
+  for(const index of available)claimPassReward(index,false);
+  renderBattlePass();
+ });
+ claimAll.disabled=!available.length;
+ progress.append(element('h3','Tier '+level),element('p',level===passRewards.length?'Pass complete':meter.value+' / '+passTierXP+' XP to tier '+(level+1)),meter,claimAll);
+ const hero=element('div',null,'pass-hero');
+ hero.append(featured,progress);
+ const rewards=element('div',null,'pass-track');
+ rewards.tabIndex=0;
+ rewards.setAttribute('aria-label','Battle Pass tier rewards');
+ for(const [index,[,rewardName,count]] of passRewards.entries()) {
+  const card=element('section',null,'pass-reward');
+  const claimed=pass.claimed.includes(index);
+  const preview=makeButton('',()=>{
+   selectedPassReward=index;
+   renderBattlePass();
+   view.querySelectorAll('.pass-reward-preview')[index]?.focus({preventScroll:true});
+  });
+  preview.className='pass-reward-preview';
+  preview.setAttribute('aria-pressed',String(selected===index));
+  preview.append(bagItemIcon(rewardName),element('strong',rewardName+' ×'+count));
+  const claim=makeButton(claimed?'Claimed':level>index?'Claim':'Locked',()=>claimPassReward(index));
+  claim.disabled=claimed || level<=index;
+  claim.setAttribute('aria-label',claim.textContent+' tier '+(index+1)+' reward');
+  card.append(element('small','Tier '+(index+1),'pass-tier'),preview,claim);
+  rewards.append(card);
+ }
+ const questsView=element('div',null,'pass-quests');
+ for(const [period,quests] of Object.entries(passQuests)) {
+  const section=element('section',null,'pass-panel');
+  section.append(element('h4',period==='daily'?'Daily quests':'Weekly quests'),
+   element('small',period==='daily'?'Resets at 00:00 UTC':'Resets Monday at 00:00 UTC'));
+  for(const [id,label,goal,xp] of quests) {
+   const count=pass[period][id] ?? 0;
+   section.append(element('p',label+' · '+count+' / '+goal+' · '+(count===goal?'+'+xp+' XP earned':'+'+xp+' XP')));
+  }
+  questsView.append(section);
+ }
+ view.replaceChildren(hero,element('h3','Tier rewards'),rewards,element('h3','Quests'),questsView,
+  element('p','Earn XP in Pokebattle, Trainer Battles, Campaign, Roguelit, completed Tactics matches, and co-op clears. A battle gives 10 XP, a win adds 5 XP, and a catch gives 5 XP.'));
+ if(scroll===undefined)rewards.scrollLeft=rewards.children[selected].offsetLeft-rewards.children[0].offsetLeft;
+ else rewards.scrollLeft=scroll;
 }
 function normalizeBattleAI(ai) {
  const gambits=Array.isArray(ai?.gambits)?ai.gambits.flatMap(rule=>{
@@ -1582,16 +1755,18 @@ function bagItemIcon(name) {
  const hue=(bagItemNames.indexOf(name)*137.508+24)%360;
  const color=tier>=0?ballColors[tier]:kind==='disc'?machineColor[name.split(' · ')[0]] ?? '#779cf1':
   art?.[0] ?? bagStoneColors[name] ?? 'hsl('+hue+' 70% 53%)';
+ return collectionPixelArt(art?art[1].split(' '):bagPixelShapes[kind],color,kind==='berry'?'#619c58':'#68798d',art?undefined:1);
+}
+function collectionPixelArt(rows,color,shade='#68798d',offset=Math.floor((12-rows.length)/2)) {
  const canvas=element('canvas');
  canvas.width=12;canvas.height=12;
  canvas.setAttribute('aria-hidden','true');
  const context=canvas.getContext('2d');
- const palette={o:'#343e51',c:color,l:'#fff3d2',g:kind==='berry'?'#619c58':'#68798d',w:'#e1e8e9',d:'#bbd0db'};
- const rows=art?art[1].split(' '):bagPixelShapes[kind];
+ const palette={o:'#343e51',c:color,l:'#fff3d2',g:shade,w:'#e1e8e9',d:'#bbd0db'};
  rows.forEach((row,y)=>Array.from(row).forEach((pixel,x)=>{
   if(!palette[pixel])return;
   context.fillStyle=palette[pixel];
-  context.fillRect(x,y+(art?Math.floor((12-rows.length)/2):1),1,1);
+  context.fillRect(x,y+offset,1,1);
  }));
  return canvas;
 }
@@ -1849,7 +2024,12 @@ function renderSkillset() {
  const list=byId('skillset-list');
  list.replaceChildren(...page.map((move,index)=>{
   const entry=element('button',move,'skillset-entry');
-  entry.append(element('small',moveReferences[move][1]+' · '+(moveReferences[move][2] ?? 'Varies')));
+  const [,type,category]=moveReferences[move];
+  const meta=element('small');
+  const badge=element('span',type,'home-type-badge');
+  badge.style.setProperty('--type-color',moveColors[type] ?? '#b7c7dd');
+  meta.append(badge,category ?? 'Varies');
+  entry.append(meta);
   entry.setAttribute('aria-pressed',String(move===selectedSkill));
   entry.onclick=()=>{
    selectedSkill=move;
@@ -2290,6 +2470,14 @@ function encounterIn(region,tier=currentWildTier()) {
  const encounter=rollWildEncounter(region,tier);
  if(encounter) openBattle(null,encounter);
 }
+function autoCaptureChoice(result){
+ const rare=isLegendaryEncounter(result.name) || result.profile?.shiny;
+ const eligible=index=>wildProgress.balls[index]>0 && (!wildProgress.reservePremiumBalls || rare || index<6);
+ const preferred=wildProgress.autoCaptureBall;
+ if(eligible(preferred))return preferred;
+ const fallback=wildProgress.autoCaptureFallback;
+ return fallback==='none'?-1:ballTypes.findIndex((_,index)=>eligible(index) && (fallback==='any' || index<6));
+}
 function renderAutoOptions(container,onChange) {
  container.replaceChildren();
  for(const [key,text] of [['autoCapture','Auto capture'],['autoRepeat','Auto repeat']]) {
@@ -2304,6 +2492,37 @@ function renderAutoOptions(container,onChange) {
   };
   label.append(control,element('span',text));
   container.append(label);
+ }
+ const addSelect=(caption,key,options)=>{
+  const label=element('label',caption+' ');
+  const select=element('select');
+  for(const [value,text] of options){
+   const option=element('option',text);
+   option.value=String(value);
+   select.append(option);
+  }
+  select.value=String(wildProgress[key]);
+  select.onchange=()=>{
+   wildProgress[key]=key==='autoCaptureBall'?Number(select.value):select.value;
+   saveWildProgress();
+   onChange?.();
+  };
+  label.append(select);
+  container.append(label);
+ };
+ if(wildProgress.autoCapture){
+  addSelect('Preferred ball','autoCaptureBall',ballTypes.map(({name},index)=>[index,name]));
+  addSelect('Fallback','autoCaptureFallback',[['none','Ask me'],['standard','First stocked standard ball'],['any','First stocked eligible ball']]);
+  const reserve=element('label');
+  const checkbox=element('input');
+  checkbox.type='checkbox';checkbox.checked=wildProgress.reservePremiumBalls;
+  checkbox.onchange=()=>{
+   wildProgress.reservePremiumBalls=checkbox.checked;
+   saveWildProgress();
+   onChange?.();
+  };
+  reserve.append(checkbox,element('span','Reserve Ultra and Master Balls for rare encounters'));
+  container.append(reserve);
  }
 }
 function openWildRegions() {
@@ -2439,6 +2658,8 @@ function tryCatch(index) {
  result.capture={index,caught,pending:true,duration};
  if(caught) {
   addCaughtPokemon(result.name,result.level,result.profile);
+  const passNote=recordBattlePass({catches:1});
+  if(passNote)result.message+=' '+passNote+'.';
  }
  saveWildProgress();
  renderWildResult();
@@ -2488,8 +2709,9 @@ function runWildResultOptions() {
  cancelWildRepeat();
  if(phase!=='wild-result' || !wildResult || wildResult.capture?.pending) return;
  if(wildProgress.autoCapture && canCatchResult(wildResult) && !difficultyMenu) {
-  const first=wildProgress.balls.findIndex(count=>count>0);
-  if(first>=0) {tryCatch(first);return;}
+  const ball=autoCaptureChoice(wildResult);
+  if(ball>=0){tryCatch(ball);return;}
+  if(wildProgress.balls.some(count=>count>0)){renderWildResult();return;}
  }
  renderWildResult();
  if(wildProgress.autoRepeat && !difficultyMenu && !captureMenu) {
@@ -2513,10 +2735,15 @@ function renderWildResult() {
  const xpList=element('ul');
  for(const award of wildResult.awards) xpList.append(element('li',award.name+' · +'+award.xp+' XP ('+award.share+'%)'));
  experience.append(element('summary','Team XP'),xpList);
- panel.append(experience);
+ panel.append(experience,element('p',battlePassProgressText()));
  const toggles=element('div',null,'wild-toggles');
  renderAutoOptions(toggles,runWildResultOptions);
  panel.append(toggles);
+ if(wildProgress.autoCapture){
+  const selected=animation?.index ?? (!resolved?autoCaptureChoice(wildResult):-1);
+  if(selected>=0)panel.append(element('p','Auto Capture · '+ballTypes[selected].name));
+  else if(!resolved)panel.append(element('p','Auto Capture is waiting for a ball choice.'));
+ }
  const actions=element('div',null,'wild-actions');
  const capture=element('button','Capture');
  capture.disabled=!canCatchResult(wildResult) || !wildProgress.balls.some(Boolean);
@@ -3191,7 +3418,7 @@ function maximumBattleSpeed() {
  return kantoGymIds.every(id=>clearedGyms.includes(id))?3:2;
 }
 function speedUnlockMessage() {
- if(clearedGyms.length===gymTeams.length) return ' Master Gym Battles and 4× battle speed unlocked!';
+ if(clearedGyms.length===gymTeams.length) return ' Master Campaign and 4× battle speed unlocked!';
  if(clearedGyms.length===kantoGymIds.length && maximumBattleSpeed()===3) return ' 3× battle speed unlocked!';
  return '';
 }
@@ -3711,7 +3938,7 @@ function showScreen(screen) {
  if(screen!=='battle' && byId('battle-settings').open)byId('battle-settings').close();
  if(screen!=='home')stopHomeSprite();
  stopBattleMusic();
- for(const id of ['home','login','raid-lobby','roguelit','starter-setup','wild-regions','wild-result','trainer-regions','gyms','gym-collection','pokedex','item-bag','shop','skill-shop','skillset','abilities','menu','battle']) byId(id).hidden=id!==screen;
+ for(const id of ['home','login','raid-lobby','events','tactics','friendlist','guild-directory','leaderboard-page','roguelit','starter-setup','wild-regions','wild-result','trainer-regions','gyms','gym-collection','pokedex','item-bag','shop','skill-shop','skillset','abilities','menu','battle']) byId(id).hidden=id!==screen;
  byId('arena-header').hidden=screen==='home' || screen==='login' || screen==='starter-setup';
  byId('score').hidden=screen!=='battle';
  if(screen!=='battle')void checkGameVersion();
@@ -3828,10 +4055,20 @@ function openBattle(gym=null,wild=null,trainer=null,run=null,master=false) {
   startBattle();
  }
 }
+function continueCampaign(){
+ const next=gymTeams[clearedGyms.length];
+ if(next)openBattle(next,null,null,null,false);
+}
 function renderCampaign(collection) {
  const list=byId(collection?'badge-grid':'gym-grid');
  byId(collection?'collection-progress':'gym-progress').textContent=progressText();
  list.replaceChildren();
+ if(!collection && clearedGyms.length<gymTeams.length){
+  const next=element('button','Continue Campaign · '+gymTeams[clearedGyms.length].name);
+  next.type='button';
+  next.onclick=continueCampaign;
+  list.append(next);
+ }
  if(!collection) {
   if(!masterGymsUnlocked())masterGymMode=false;
   const mode=element('button',masterGymMode?'Mode: Master':'Mode: Standard');
@@ -3842,22 +4079,33 @@ function renderCampaign(collection) {
  }
  for(const [region,generation] of gymRegions) {
   if(!collection && !gymTeams.slice(0,clearedGyms.length+1).some(gym=>gym.region===region)) continue;
-  list.append(element('h3',region+' · Generation '+generation,'campaign-region'));
-  const grid=element('div',null,collection?'badge-grid':'gym-grid');
+  list.append(element('h3',region+' · Generation '+generation,'bag-section-title'));
+  const grid=element('div',null,collection?'shop-grid':'gym-grid');
   for(const gym of gymTeams.filter(entry=>entry.region===region)) {
    const index=gymTeams.indexOf(gym);
    const earned=index<clearedGyms.length;
    const available=index===clearedGyms.length;
    if(!collection && !earned && !available) continue;
    if(collection) {
-    const card=element('div',null,'badge-card'+(earned?'':' is-locked'));
-    const medal=element('div',earned?'✓':'◇','badge-medal');
-    medal.style.setProperty('--badge-color',moveColors[gym.type] ?? '#c3a4ee');
+    const card=element('div',null,'bag-item');
+    const medal=element('div',null,'bag-art');
+    const sprite=element('span',null,'gym-badge-sprite'+(earned?'':' is-uncollected'));
+    sprite.setAttribute('aria-hidden','true');
+    sprite.style.setProperty('--badge-x',-(index%10)*48+'px');
+    sprite.style.setProperty('--badge-y',-Math.floor(index/10)*48+'px');
+    medal.append(sprite);
     card.append(medal,element('strong',gym.badge),element('small',gym.name),
      element('small',earned?'Collected':'Uncollected'));
+    if(!earned){
+     const link=element('button',available?'Challenge '+gym.name:'View Campaign');
+     link.type='button';
+     link.onclick=available?continueCampaign:openGyms;
+     if(!available)card.append(element('small','Unlock by clearing earlier gyms.'));
+     card.append(link);
+    }
     grid.append(card);
    } else {
-    const card=element('button',null,'gym-card'+(available?' is-next':''));
+    const card=element('div',null,'bag-item gym-entry'+(available?' is-next':''));
     const roster=element('div',null,'gym-icons');
     roster.append(...gym.roster.map(name=>pokemonPortrait(name)));
     card.append(element('strong',String(index+1)+'. '+gym.name),
@@ -3866,8 +4114,10 @@ function renderCampaign(collection) {
      element('small',masterGymMode?'Lv. 100 · '+(masterGymClears.has(gym.id)?'Master cleared':'Master challenge'):
       'Lv. '+gymDifficulty(gym).level+'–'+gymDifficulty(gym).aceLevel),roster,
      element('small',masterGymMode?gym.plan.brief+' Defeat all six to clear Master.':gymBrief(gym)));
-    card.disabled=!earned && !available;
-    card.onclick=()=>openBattle(gym,null,null,null,masterGymMode);
+    const fight=element('button',earned?'Rematch':'Challenge');
+    fight.type='button';
+    fight.onclick=()=>openBattle(gym,null,null,null,masterGymMode);
+    card.append(fight);
     grid.append(card);
    }
   }
@@ -4468,6 +4718,7 @@ function unit(name,x,y,friendly,level=friendly?(ownedPokemon(name)?.level ?? 5):
    stats[0]=Math.round(stats[0]*rogueRun.health);
    stats[1]=Math.round(stats[1]*rogueRun.offense);
    stats[5]=Math.round(stats[5]*rogueRun.offense);
+
   }
  }
  const hp=stats[0];
@@ -4482,6 +4733,13 @@ function unit(name,x,y,friendly,level=friendly?(ownedPokemon(name)?.level ?? 5):
 let nextGymSwitchCheck=0;
 let gymSwitchNote='';
 const gymRematchRecords={};
+try {
+ const saved=JSON.parse(playerStorage.getItem(gymSaveKey+'/clean-records'));
+ if(saved && typeof saved==='object' && !Array.isArray(saved))
+  for(const gym of gymTeams)if(saved[gym.id]===true)gymRematchRecords[gym.id]=true;
+ for(const gym of gymTeams)if(playerStorage.getItem(gymSaveKey+'/clean/'+gym.id)==='true')
+  gymRematchRecords[gym.id]=true;
+} catch {}
 function gymRematchRecord(gym) {
  try {return Boolean(gymRematchRecords[gym.id]) || playerStorage.getItem(gymSaveKey+'/clean/'+gym.id)==='true';}
  catch {return Boolean(gymRematchRecords[gym.id]);}
@@ -4751,6 +5009,7 @@ function renderControls() {
  byId('speed').textContent = speed + '× speed';
  byId('speed').setAttribute('aria-pressed',String(speed>1));
  byId('choices').replaceChildren();
+ if(selectedGym && phase==='win' && gymTeams[clearedGyms.length])button('Continue Campaign',continueCampaign);
  if(selectedTrainer && ['win','loss','draw'].includes(phase)) {
   button('Next trainer',()=>startTrainerEncounter(selectedTrainer.tier,selectedTrainer.format));
   button('Trainer settings',openTrainerSetup);
@@ -6941,6 +7200,9 @@ function advance(dt,realDt=dt) {
  if(!playerReserve || !enemyReserve || timedOut) {
   const result=timedOut && requiresClear?-1:timedOut?compareTeamHP(allies,enemies):Number(Boolean(playerReserve))-Number(Boolean(enemyReserve));
   phase=result>0?'win':result<0?'loss':'draw';
+  const passNote=rogueRun || selectedWild || selectedTrainer || selectedGym
+   ?recordBattlePass({battles:1,wins:result>0?1:0,trainerWins:selectedTrainer && result>0?1:0}):'';
+  if(passNote)showPassBattleNotice(passNote+' · '+battlePassProgressText());
   if(rogueRun) {finishRogueRound(phase==='win');return;}
   if(phase==='loss') {
    const detail=applyDefeatRewards();
@@ -6969,7 +7231,7 @@ function advance(dt,realDt=dt) {
   }
   if(phase==='win' && selectedGym && !selectedMasterGym && !firstBadge && !timedOut && allies.every(actor=>actor.hp>0 && !actor.faintedThisBattle)) {
    gymRematchRecords[selectedGym.id]=true;
-   try {playerStorage.setItem(gymSaveKey+'/clean/'+selectedGym.id,'true');} catch {}
+   try {playerStorage.setItem(gymSaveKey+'/clean-records',JSON.stringify(gymRematchRecords));} catch {}
    byId('status').textContent+=' Rematch challenge complete: no Pokémon fainted.';
   }
   if(timedOut)byId('status').textContent=phase==='draw'?'Time expired. Team HP percentages are tied.':'Time expired. You won on remaining team HP. '+byId('status').textContent;
@@ -7999,6 +8261,7 @@ function openLogin() {
  showScreen('login');
 }
 function openHomeDialog(title,...content) {
+ byId('home-dialog').classList.toggle('collection-dialog',title==='Settings' || title==='Hotkey Settings');
  byId('home-dialog-title').textContent=title;
  byId('home-dialog-content').replaceChildren(...content);
  byId('home-dialog').showModal();
@@ -8014,7 +8277,7 @@ byId('home-pvp').onclick=()=>openHomeDialog('PvP',element('p','Available when on
 byId('home-friendlist').onclick=()=>openHomeDialog('Friendlist',element('p','Available when online play is added.'));
 byId('home-guilds').onclick=()=>openHomeDialog('Guilds',element('p','Available when online play is added.'));
 byId('home-leaderboard').onclick=()=>openHomeDialog('Leaderboard',element('p','Available when online play is added.'));
-byId('home-events').onclick=()=>openHomeDialog('Events',element('p','No active events.'));
+
 byId('toolbar-messages').onclick=()=>openHomeDialog('Messages',element('p','No messages.'));
 byId('toolbar-notices').onclick=()=>openHomeDialog('Notifications',
  element('p',maximumBattleSpeed()+'× battle speed available.'),
@@ -8032,6 +8295,59 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.18',changes:['Added Auto Capture preferences, safe fusion capacity, fuller Campaign backups, session recovery, and server-recorded raid rewards.']},
+ {version:'0.22.17',changes:['Added server-side save validation, private integrity flags, and one active game session per account.']},
+ {version:'0.22.16',changes:['Fixed Tactics bench overflow and status stacking, added backup restore and raid recovery, and improved Campaign navigation.']},
+ {version:'0.22.15',changes:['Moved cloud status above the title and stacked multiplayer button labels.']},
+ {version:'0.22.14',changes:['Improved combat reports, Battle Pass quests, save recovery, and mode guidance. Renamed Campaign and Badge Collection.']},
+ {version:'0.22.13',changes:['Gave every Fight Tactics signature a distinct effect and displayed shields on HP bars.']},
+ {version:'0.22.12',changes:['Centered the Fight Tactics combat countdown and diversified signatures by combat role.']},
+ {version:'0.22.11',changes:['Fixed Start Match in Fight Tactics.']},
+ {version:'0.22.10',changes:['Moved the Fight Tactics damage chart to the left and gave the combat header its own row.']},
+ {version:'0.22.9',changes:['Fixed Fight Tactics item hover cards and added a live team damage chart.']},
+ {version:'0.22.8',changes:['Added original Fight Tactics gear with 10 components, 36 completed items, and emblems.']},
+ {version:'0.22.7',changes:['Added Fight Tactics combat roles, role-specific mana, and readable signature descriptions.']},
+ {version:'0.22.6',changes:['Gave each Fight Tactics Pokémon a themed, star-scaling signature move with elemental particles.']},
+ {version:'0.22.5',changes:['Slowed Fight Tactics attacks and smoothed combat HP and MP bars.']},
+ {version:'0.22.4',changes:['Made Fight Tactics item tooltips match trait hover cards.']},
+ {version:'0.22.3',changes:['Matched the Battle Pass to the main menu theme and extended it to 50 reward tiers.']},
+ {version:'0.22.2',changes:['Restyled the Battle Pass with a magma-themed featured reward and horizontal reward track.']},
+ {version:'0.22.1',changes:['Improved Battle Pass text contrast and made unstyled text inherit its surface color.']},
+ {version:'0.22.0',changes:['Added the Events Battle Pass with daily quests, weekly quests, and claimable item rewards.']},
+ {version:'0.21.9',changes:['Added floating damage numbers and orange critical hits in Fight Tactics.']},
+ {version:'0.21.8',changes:['Updated Fight Tactics elemental damage, signature move animations and tooltips, and item recipe tooltips.']},
+ {version:'0.21.7',changes:['Moved Poke Fight Tactics below Roguelit and preserved held items on upgrades and sales.']},
+ {version:'0.21.6',changes:['Fight Tactics shows base stats with blue bonuses and displays equipped items during preparation.']},
+ {version:'0.21.5',changes:['Added individual pixel-art sprites for every Poke Fight Tactics item.']},
+ {version:'0.21.4',changes:['Added TFT attack speed and balanced Pokémon stats, roles, and ranges by rarity.']},
+ {version:'0.21.3',changes:['Added six TFT combat stats and replaced flat augments with combat effects.']},
+ {version:'0.21.2',changes:['Added lore-based TFT collection traits and expanded the fixed shop roster.']},
+ {version:'0.21.1',changes:['Added level nine, elemental matchup damage, drag-to-equip items, and unique-species trait counts.']},
+ {version:'0.21.0',changes:['Added a fixed five-tier TFT roster, Regi-Trio, shop inspection, and live round spectating.']},
+ {version:'0.20.8',changes:['Aligned TFT planning hexes with combat positions and displayed stars in combat.']},
+ {version:'0.20.7',changes:['Restyled TFT items, traits, unit stat cards, and augment selection.']},
+ {version:'0.20.6',changes:['Added free movement and clearer combat bars, lowered TFT damage, and added income tooltips.']},
+ {version:'0.20.5',changes:['Preserved Pokémon sprite proportions on the Poke Fight Tactics bench.']},
+ {version:'0.20.4',changes:['Added shop offer locks, trait progress, a stone arena bench, and TFT streak payouts.']},
+ {version:'0.20.3',changes:['Redesigned the Poke Fight Tactics shop strip with tier odds, XP progress, and illustrated offers.']},
+ {version:'0.20.2',changes:['Animated Poke Fight Tactics planning and bench sprites and added trait bonus tooltips.']},
+ {version:'0.20.1',changes:['Animated Poke Fight Tactics battlers using directional Pokémon sprite sheets.']},
+ {version:'0.20.0',changes:['Added timed TFT planning, starters, drag and drop, scouting, and unit inspection.']},
+ {version:'0.19.2',changes:['Renamed the Events mode to Poke Fight Tactics.']},
+ {version:'0.19.1',changes:['Restyled the TFT combat phase with floating unit bars, a combat banner, and a visible bench.']},
+ {version:'0.19.0',changes:['Reworked the TFT interface with a central arena, side panels, bench, and bottom shop.']},
+ {version:'0.18.0',changes:['Added TFT item crafting, augments, carousels, and neutral rounds.']},
+ {version:'0.17.0',changes:['Rebuilt Pokémon Teamfight Tactics as an eight-trainer elimination mode with hex combat and a shared shop.']},
+ {version:'0.16.0',changes:['Added an eight-round Pokémon Teamfight Tactics event with a shop, bench, merges, and type bonuses.']},
+ {version:'0.15.21',changes:['Added 68 individual pixel-art Gym Badge sprites to Gym Collection.']},
+ {version:'0.15.20',changes:['Improved Held item label contrast in the PC and raid editor.']},
+ {version:'0.15.19',changes:['Fixed PC move, guild, gym, and ability text contrast, unified dialogs, and grouped PvP room joining.']},
+ {version:'0.15.18',changes:['Improved text contrast across the light theme, including PC stats, Pokédex states, and result screens.']},
+ {version:'0.15.17',changes:['Restyled Gambits, Abilities, and the main menu to match the shops.']},
+ {version:'0.15.16',changes:['Restyled Pokébattle, Roguelit, and Skillset to match the shops.']},
+ {version:'0.15.15',changes:['Restyled the Pokédex, PC, PvP menus, and Settings to match the shops.']},
+ {version:'0.15.14',changes:['Restyled Trainer Battles, Gym Battles, Guilds, and Leaderboards to match the shops.']},
+ {version:'0.15.13',changes:['Restyled Friendlist and Gym Collection and returned departing raid players to Co-op.']},
  {version:'0.15.12',changes:['Added a shared 10-second recovery window after sleep or freeze and made raid bosses immune to sleep.']},
  {version:'0.15.11',changes:['Restored standard arena dimensions and expanded automatic update checks outside PvP.']},
  {version:'0.15.10',changes:['Matched the Mega raid viewport to standard battles with opponent cards hidden.']},
@@ -8100,7 +8416,7 @@ const updateLogEntries=[
 ];
 let clientVersionCheckPending=false;
 function canCheckGameVersion() {
- return typeof location!=='undefined' && !window.isPvpVersionContext?.() &&
+ return typeof location!=='undefined' && !window.isPvpVersionContext?.() && !window.hasActiveTacticsRun?.() &&
   !['setup','battle'].includes(phase) &&
   (phase!=='online-battle' || window.isCompletedRaid?.());
 }
@@ -8189,7 +8505,7 @@ byId('toolbar-settings').onclick=()=>{
  const sfx=element('button',sfxButton.textContent);
  music.onclick=()=>{musicButton.onclick();music.textContent=musicButton.textContent;};
  sfx.onclick=()=>{sfxButton.onclick();sfx.textContent=sfxButton.textContent;};
- openHomeDialog('Settings',music,sfx,...audioVolumeControls());
+ openHomeDialog('Settings',music,sfx,...audioVolumeControls(),...(window.arenaBackupControls?.() ?? []));
 };
 function audioVolumeControls() {
  const volumeSlider=(label,kind,value,apply)=>{
@@ -8228,7 +8544,7 @@ function onlineRandom() {
  onlineRandomState=(Math.imul(1664525,onlineRandomState)+1013904223)>>>0;
  return onlineRandomState/4294967296;
 }
-function onlineActor(name,entries,side,index,bossLevel,levelOverride,raid=null,copy=null) {
+function onlineActor(name,entries,side,index,bossLevel,levelOverride,raid=null,copy=null,pvpItems=null) {
  if(!isAvailablePokemon(name)) throw Error('A Pokémon in this team is unavailable.');
  const progress=JSON.parse(entries['pokemon-arena-wild-progress'] ?? '{}') ?? {};
  const starter=JSON.parse(entries['pokemon-arena-starter'] ?? '{}') ?? {};
@@ -8249,7 +8565,8 @@ function onlineActor(name,entries,side,index,bossLevel,levelOverride,raid=null,c
  const actor=unit(name,0,0,side!=='boss',level,{profile:validProfile(profile)?profile:fallback,moves});
  const held=progress.held?.[name];
  const equipped=Object.entries(progress.held ?? {}).filter(([,item])=>item===held).map(([holder])=>holder);
- actor.heldItem=Object.hasOwn(heldItems,held) && equipped.indexOf(name)<progress.items?.[held]?held:null;
+ const eligible=pvpItems===null?(progress.items?.[held] ?? 0):Math.min(progress.items?.[held] ?? 0,pvpItems[held] ?? 0);
+ actor.heldItem=Object.hasOwn(heldItems,held) && equipped.indexOf(name)>=0 && equipped.indexOf(name)<eligible?held:null;
  if(!bossLevel)actor.ai=normalizeBattleAI(progress.ai?.[name]);
  actor.normalAttacksEnabled=true;
  actor.onlineId=side+':'+index;
@@ -8269,8 +8586,9 @@ const raidFormRoster={
 };
 function initializeOnline(match) {
  const levelOverride=match.mode==='free_fight'?100:undefined;
- const host=(match.host_pick ?? []).map((name,i)=>onlineActor(name,match.host_entries,'host',i,undefined,levelOverride));
- const guest=(match.guest_pick ?? []).map((name,i)=>onlineActor(name,match.guest_entries,'guest',i,undefined,levelOverride));
+ const pvp=['ranked','unranked','free_fight'].includes(match.mode);
+ const host=(match.host_pick ?? []).map((name,i)=>onlineActor(name,match.host_entries,'host',i,undefined,levelOverride,null,null,pvp?(match.host_pvp_items ?? {}):null));
+ const guest=(match.guest_pick ?? []).map((name,i)=>onlineActor(name,match.guest_entries,'guest',i,undefined,levelOverride,null,null,pvp?(match.guest_pvp_items ?? {}):null));
  const coop=isCoopMode(match.mode);
  const raidTeam=match.raid_seats?.flatMap((seat,index)=>{
   if(!seat?.pokemon)return [];
