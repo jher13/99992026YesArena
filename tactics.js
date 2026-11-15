@@ -94,22 +94,28 @@
   Fairy:'#ffb7e3',Ice:'#adf9ff',Dragon:'#9890ff',Steel:'#e1ecff'
  };
  const roleProfiles={
-  Tank:{range:1,hp:1.22,attack:.85,defense:1.17,speed:.82},
-  Bruiser:{range:1,hp:1.08,attack:1.03,defense:1.02,speed:1},
-  Skirmisher:{range:1,hp:.9,attack:1.18,defense:.91,speed:1.15},
-  Caster:{range:3,hp:.88,attack:1.12,defense:.91,speed:.94},
-  Ranged:{range:4,hp:.91,attack:1.02,defense:.91,speed:1.03},
-  Vanguard:{range:2,hp:1.02,attack:1.02,defense:1.03,speed:.98}
+  Tank:{range:1,hp:1.22,attack:.85,defense:1.17,speed:.82,mana:5,regen:0,rule:'5 mana per hit and 5 when damaged. Draws aggro at equal range.'},
+  Fighter:{range:1,hp:1.08,attack:1.03,defense:1.02,speed:1,mana:10,regen:0,rule:'10 mana per hit. Gains 5% attack speed per stage, up to 30%.'},
+  Reaper:{range:1,hp:.9,attack:1.18,defense:.91,speed:1.15,mana:10,regen:0,rule:'10 mana per hit. Prioritizes backline damage dealers and takes 15% less attack damage from other enemies.'},
+  Caster:{range:3,hp:.88,attack:1.12,defense:.91,speed:.94,mana:7,regen:2,rule:'7 mana per hit and 2 mana per second.'},
+  Carry:{range:4,hp:.91,attack:1.02,defense:.91,speed:1.03,mana:10,regen:0,rule:'10 mana per hit. Long range for backline positioning.'},
+  Specialist:{range:2,hp:1.02,attack:1.02,defense:1.03,speed:.98,mana:0,regen:0}
+ };
+ const specialists={
+  Caterpie:{hit:8,incoming:4,rule:'Silk Charge: 8 per hit and 4 when damaged.'},
+  Clefable:{regen:6,rule:'Moonlight: regenerates 6 mana per second.'},
+  Umbreon:{incoming:10,rule:'Moon Charge: 10 mana when damaged.'},
+  Rayquaza:{hit:6,travel:3,rule:'Sky Charge: 6 per hit and 3 per movement step.'}
  };
  const roleGroups={
-  Tank:['Squirtle','Wartortle','Blastoise','Geodude','Graveler','Golem','Magnemite','Magneton','Clefable','Lapras','Snorlax','Umbreon','Regice','Regirock','Registeel','Lugia','Suicune'],
-  Bruiser:['Charmander','Machop','Machoke','Machamp','Sandshrew','Arcanine','Rhydon','Pinsir','Flareon','Tyranitar','Metagross','Entei','Groudon'],
-  Skirmisher:['Rattata','Zubat','Golbat','Eevee','Pidgey','Pidgeotto','Scyther','Leafeon'],
-  Caster:['Abra','Kadabra','Alakazam','Gastly','Haunter','Gengar','Psyduck','Golduck','Hypno','Ninetales','Gardevoir','Espeon','Sylveon','Mewtwo'],
-  Ranged:['Pikachu','Raichu','Vulpix','Jolteon','Vaporeon','Glaceon','Articuno','Zapdos','Moltres','Raikou','Kyogre'],
-  Vanguard:['Bulbasaur','Ivysaur','Venusaur','Caterpie','Oddish','Growlithe','Charmeleon','Charizard','Dragonite','Ho-Oh','Rayquaza']
+  Tank:['Squirtle','Wartortle','Blastoise','Geodude','Graveler','Golem','Magnemite','Magneton','Lapras','Snorlax','Regice','Regirock','Registeel','Lugia','Rhyhorn','Boldore'],
+  Fighter:['Charmander','Charmeleon','Charizard','Machop','Machoke','Machamp','Sandshrew','Arcanine','Rhydon','Flareon','Tyranitar','Metagross','Entei','Groudon','Growlithe','Dragonite','Ho-Oh','Pinsir'],
+  Reaper:['Rattata','Zubat','Golbat','Eevee','Pidgey','Pidgeotto','Scyther','Leafeon','Gengar'],
+  Caster:['Abra','Kadabra','Alakazam','Gastly','Haunter','Psyduck','Golduck','Hypno','Ninetales','Gardevoir','Espeon','Sylveon','Mewtwo','Bulbasaur','Ivysaur','Venusaur','Oddish','Suicune'],
+  Carry:['Pikachu','Raichu','Vulpix','Jolteon','Vaporeon','Glaceon','Articuno','Zapdos','Moltres','Raikou','Kyogre']
  };
  const roles=new Map(Object.entries(roleGroups).flatMap(([role,names])=>names.map(name=>[name,role])));
+ const channeledSignatures=new Set(['Glacial Aria','Lunar Chorus','Ribbon Resonance']);
  const rarities=new Map(roster.flatMap((names,index)=>names.map(name=>[name,index])));
  const collectionTraits={
   'ILoveEevee':{color:'#d8a9dd',members:['Eevee','Vaporeon','Jolteon','Flareon','Espeon','Umbreon','Leafeon','Glaceon','Sylveon'],
@@ -346,11 +352,14 @@
  }
  function signatureDescription(stats){
   const skill=element('p',null,'tactics-signature-description');
-  skill.append('At full mana, deals '+stats.moveType+' damage using '+(stats.moveSpecial?'Sp. Atk against Sp. Def':'Attack against Defense')+'. Move power ');
+  skill.append('At full mana, deals '+stats.moveType+' damage using '+(stats.moveSpecial?'S.ATK against S.DEF':'ATK against DEF')+'.'+
+   (stats.manaLockMs>1000?' Mana lock: '+(stats.manaLockMs/1000)+'s.':''));
+  const powers=element('span','Move Power ','tactics-signature-power');
   stats.movePowers.forEach((power,index)=>{
-   if(index)skill.append(' / ');
-   skill.append(index===stats.star-1?element('strong',String(power)):String(power));
+   if(index)powers.append(' / ');
+   powers.append(index===stats.star-1?element('strong',String(power)):String(power));
   });
+  skill.append(powers);
   return skill;
  }
  function statCard(unit){
@@ -395,8 +404,8 @@
    numbers.append(cell);
   }
   details.append(art,title,meter(stats.hp,stats.max,'HP','is-hp'),meter(stats.mana,60,'Mana','is-mana'),
-   element('p',(stats.move ?? 'No signature move')+' · '+stats.role+' · Range '+stats.range),items,numbers);
-  if(stats.move)numbers.before(signatureDescription(stats));
+   element('p',(stats.move ?? 'No signature move')+' · '+stats.roleLabel+' · Range '+stats.range),items,numbers);
+  if(stats.move)numbers.before(signatureDescription(stats),element('p',stats.roleRule,'tactics-role-description'));
   return details;
  }
  function inspectUnit(unit){
@@ -859,7 +868,6 @@
  }
  function fighter(unit,opponent,types,trainer){
   const base=dexStats[dex[unit.name][0]-1];
-  const special=base[5]>=base[1];
   const bonus=Math.max(0,...dex[unit.name].slice(1,3).map(t=>(types[t] ?? 0)-1));
   const mods=itemMods(unit,trainer);
   for(const [label,group] of Object.entries(collectionTraits)){
@@ -869,7 +877,8 @@
    for(const [stat,value] of Object.entries(tier[1]))mods[stat]=(mods[stat] ?? 0)+value;
 
   }
-  const role=roles.get(unit.name) ?? (special?'Caster':'Bruiser');
+  const specialist=specialists[unit.name];
+  const role=specialist?'Specialist':roles.get(unit.name);
   const profile=roleProfiles[role];
   const rarity=rarities.get(unit.name) ?? 0;
   const hp=Math.round((base[0]*4+180)*profile.hp*(1+rarity*.045)*1.65**(unit.star-1)*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
@@ -877,7 +886,9 @@
   const movePowers=unit.name==='Squirtle'?[150,255,450]:signaturePowerByTier[rarity];
   const attackScale=profile.attack*(1+rarity*.055)*1.5**(unit.star-1);
   const powerMultiplier=1+bonus*traitPowerPerAlly+(mods.power ?? 0);
-  const attackSpeed=Math.max(2.3,Math.min(5.4,(2.75+base[3]*.013)*profile.speed+rarity*.055))/attackSlowdown;
+  const stage=Number(stageLabel(run.round).split('-')[0]);
+  const stageSpeed=role==='Fighter'?1+Math.min(6,stage)*.05:1;
+  const attackSpeed=stageSpeed*Math.max(2.3,Math.min(5.4,(2.75+base[3]*.013)*profile.speed+rarity*.055))/attackSlowdown;
   const defenseScale=profile.defense*(1+rarity*.035)*1.13**(unit.star-1);
   const baseDefense=base[2]*defenseScale,baseSpecialDefense=base[4]*defenseScale;
   const baseStats={
@@ -885,10 +896,12 @@
    defense:Math.round(baseDefense),specialDefense:Math.round(baseSpecialDefense),
    attackSpeed,critChance:.10,critDamage:1.5
   };
-  return {...unit,...baseStats,baseStats,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),role,range:profile.range,
+  return {...unit,...baseStats,baseStats,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),role,roleLabel:(moveSpecial?'S.ATK ':'ATK ')+role,roleRule:specialist?.rule ?? profile.rule,range:profile.range,
    attack:baseStats.attack*powerMultiplier,specialAttack:baseStats.specialAttack*powerMultiplier,
    defense:Math.round(baseDefense+(mods.defense ?? 0)),specialDefense:Math.round(baseSpecialDefense+(mods.defense ?? 0)),
-   direction:opponent?0:4,move,moveType,moveSpecial,movePowers,wait:0,manaRegen:mods.regen ?? 0,
+   direction:opponent?0:4,move,moveType,moveSpecial,movePowers,wait:0,manaRegen:(specialist?.regen ?? profile.regen)+(mods.regen ?? 0),
+   manaOnHit:specialist?.hit ?? profile.mana,manaOnDamage:specialist?.incoming ?? (role==='Tank'?5:0),
+   manaOnTravel:specialist?.travel ?? 0,manaLock:0,manaLockMs:channeledSignatures.has(move)?1500:1000,
    guard:mods.guard,echo:mods.echo,secondWind:mods.secondWind,overcharge:mods.overcharge,momentum:mods.momentum,
    position:combatPosition(unit.position,opponent)};
  }
@@ -912,9 +925,13 @@
    if(unit.hp>0 && alive[source])unit.hp=Math.max(0,unit.hp-effects.weather[source]);
   }
  }
- function receiveDamage(target,damage,now=null,critical=false){
+ function gainMana(unit,amount){
+  if(unit.manaLock<=0)unit.mana=Math.min(60,unit.mana+amount);
+ }
+ function receiveDamage(target,damage,now=null,critical=false,source=null){
   if(damage<=0 || target.hp<=0)return;
   if(target.guard){target.guard=false;return;}
+  if(source && target.role==='Reaper' && target.target!==source)damage=Math.max(1,Math.floor(damage*.85));
   const actualDamage=Math.min(target.hp,damage);
   target.hp-=actualDamage;
   if(now!==null)(target.damageEvents ??= []).push({amount:actualDamage,critical,started:now});
@@ -922,7 +939,7 @@
    target.secondWind=false;
    target.hp=Math.min(target.max,target.hp+Math.max(1,Math.round(target.max*.12)));
   }
-  target.mana=Math.min(60,target.mana+5);
+  if(target.hp>0)gainMana(target,target.manaOnDamage);
  }
  function nextStep(unit,target,units){
   const {x,y}=unit.position;
@@ -944,15 +961,23 @@
    return multiplier*(factor>1?1.5:factor || 1);
   },1);
  }
+ function chooseTarget(unit,units){
+  const targets=units.filter(other=>other.hp>0 && other.opponent!==unit.opponent);
+  const isBackline=target=>target.role==='Carry' || target.role==='Caster';
+  return targets.sort((a,b)=>
+   (unit.role==='Reaper'?Number(isBackline(b))-Number(isBackline(a)):0) ||
+   distance(unit.position,a.position)-distance(unit.position,b.position) ||
+   Number(b.role==='Tank')-Number(a.role==='Tank') || a.hp-b.hp)[0];
+ }
  function tick(units,now=null){
   tickWeather(units);
+  for(const unit of units)if(unit.hp>0)unit.target=chooseTarget(unit,units);
   for(const unit of units){
    if(unit.hp<=0)continue;
-   unit.mana=Math.min(60,unit.mana+unit.manaRegen*combatStepMs/1000);
-   const targets=units.filter(other=>other.hp>0 && other.opponent!==unit.opponent)
-    .sort((a,b)=>distance(unit.position,a.position)-distance(unit.position,b.position) || a.hp-b.hp);
-   const target=targets[0];
-   if(!target)continue;
+   unit.manaLock=Math.max(0,unit.manaLock-combatStepMs);
+   gainMana(unit,unit.manaRegen*combatStepMs/1000);
+   const target=unit.target;
+   if(!target || target.hp<=0)continue;
    unit.wait=Math.max(-combatStepMs,unit.wait-combatStepMs);
    if(unit.wait>0)continue;
    const gap=distance(unit.position,target.position);
@@ -962,10 +987,11 @@
      if(now!==null)setBattlerMotion(unit,step,'walk',now);
      if(now!==null){unit.moveFrom=unit.position;unit.moveStarted=now;}
      unit.position=step;
+     gainMana(unit,unit.manaOnTravel);
     }
     continue;
    }
-   const cast=unit.mana>=60 && unit.move;
+   const cast=unit.manaLock===0 && unit.mana>=60 && unit.move;
    const type=cast?unit.moveType:dex[unit.name][1];
    const match=elementalMultiplier(type,dex[target.name].slice(1,3));
    const special=cast && unit.moveSpecial;
@@ -979,16 +1005,17 @@
     if(!target.animation || now-target.animation.started>=target.animation.duration || target.animation.motion==='walk')
      setBattlerMotion(target,unit.position,'hit',now);
    }
-   receiveDamage(target,damage,now,critical>1);
+   receiveDamage(target,damage,now,critical>1,unit);
    if(cast && unit.echo){
     unit.echo=false;
-    if(damage)receiveDamage(target,Math.max(1,Math.round(damage*.35)),now,critical>1);
+    if(damage)receiveDamage(target,Math.max(1,Math.round(damage*.35)),now,critical>1,unit);
    }
    if(target.hp<=0 && unit.momentum)unit.hp=Math.min(unit.max,unit.hp+Math.max(1,Math.round(unit.max*.08)));
    if(cast){
     unit.mana=unit.overcharge?10:0;
     unit.overcharge=false;
-   }else unit.mana=Math.min(60,unit.mana+15);
+    unit.manaLock=unit.manaLockMs;
+   }else gainMana(unit,unit.manaOnHit);
    unit.wait+=1000/unit.attackSpeed;
   }
  }
