@@ -458,6 +458,25 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 #home-dialog.collection-dialog .pvp-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 #home-dialog.collection-dialog .pvp-controls input{min-width:0}
 #home-dialog.collection-dialog .hotkey-setting-row{border-color:#cddbcf}
+
+:is(#wild-regions,#wild-result,#roguelit,#skillset){max-width:960px;margin:12px auto;padding:16px clamp(10px,4vw,32px);background:#f4faef;color:#253d36;border:0;border-radius:14px}
+#skillset{max-width:1120px}
+:is(#wild-regions,#wild-result,#roguelit,#skillset) :is(.menu-heading h2,.wild-toggles,.wild-difficulty,.campaign-progress){color:#253d36}
+:is(#wild-regions,#wild-result,#roguelit,#skillset) button{background:#142d23;color:#fff;border-color:#466453}
+:is(#wild-regions,#wild-result,#roguelit,#skillset) button:disabled{background:#596961;color:#fff;opacity:1}
+:is(#wild-regions,#wild-result,#skillset) :is(input:not([type=checkbox]),select){background:#fff;color:#253d36;border-color:#9db5a3}
+:is(#wild-regions,#roguelit) .gym-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:10px}
+:is(#wild-regions,#roguelit) .gym-card:not(:disabled){background:#e9f2e7;color:#253d36;border-color:#c5d8ca}
+:is(#wild-regions,#roguelit) .gym-card:not(:disabled):hover{background:#d9e9dc;border-color:#82a995}
+:is(#wild-regions,#roguelit) .gym-card:not(:disabled) small{color:#49635a}
+#roguelit .gym-card canvas{border:0;background:transparent;margin-inline:auto}
+#skillset :is(.dex-sheet,.skillset-stats div){background:#eaf3e7;border-color:#c4d6c8}
+#skillset :is(.box-label,.skillset-description,.skillset-meta,.skillset-stats dt){color:#354f44}
+#skillset .skillset-entry{background:#dfece0;color:#253d36;border-color:#c3d5c6}
+#skillset .skillset-entry:hover{border-color:#769b83}
+#skillset .skillset-entry[aria-pressed=true]{background:#c7dfcb;border-color:#426e54}
+#skillset .skillset-entry small{color:#354f44;margin-top:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+#skillset .home-type-badge{font-size:10px;padding:2px 5px}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -620,8 +639,9 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 </section>
 <section id="wild-regions" class="gym-screen" hidden>
 <div class="menu-heading"><h2>Pokebattle</h2><button id="wild-back">Main menu</button></div>
+<h3 class="bag-section-title">Encounter settings</h3>
 <label class="wild-difficulty">Difficulty <select id="wild-difficulty"></select></label>
-<div id="region-auto-options" class="wild-toggles"></div><p id="ball-summary" class="campaign-progress"></p><div id="wild-grid" class="gym-grid"></div>
+<div id="region-auto-options" class="wild-toggles"></div><p id="ball-summary" class="campaign-progress"></p><h3 class="bag-section-title">Regions</h3><div id="wild-grid" class="gym-grid"></div>
 </section>
 <section id="trainer-regions" class="gym-screen" hidden>
 <div class="menu-heading"><h2>Trainer Battles</h2><button id="trainer-back">Main menu</button></div>
@@ -2554,7 +2574,12 @@ function renderSkillset() {
  const list=byId('skillset-list');
  list.replaceChildren(...page.map((move,index)=>{
   const entry=element('button',move,'skillset-entry');
-  entry.append(element('small',moveReferences[move][1]+' · '+(moveReferences[move][2] ?? 'Varies')));
+  const [,type,category]=moveReferences[move];
+  const meta=element('small');
+  const badge=element('span',type,'home-type-badge');
+  badge.style.setProperty('--type-color',moveColors[type] ?? '#b7c7dd');
+  meta.append(badge,category ?? 'Varies');
+  entry.append(meta);
   entry.setAttribute('aria-pressed',String(move===selectedSkill));
   entry.onclick=()=>{
    selectedSkill=move;
@@ -8739,6 +8764,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.15.16',changes:['Restyled Pokébattle, Roguelit, and Skillset to match the shops.']},
  {version:'0.15.15',changes:['Restyled the Pokédex, PC, PvP menus, and Settings to match the shops.']},
  {version:'0.15.14',changes:['Restyled Trainer Battles, Gym Battles, Guilds, and Leaderboards to match the shops.']},
  {version:'0.15.13',changes:['Restyled Friendlist and Gym Collection and returned departing raid players to Co-op.']},
