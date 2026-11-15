@@ -49,6 +49,12 @@ Deno.serve(async request => {
     const auth = await fetch(url + "/auth/v1/user", { headers: { apikey: serviceKey, Authorization: authorization } });
     if (!auth.ok) return reply({ error: "Sign in to battle." }, 401);
     const { id: player } = await auth.json();
+    const lease = await fetch(url + "/rest/v1/rpc/arena_session_active", {
+      method: "POST",
+      headers: { apikey: serviceKey, Authorization: authorization, "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (!lease.ok || await lease.json() !== true) return reply({ error: "Your game session is inactive. Sign in again." }, 403);
     const { id, command } = await request.json();
     if (typeof id !== "string" || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) return reply({ error: "Invalid match." }, 400);
     if (command && !command.ai && typeof command.normalAttacks !== "boolean" && (!/^(host|guest):[0-5]$/.test(command.incoming) ||
