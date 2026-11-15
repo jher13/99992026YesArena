@@ -2,6 +2,10 @@
  const isCoop=mode=>mode==='coop' || mode==='coop_gigantamax' || Object.hasOwn(megaRaidTiers,mode);
  const multiplayerSource=document.currentScript.src;
  const dialog=byId('home-dialog');
+ function onlineRetryMessage(error,online){
+  const network=!online || error instanceof TypeError && /fetch|network|load failed/i.test(error.message);
+  return (network?'Connection lost. Retrying… ':'Online battle error. Retrying… ')+error.message;
+ }
  let generation=0, timer, active;
  let pvpVersionContext=false;
  window.isPvpVersionContext=()=>pvpVersionContext;
@@ -1064,6 +1068,8 @@
       stats.push(chart);
      }
      if(tier && m.result==='coop_win') {
+      const passNote=recordBattlePass({battles:1,wins:1,raidWins:1},String(m.id));
+      if(passNote)stats.unshift(element('p',passNote));
       const reward=element('p','Checking raid rewards…');
       stats.unshift(reward);
       const check=()=>collectMegaRaidRewards().then(rewards=>{
@@ -1131,8 +1137,9 @@
     if(!active.result)timer=setTimeout(poll,active.started?Math.max(0,100-(performance.now()-began)):850);
    } catch(error){
     if(token!==generation)return;
-    if(phase==='online-battle')byId('status').textContent='Reconnecting… '+error.message;
-    else view.replaceChildren(element('p','Reconnecting… '+error.message));
+    const message=onlineRetryMessage(error,navigator.onLine);
+    if(phase==='online-battle')byId('status').textContent=message;
+    else view.replaceChildren(element('p',message));
     timer=setTimeout(poll,active.started?400:2000);
    }
   }

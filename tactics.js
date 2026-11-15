@@ -211,7 +211,7 @@
  const specialists={
   Caterpie:{hit:8,incoming:4,rule:'Silk Charge: 8 per hit and 4 when damaged.'},
   Clefable:{regen:6,rule:'Moonlight: regenerates 6 mana per second.'},
-  Umbreon:{incoming:10,rule:'Moon Charge: 10 mana when damaged.'},
+  Umbreon:{incoming:10,hit:3,rule:'Moon Charge: 10 mana when damaged and 3 per basic attack.'},
   Rayquaza:{hit:6,travel:3,rule:'Sky Charge: 6 per hit and 3 per movement step.'}
  };
  const roleGroups={
@@ -235,6 +235,7 @@
  };
  const benchLimit=9;
  const attackSlowdown=3;
+ const overtimeStartMs=60000;
  const combatTicks=240*attackSlowdown, combatStepMs=115, combatDamageScale=.55;
  const traitHealthPerAlly=.06, traitPowerPerAlly=.10;
  const maxLevel=9;
@@ -508,6 +509,9 @@
   content.replaceChildren(heading('Poke Fight Tactics'),
    element('p','Draft from a shared shop, position your Pokémon, and outlast seven AI trainers.'),
    button('Start match',start));
+  const guide=element('details');
+  guide.append(element('summary','How to play'),element('p','Buy Pokémon from the shop, then select one and choose a hex on your half of the board. Drag items from the left rail to equip them. Focus or hover an item to see its recipes. Lock offers you want to keep for next round. Select a Pokémon to sell it and recover its items.'));
+  content.append(guide);
  }
  function start(){
   const tiers=roster;
@@ -865,7 +869,9 @@
   const panel=element('section',null,'tactics-damage-chart');
   const controls=element('div',null,'tactics-damage-tabs');
   const rows=element('div',null,'tactics-damage-rows');
-  const tabs=['Damage dealt','Damage taken'].map((label,index)=>{
+  const metrics=['damageDealt','damageTaken','healingDone','shieldedDamage'];
+  const labels=['Damage dealt','Damage taken','Healing','Shielding'];
+  const tabs=labels.map((label,index)=>{
    const tab=element('button',label);
    tab.type='button';
    tab.onclick=()=>{run.damageMode=index;update();};
@@ -874,28 +880,28 @@
   const entries=report.units.filter(unit=>!unit.opponent).map(unit=>{
    const row=element('div',null,'tactics-damage-row');
    const bar=element('progress');
-   bar.setAttribute('aria-label',unit.name+' damage share');
    const value=element('small');
    row.append(element('strong',unit.name+' '+'★'.repeat(unit.star)),value,bar);
    return {unit,row,value,bar};
   });
   function update(){
-   const taken=Boolean(run.damageMode);
-   const metric=taken?'damageTaken':'damageDealt';
-   tabs.forEach((tab,index)=>tab.setAttribute('aria-pressed',String(index===Number(taken))));
+   const mode=run.damageMode ?? 0;
+   const metric=metrics[mode];
+   tabs.forEach((tab,index)=>tab.setAttribute('aria-pressed',String(index===mode)));
    const total=entries.reduce((sum,entry)=>sum+(entry.unit[metric] ?? 0),0);
    const seconds=report.ticks*combatStepMs/1000;
    for(const {unit,value,bar} of entries){
     const amount=unit[metric] ?? 0;
     const rate=seconds>0?amount/seconds:0;
-    value.textContent=amount.toLocaleString()+' damage · '+rate.toFixed(1)+(taken?' /s':' DPS');
+    value.textContent=amount.toLocaleString()+(mode<2?' damage · '+rate.toFixed(1)+(mode===0?' DPS':' /s'):mode===2?' HP restored':' damage blocked');
+    bar.setAttribute('aria-label',unit.name+' · '+labels[mode]);
     bar.max=total || 1;
     bar.value=amount;
    }
   }
   controls.append(...tabs);
   rows.append(...entries.map(entry=>entry.row));
-  panel.append(element('h3','Your team damage'),controls,rows);
+  panel.append(element('h3','Your team combat report'),controls,rows);
   update();
   return {panel,update};
  }
@@ -1091,6 +1097,7 @@
    shop.append(offer);
   }
   const controls=element('div',null,'tactics-unit-actions');
+  if(run.round===1 && !run.scout)controls.append(element('small','Select a Pokémon, then a hex to deploy. Drag items from the left rail.','tactics-hint'));
   if(run.scout)controls.append(button('Return to your board',()=>{run.scout=null;render();}));
   if(!run.scout)arena.append(bench);
   middle.append(controls);
@@ -1189,42 +1196,51 @@
   battleEffects.set(units,{elapsed:0,weather:[storm(a,firstTraits),storm(b,secondTraits)]});
   return units;
  }
- function tickWeather(units){
+ function tickWeather(units,now){
   const effects=battleEffects.get(units);
   if(!effects)return;
   effects.elapsed+=combatStepMs;
   if(effects.elapsed<1000)return;
   effects.elapsed-=1000;
-  const alive=[units.some(unit=>unit.hp>0 && !unit.opponent),units.some(unit=>unit.hp>0 && unit.opponent)];
+  const sources=[false,true].map(opponent=>units.filter(unit=>unit.opponent===opponent && unit.hp>0 &&
+   collectionTraits['Weather Trio'].members.includes(unit.name)));
   for(const unit of units){
-   const source=unit.opponent?0:1;
-   if(unit.hp>0 && alive[source]){
-    const damage=Math.min(unit.hp,effects.weather[source]);
-    unit.hp-=damage;
-    unit.damageTaken=(unit.damageTaken ?? 0)+damage;
-   }
+   const side=unit.opponent?0:1;
+   const credited=sources[side];
+   if(unit.hp<=0 || !credited.length)continue;
+   const actual=receiveDamage(unit,effects.weather[side],now,null,null,true);
+   credited.forEach((member,index)=>{
+    const share=Math.floor(actual/credited.length)+(index<actual%credited.length?1:0);
+    member.damageDealt=(member.damageDealt ?? 0)+share;
+   });
   }
  }
- function heal(unit,amount){
-  if(unit.hp>0)unit.hp=Math.min(unit.max,unit.hp+Math.round(amount*(unit.woundUntil>unit.elapsed?.67:1)));
+ function heal(unit,amount,source=unit){
+  if(unit.hp<=0 || amount<=0)return;
+  const restored=Math.min(unit.max-unit.hp,Math.round(amount*(unit.woundUntil>unit.elapsed?.67:1)));
+  unit.hp+=restored;
+  source.healingDone=(source.healingDone ?? 0)+restored;
  }
  function gainMana(unit,amount){
   if(unit.manaLock<=0)unit.mana=Math.min(60,unit.mana+amount*(1+(unit.gear.manaRate ?? 0)));
  }
  function receiveDamage(target,damage,now=null,critical=false,source=null,periodic=false){
   if(damage<=0 || target.hp<=0)return 0;
-  if(target.guard){target.guard=false;return 0;}
+  if(target.guard){target.guard=false;target.shieldedDamage=(target.shieldedDamage ?? 0)+damage;return 0;}
   if(source && !periodic && target.role==='Reaper' && target.target!==source)damage*=.85;
   if(source && !periodic)damage*=1-Math.min(.75,(target.gear.durability ?? 0)+(target.veilUntil>target.elapsed?target.veilAmount:0)+(target.hp>target.max/2?(target.gear.healthyGuard ?? 0):0));
   damage=Math.max(1,Math.round(damage));
   if(target.signatureShieldUntil>target.elapsed && target.signatureShield>0){
    const blocked=Math.min(target.signatureShield,damage);
    target.signatureShield-=blocked;
+   const provider=target.shieldProvider ?? target;
+   provider.shieldedDamage=(provider.shieldedDamage ?? 0)+blocked;
    damage-=blocked;
   }
   if(target.shield>0){
    const blocked=Math.min(target.shield,damage);
    target.shield-=blocked;
+   target.shieldedDamage=(target.shieldedDamage ?? 0)+blocked;
    damage-=blocked;
   }
   const actualDamage=Math.min(target.hp,Math.ceil(damage));
@@ -1290,7 +1306,7 @@
   heal(unit,dealt*((gear.vamp ?? 0)+(gear.stance && unit.hp<=unit.max/2?.20:0)));
   if(gear.allyHeal){
    const ally=units.filter(other=>other.opponent===unit.opponent && other.hp>0).sort((a,b)=>a.hp/a.max-b.hp/b.max)[0];
-   if(ally)heal(ally,dealt*gear.allyHeal);
+   if(ally)heal(ally,dealt*gear.allyHeal,unit);
   }
   if(!cast && target.hp>0 && target.gear.retaliate && (target.retaliateAfter ?? 0)<=target.elapsed &&
      distance(unit.position,target.position)<=1.5){
@@ -1326,7 +1342,7 @@
    distance(unit.position,a.position)-distance(unit.position,b.position) ||
    Number(b.role==='Tank')-Number(a.role==='Tank') || a.hp-b.hp)[0];
  }
- function applySignature(unit,target,units,damage,now){
+ function applySignature(unit,target,units,damage,now,dealt=damage){
   const star=unit.star-1;
   const allies=units.filter(other=>other.hp>0 && other.opponent===unit.opponent);
   const others=allies.filter(ally=>ally!==unit);
@@ -1334,7 +1350,9 @@
   const weakest=[...others].sort((a,b)=>a.hp/a.max-b.hp/b.max)[0] ?? unit;
   const byDistance=(a,b)=>distance(unit.position,a.position)-distance(unit.position,b.position);
   const barrier=(ally,amount)=>{
-   ally.signatureShield=Math.max(ally.signatureShieldUntil>ally.elapsed?ally.signatureShield:0,amount);
+   const existing=ally.signatureShieldUntil>ally.elapsed?ally.signatureShield:0;
+   if(amount>=existing)ally.shieldProvider=unit;
+   ally.signatureShield=Math.max(existing,amount);
    ally.signatureShieldUntil=ally.elapsed+5000;
   };
   const cleanse=ally=>{for(const key of ['burnUntil','woundUntil','shredUntil','sunderUntil','weakenUntil'])ally[key]=0;};
@@ -1355,10 +1373,10 @@
     case 'cover': barrier(weakest,power);barrier(unit,Math.round(power/2));break;
     case 'fortify': for(const ally of [...allies].sort(byDistance).slice(0,3))barrier(ally,power);break;
     case 'aegis': for(const ally of allies.filter(ally=>ally===unit || ally.range>=3)){barrier(ally,power);cleanse(ally);}break;
-    case 'heal': for(const ally of [...allies].sort((a,b)=>a.hp/a.max-b.hp/b.max).slice(0,2))heal(ally,ally.max*[.10,.16,.25][star]);break;
-    case 'tide': for(const ally of allies)heal(ally,ally.max*[.03,.05,.08][star]);break;
+    case 'heal': for(const ally of [...allies].sort((a,b)=>a.hp/a.max-b.hp/b.max).slice(0,2))heal(ally,ally.max*[.10,.16,.25][star],unit);break;
+    case 'tide': for(const ally of allies)heal(ally,ally.max*[.03,.05,.08][star],unit);break;
     case 'bloom': heal(unit,(unit.max-unit.hp)*[.08,.12,.18][star]);break;
-    case 'leech': heal(unit,damage*[.2,.3,.45][star]);break;
+    case 'leech': heal(unit,dealt*[.2,.3,.45][star]);break;
     case 'rally': unit.rallyUntil=unit.elapsed+5000;break;
     case 'rush': unit.signatureRush=[.20,.30,.45][star];break;
     case 'snare': delay(target,[500,750,1000][star]);break;
@@ -1387,7 +1405,7 @@
   }
  }
  function tick(units,now=null){
-  tickWeather(units);
+  tickWeather(units,now);
   for(const unit of units)if(unit.hp>0)updateGear(unit,units,now);
   for(const unit of units)if(unit.hp>0)unit.target=chooseTarget(unit,units);
   for(const unit of units){
@@ -1428,7 +1446,8 @@
    const amp=1+(gear.amp ?? 0)+unit.critStacks*(gear.critAmp ?? 0)+(target.role==='Tank'?(gear.tankAmp ?? 0):0);
    const execute=cast && unit.moveEffects.includes('execute') && target.hp<target.max/2?1+[.25,.40,.60][unit.star-1]:1;
    const weaken=unit.weakenUntil>unit.elapsed?1-unit.weakenAmount:1;
-   const damage=utility?0:Math.max(1,Math.round(execute*weaken*combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*match*critical*amp*100/(100+defense)));
+   const overtime=1+Math.max(0,unit.elapsed-overtimeStartMs)/15000;
+   const damage=utility?0:Math.max(1,Math.round(overtime*execute*weaken*combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*match*critical*amp*100/(100+defense)));
    if(now!==null){
     setBattlerMotion(unit,target.position,cast?'cast':unit.range>1?'attack':'lunge',now);
     if(cast)unit.lastCast={started:now,move:unit.move,from:unit.position,to:utility?unit.position:target.position};
@@ -1441,7 +1460,7 @@
     dealt+=receiveDamage(target,Math.max(1,Math.round(damage*.35)),now,critical>1,unit);
    }
    if(!utility)gearHit(unit,target,units,dealt,cast,critical>1,now);
-   if(cast)applySignature(unit,target,units,damage,now);
+   if(cast)applySignature(unit,target,units,damage,now,dealt);
    if(target.hp<=0 && unit.momentum)heal(unit,unit.max*.08);
    if(cast){
     unit.mana=unit.overcharge?10:0;
@@ -1520,6 +1539,13 @@
   }
   ctx.globalAlpha=1;
  }
+ const effectLabels={
+  teamShield:'Team shield',shield:'Shield',cover:'Cover shield',fortify:'Nearby shields',aegis:'Backline shield',
+  heal:'Ally heal',tide:'Team heal',bloom:'Self heal',leech:'Lifesteal',sap:'Mana drain',spark:'Mana granted',
+  sunder:'DEF down',shred:'S.DEF down',burn:'Burn',wound:'Wound',frost:'Attack speed down',snare:'Action delayed',
+  weaken:'Damage down',rally:'Attack speed up',rush:'Faster next attack',veil:'Damage reduction',
+  thorn:'Defense up',cleanse:'Cleanse',volley:'Splash',spread:'Area damage',gale:'Knockback',blink:'Repositioned',quake:'Area delay'
+ };
  function combatLayer(units){
   const layer=element('div',null,'tactics-combat-space');
   const effects=element('canvas',null,'tactics-signature-effects');
@@ -1541,11 +1567,12 @@
    bars.append(health,mana);
    if(unit.combatItems?.length)node.append(equippedItems({...unit,items:unit.combatItems}));
    const bubble=element('span',null,'tactics-cast-bubble');
+   const status=element('span',null,'tactics-effect-summary');
    bubble.hidden=true;
-   node.append(bars,battlerSprite(unit),element('span','★'.repeat(unit.star),'tactics-combat-stars'),bubble);
+   node.append(bars,battlerSprite(unit),element('span','★'.repeat(unit.star),'tactics-combat-stars'),bubble,status);
    unitControls(node,unit,false);
    layer.append(node);
-   return {unit,node,hp,mana,bubble,shield,shownShield:0};
+   return {unit,node,hp,mana,bubble,shield,status,shownShield:0};
   });
   layer.append(effects,damageLayer);
   let lastPaint=performance.now();
@@ -1580,7 +1607,7 @@
     damageLabels.delete(event);
    }
    for(const view of views){
-    const {unit,node,hp,mana,bubble,shield}=view;
+    const {unit,node,hp,mana,bubble,shield,status}=view;
     easeMeter(hp,unit.hp,weight);
     const activeShield=unit.hp>0?unit.shield+(unit.signatureShieldUntil>unit.elapsed?unit.signatureShield:0):0;
     view.shownShield+=(activeShield-view.shownShield)*weight;
@@ -1599,7 +1626,17 @@
     const cast=unit.lastCast;
     const casting=Boolean(cast && now-cast.started<950);
     bubble.hidden=!casting;
-    if(casting && bubble.textContent!==cast.move)bubble.textContent=cast.move;
+    if(casting){
+     const effects=unit.moveEffects.map(key=>effectLabels[key]).filter(Boolean).join(' · ');
+     const label=cast.move+(effects?' — '+effects:'');
+     if(bubble.textContent!==label)bubble.textContent=label;
+    }
+    const condition=[activeShield>0?'Shield':null,...[
+     ['burnUntil','Burn'],['woundUntil','Wound'],['sunderUntil','DEF ↓'],['shredUntil','S.DEF ↓'],
+     ['rallyUntil','Speed ↑'],['frostUntil','Speed ↓'],['weakenUntil','Damage ↓']
+    ].filter(([key])=>unit[key]>unit.elapsed).map(([,label])=>label)].filter(Boolean).join(' · ');
+    if(status.textContent!==condition)status.textContent=condition;
+    status.hidden=!condition;
     node.classList.toggle('is-casting',Boolean(cast && now-cast.started<380));
     paintBattler(unit,now);
    }
@@ -1663,7 +1700,7 @@
    }
    chart.update();
    timer.value=100*(1-(frame+1)/combatTicks);
-   countdown.textContent=Math.ceil((combatTicks-frame-1)*combatStepMs/1000)+'s';
+   countdown.textContent=(frame*combatStepMs>=overtimeStartMs?'Overtime · ':'')+Math.ceil((combatTicks-frame-1)*combatStepMs/1000)+'s';
    timer.title=matches.filter(match=>match.sign===null).length+' battles still in progress';
   }
   const lastVisibleCast=Math.max(0,...(watched?.units ?? []).map(unit=>unit.lastCast?.started ?? 0));
@@ -1682,7 +1719,10 @@
    if(!player.hp)run.place=1+run.trainers.filter(t=>t.hp>0).length+
     run.trainers.slice(1).filter(t=>t.eliminated===run.round && t.name.localeCompare(player.name)<0).length;
   }
-  if(!player.hp || run.trainers.filter(t=>t.hp>0).length<=1)recordBattlePass({battles:1,wins:player.hp>0?1:0});
+  if(!player.hp || run.trainers.filter(t=>t.hp>0).length<=1){
+   const note=recordBattlePass({battles:1,wins:player.hp>0?1:0,tacticsMatches:1});
+   if(note)showPassBattleNotice(note);
+  }
   run.round++;
   for(const trainer of run.trainers)if(trainer.hp)roll(trainer);
   run.result=sign>0?'Victory against '+rival.name:sign<0?'Defeat against '+rival.name:'Draw against '+rival.name;
@@ -1691,6 +1731,7 @@
   else startPlanning();
   void checkGameVersion();
  }
+ window.hasActiveTacticsRun=()=>phase==='tactics' && Boolean(run?.trainers[0].hp && run.trainers.filter(trainer=>trainer.hp>0).length>1);
  byId('home-tactics').onclick=openTactics;
  byId('tactics-back').onclick=()=>{clearInterval(planningTimer);run=null;openMenu();};
 })();

@@ -55,6 +55,18 @@ let saveTimer;
 let saving=false;
 let dirty=false;
 const syncError=byId('arena-sync-error');
+const saveState=element('span','Saved on this browser');
+saveState.id='toolbar-save-state';
+saveState.setAttribute('role','status');
+byId('toolbar-profile').after(saveState);
+function downloadLocalSave(){
+ const url=URL.createObjectURL(new Blob([JSON.stringify(readArenaSave())],{type:'application/json'}));
+ const link=element('a');
+ link.href=url;
+ link.download='PokeArena-save.json';
+ link.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 async function fetchArenaSave(client,id) {
  const {data,error}=await client.from('arena_saves').select('save_data,updated_at').eq('user_id',id).maybeSingle();
  if(error) throw error;
@@ -63,6 +75,7 @@ async function fetchArenaSave(client,id) {
 async function flushArenaSave() {
  if(!cloudAccount || !team.length || saving || !dirty) return;
  saving=true;
+ saveState.textContent='Syncing…';
  dirty=false;
  try {
   const client=await cloudClient();
@@ -72,13 +85,36 @@ async function flushArenaSave() {
    ?query.update(values).eq('user_id',cloudAccount).eq('updated_at',cloudRevision)
    :query.insert({...values,user_id:cloudAccount})).select('updated_at');
   if(error) throw error;
-  if(!data?.length) throw new Error('Progress changed on another device. Reload and log in again to get the latest save.');
+  if(!data?.length){
+   const conflict=new Error('Progress changed on another device.');
+   conflict.saveConflict=true;
+   throw conflict;
+  }
   cloudRevision=data[0].updated_at;
   syncError.hidden=true;
+  saveState.textContent=dirty?'Saved locally · sync pending':'Cloud synced';
   if(dirty) window.queueArenaSave();
  } catch(error) {
   dirty=true;
-  syncError.textContent='Progress could not sync. '+error.message;
+  saveState.textContent='Saved locally · sync failed';
+  syncError.textContent='Progress could not sync. '+error.message+' ';
+  const retry=element('button',error.saveConflict?'Load cloud save':'Retry sync');
+  retry.onclick=async()=>{
+   if(!error.saveConflict){await flushArenaSave().catch(()=>{});return;}
+   if(!window.confirm('Replace this browser’s progress with the latest cloud save?'))return;
+   try{
+    const client=await cloudClient();
+    const row=await fetchArenaSave(client,cloudAccount);
+    if(!row)throw new Error('Cloud save unavailable.');
+    clearTimeout(saveTimer);
+    dirty=false;
+    try {restoreArenaSave(row.save_data);} catch(error){dirty=true;throw error;}
+    window.location.reload();
+   }catch(error){syncError.append(element('span',' '+error.message));}
+  };
+  const backup=element('button','Download local save');
+  backup.onclick=downloadLocalSave;
+  syncError.append(retry,backup);
   syncError.hidden=false;
   throw error;
  } finally {saving=false;}
@@ -86,6 +122,7 @@ async function flushArenaSave() {
 window.queueArenaSave=()=>{
  if(!cloudAccount) return;
  dirty=true;
+ saveState.textContent='Saved locally · sync pending';
  clearTimeout(saveTimer);
  saveTimer=setTimeout(()=>flushArenaSave().catch(()=>{}),350);
 };
@@ -106,6 +143,7 @@ async function enterCloudAccount(client,user,proceed,allowGuestImport=false) {
  }
  cloudAccount=id;
  cloudRevision=row?.updated_at ?? null;
+ saveState.textContent=row?'Cloud synced':'Saved locally';
  proceed();
 }
 window.addEventListener('online',()=>flushArenaSave().catch(()=>{}));

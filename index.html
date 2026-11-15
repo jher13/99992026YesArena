@@ -792,6 +792,11 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .tactics-live-bars>progress{height:6px}
 .tactics-live-bars>progress::-webkit-progress-value{background:#63ccff}
 .tactics-live-bars>progress::-moz-progress-bar{background:#63ccff}
+.home-mode-detail{display:block;font-size:.72em;line-height:1.3}
+.tactics-effect-summary{font-size:11px;color:#fff0d1;background:#172226;padding:5px 7px;border-radius:4px}
+.tactics-item-tooltip{max-height:min(65dvh,350px);overflow:auto;pointer-events:auto}
+.tactics-item-slot:hover>.tactics-item-tooltip:hover{display:block}
+#toolbar-save-state{font-size:12px}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -870,17 +875,17 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 <button id="home-skills" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Skill Shop</strong><small>TM, TR, and HM moves</small></span></button>
 <button id="home-events" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Events</strong></span></button>
 </nav>
-<div class="home-feature"><div class="feature-orb" id="feature-sprite"></div><h2 id="feature-name"></h2><p id="feature-type"></p><button id="home-play" class="home-play"><span class="menu-pixel" aria-hidden="true"></span>Pokebattle</button>
+<div class="home-feature"><div class="feature-orb" id="feature-sprite"></div><h2 id="feature-name"></h2><p id="feature-type"></p><button id="home-play" class="home-play"><span class="menu-pixel" aria-hidden="true"></span>Pokebattle<small class="home-mode-detail">Catch wild Pokémon</small></button>
 <div class="home-multiplayer" aria-label="Multiplayer modes">
-<button id="home-coop" class="home-link"><span class="menu-pixel" aria-hidden="true"></span>Co-op</button>
-<button id="home-pvp" class="home-link"><span class="menu-pixel" aria-hidden="true"></span>PvP</button>
+<button id="home-coop" class="home-link"><span class="menu-pixel" aria-hidden="true"></span>Co-op<small class="home-mode-detail">Clear raids with other players</small></button>
+<button id="home-pvp" class="home-link"><span class="menu-pixel" aria-hidden="true"></span>PvP<small class="home-mode-detail">Battle other players</small></button>
 </div>
-<button id="home-roguelit" class="home-link"><span class="menu-pixel" aria-hidden="true"></span>Roguelit</button>
-<button id="home-tactics" class="home-link" type="button">Poke Fight Tactics</button></div>
+<button id="home-roguelit" class="home-link"><span class="menu-pixel" aria-hidden="true"></span>Roguelit<small class="home-mode-detail">Build a team one round at a time</small></button>
+<button id="home-tactics" class="home-link" type="button">Poke Fight Tactics<small class="home-mode-detail">Draft a team against seven trainers</small></button></div>
 <nav class="home-links" aria-label="Gyms and Pokédex">
 <button id="home-trainer" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Trainer Battles</strong><small>Challenge regional trainers · earn coins</small></span></button>
-<button id="home-gyms" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Gym Battles</strong><small>Challenge themed teams</small></span></button>
-<button id="home-collection" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Gym Collection</strong><small id="home-badge-count"></small></span></button>
+<button id="home-gyms" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Campaign</strong><small>Earn badges and unlock Master Campaign</small></span></button>
+<button id="home-collection" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Badge Collection</strong><small id="home-badge-count"></small></span></button>
 <button id="home-friendlist" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Friendlist</strong></span></button>
 <button id="home-guilds" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Guilds</strong></span></button>
 <button id="home-leaderboard" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Leaderboard</strong></span></button>
@@ -983,7 +988,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 </section>
 <section id="wild-result" class="wild-victory" aria-label="Wild battle result" hidden></section>
 <section id="gyms" class="gym-screen" hidden>
-<div class="menu-heading"><h2>Gym Battles</h2><button id="gym-back">Main menu</button></div>
+<div class="menu-heading"><h2>Campaign</h2><button id="gym-back">Main menu</button></div>
 <p id="gym-progress" class="campaign-progress"></p><div id="gym-grid"></div>
 </section>
 <section id="guild-directory" hidden>
@@ -999,7 +1004,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 <div id="friendlist-content"></div>
 </section>
 <section id="gym-collection" class="gym-screen" hidden>
-<div class="menu-heading"><h2>Gym Collection</h2><button id="collection-back">Main menu</button></div>
+<div class="menu-heading"><h2>Badge Collection</h2><button id="collection-back">Main menu</button></div>
 <p id="collection-progress" class="campaign-progress"></p><div id="badge-grid"></div>
 </section>
 <section id="pokedex" class="gym-screen" hidden>
@@ -2449,8 +2454,8 @@ const passRewards=[
  ['balls','Master Ball',1]
 ];
 const passQuests={
- daily:[['battles','Finish 3 battles',3,50],['wins','Win 2 battles',2,50],['catches','Catch a Pokémon',1,40]],
- weekly:[['battles','Finish 20 battles',20,220],['wins','Win 12 battles',12,220],['catches','Catch 5 Pokémon',5,160]]
+ daily:[['battles','Finish 3 battles',3,50],['wins','Win 2 battles',2,50],['catches','Catch a Pokémon',1,40],['trainerWins','Win a Trainer Battle',1,40]],
+ weekly:[['battles','Finish 20 battles',20,220],['wins','Win 12 battles',12,220],['catches','Catch 5 Pokémon',5,160],['tacticsMatches','Finish a Tactics match',1,160],['raidWins','Clear a co-op raid',1,160]]
 };
 function battlePassState(now=new Date()) {
  const pass=wildProgress.battlePass;
@@ -2463,21 +2468,38 @@ function battlePassState(now=new Date()) {
  }
  return pass;
 }
-function recordBattlePass(events) {
+let passNoticeTimer;
+function showPassBattleNotice(message){
+ const notice=byId('pass-battle-notice');
+ notice.textContent=message;
+ notice.hidden=false;
+ clearTimeout(passNoticeTimer);
+ passNoticeTimer=setTimeout(()=>{notice.hidden=true;},8000);
+}
+function recordBattlePass(events,raidId=null) {
  const pass=battlePassState();
  const limit=passRewards.length*passTierXP;
- if(pass.xp>=limit)return;
+ if(pass.xp>=limit)return '';
+ if(raidId!==null){
+  const raids=pass.creditedRaids ??= [];
+  if(raids.includes(raidId))return '';
+  raids.push(raidId);
+ }
+ const completed=[];
  let earned=(events.battles ?? 0)*10+(events.wins ?? 0)*5+(events.catches ?? 0)*5;
  for(const [period,quests] of Object.entries(passQuests)) {
   const progress=pass[period];
-  for(const [id,,goal,xp] of quests) {
+  for(const [id,label,goal,xp] of quests) {
    const before=progress[id] ?? 0;
    progress[id]=Math.min(goal,before+(events[id] ?? 0));
-   if(before<goal && progress[id]===goal)earned+=xp;
+   if(before<goal && progress[id]===goal){earned+=xp;completed.push(label);}
   }
  }
- pass.xp=Math.min(limit,pass.xp+earned);
+ const added=Math.min(limit-pass.xp,earned);
+ pass.xp+=added;
  saveWildProgress();
+ return added?'Battle Pass +'+added+' XP'+(completed.length?' · Quests completed: '+completed.join(', '):''):'';
+
 }
 function claimPassReward(index,refresh=true) {
  const pass=battlePassState();
@@ -2558,7 +2580,7 @@ function renderBattlePass() {
   questsView.append(section);
  }
  view.replaceChildren(hero,element('h3','Tier rewards'),rewards,element('h3','Quests'),questsView,
-  element('p','Earn 10 XP per finished battle, 5 extra XP per win, and 5 XP per catch.'));
+  element('p','Earn XP in Pokebattle, Trainer Battles, Campaign, Roguelit, completed Tactics matches, and co-op clears. A battle gives 10 XP, a win adds 5 XP, and a catch gives 5 XP.'));
  if(scroll===undefined)rewards.scrollLeft=rewards.children[selected].offsetLeft-rewards.children[0].offsetLeft;
  else rewards.scrollLeft=scroll;
 }
@@ -3632,7 +3654,8 @@ function tryCatch(index) {
  result.capture={index,caught,pending:true,duration};
  if(caught) {
   addCaughtPokemon(result.name,result.level,result.profile);
-  recordBattlePass({catches:1});
+  const passNote=recordBattlePass({catches:1});
+  if(passNote)result.message+=' '+passNote+'.';
  }
  saveWildProgress();
  renderWildResult();
@@ -4385,7 +4408,7 @@ function maximumBattleSpeed() {
  return kantoGymIds.every(id=>clearedGyms.includes(id))?3:2;
 }
 function speedUnlockMessage() {
- if(clearedGyms.length===gymTeams.length) return ' Master Gym Battles and 4× battle speed unlocked!';
+ if(clearedGyms.length===gymTeams.length) return ' Master Campaign and 4× battle speed unlocked!';
  if(clearedGyms.length===kantoGymIds.length && maximumBattleSpeed()===3) return ' 3× battle speed unlocked!';
  return '';
 }
@@ -8141,7 +8164,9 @@ function advance(dt,realDt=dt) {
  if(!playerReserve || !enemyReserve || timedOut) {
   const result=timedOut && requiresClear?-1:timedOut?compareTeamHP(allies,enemies):Number(Boolean(playerReserve))-Number(Boolean(enemyReserve));
   phase=result>0?'win':result<0?'loss':'draw';
-  if(rogueRun || selectedWild || selectedTrainer || selectedGym)recordBattlePass({battles:1,wins:result>0?1:0});
+  const passNote=rogueRun || selectedWild || selectedTrainer || selectedGym
+   ?recordBattlePass({battles:1,wins:result>0?1:0,trainerWins:selectedTrainer && result>0?1:0}):'';
+  if(passNote)showPassBattleNotice(passNote);
   if(rogueRun) {finishRogueRound(phase==='win');return;}
   if(phase==='loss') {
    const detail=applyDefeatRewards();
@@ -9234,6 +9259,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.14',changes:['Improved combat reports, Battle Pass quests, save recovery, and mode guidance. Renamed Campaign and Badge Collection.']},
  {version:'0.22.13',changes:['Gave every Fight Tactics signature a distinct effect and displayed shields on HP bars.']},
  {version:'0.22.12',changes:['Centered the Fight Tactics combat countdown and diversified signatures by combat role.']},
  {version:'0.22.11',changes:['Fixed Start Match in Fight Tactics.']},
@@ -9350,7 +9376,7 @@ const updateLogEntries=[
 ];
 let clientVersionCheckPending=false;
 function canCheckGameVersion() {
- return typeof location!=='undefined' && !window.isPvpVersionContext?.() &&
+ return typeof location!=='undefined' && !window.isPvpVersionContext?.() && !window.hasActiveTacticsRun?.() &&
   !['setup','battle'].includes(phase) &&
   (phase!=='online-battle' || window.isCompletedRaid?.());
 }
@@ -9470,8 +9496,8 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script>
+</script><p id="pass-battle-notice" role="status" hidden></p><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.22.14"></script><script>
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.13"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+<script src="./tactics.js?v=0.22.14"></script><script src="./multiplayer.js?v=0.22.14"></script></html>
