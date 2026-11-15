@@ -475,6 +475,7 @@
   return data;
  }
  function show(title,...nodes) {
+  dialog.classList.toggle('collection-dialog',pvpVersionContext || title==='Hotkey Settings');
   byId('home-dialog-title').textContent=title;
   byId('home-dialog-content').replaceChildren(...nodes);
   if(!dialog.open) dialog.showModal();
@@ -931,7 +932,12 @@
    room.controls.append(find,create,findRoom,code,join);
    return;
   }
-  show(title,mode,freeFightLabel,format,find,create,code,join);
+  const setup=element('div',null,'pvp-controls');
+  setup.append(mode,format,freeFightLabel);
+  const matchmaking=element('div',null,'pvp-controls');
+  matchmaking.append(find,create,code,join);
+  show(title,element('h3','Match setup','bag-section-title'),setup,
+   element('h3','Matchmaking','bag-section-title'),matchmaking);
  }
  function showMatch(title) {
   if(active.mode==='free_fight')title='Free Fight';
