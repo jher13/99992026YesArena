@@ -4522,7 +4522,7 @@ function randomArenaMap() {
  }
  return {...biome,zones,rocks};
 }
-const megaRaidArenaSize={width:1280,height:720};
+const megaRaidArenaSize={width:1080,height:600};
 function setArenaDimensions({width=960,height=480}={}) {
  if(canvas.width!==width)canvas.width=width;
  if(canvas.height!==height)canvas.height=height;
@@ -8020,6 +8020,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.15.7',changes:['Centered the raid HUD, resized the arena, and added tier-scaled daily Co-op ticket rewards.']},
  {version:'0.15.6',changes:['Expanded Mega raid arenas, added boss-matching terrain without pillars, and moved boss effects under the HP bar.']},
  {version:'0.15.5',changes:['Limited raid parties to one Pokémon per species across all seats.']},
  {version:'0.15.4',changes:['Fixed raid snapshots, filtered occupied fighters, and added a 30-minute raid countdown.']},
