@@ -544,6 +544,17 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 :is(#menu,.raid-pc-dialog) .held-item-field{color:#354f44}
 #gym-collection .gym-badge-sprite{width:48px;height:48px;background:url('./assets/gym-badges.png') var(--badge-x) var(--badge-y)/480px 336px no-repeat;image-rendering:pixelated}
 #gym-collection .gym-badge-sprite.is-uncollected{filter:grayscale(1);opacity:.62}
+
+#events{max-width:1060px}
+.tactics-board{--hex:min(10vw,62px);width:max-content;max-width:100%;margin:10px auto;padding:6px}
+.tactics-hex-row{display:flex;gap:2px;margin-top:-3px}
+.tactics-hex-row:nth-child(even){padding-left:calc(var(--hex)/2)}
+#events button.tactics-hex{padding:3px;width:var(--hex);height:calc(var(--hex)*.86);clip-path:polygon(12% 0,88% 0,100% 50%,88% 100%,12% 100%,0 50%);display:grid;place-items:center;background:#d0e3d3;color:#253d36;border:0;font-size:clamp(7px,1.65vw,11px)}
+#events button.tactics-hex:disabled{background:#dfe9e0;color:#253d36}
+#events button.tactics-hex.is-opponent{background:#efc9c5}
+#events button.tactics-hex[aria-pressed=true]{background:#8cbea2}
+.tactics-hex canvas{max-width:100%;max-height:30px;border:0;background:transparent}
+.tactics-standings{columns:2;padding-left:24px}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -4339,143 +4350,6 @@ document.addEventListener('pointerdown',()=>{
  else if(musicTrack && musicContext?.state==='suspended') musicContext.resume().catch(()=>{});
 });
 let rogueRun=null;
-const tacticsRounds=8;
-function tacticsPool(level) {
- return dexNames.filter(name=>!isLegendaryEncounter(name) && minimumEncounterLevel(dex[name][0])<=level);
-}
-function tacticsShop(run) {
- return drawRogueChoices(tacticsPool(run.round*5+8),5);
-}
-function openEvents() {
- phase='events';
- showScreen('events');
-}
-function startTacticsEvent() {
- const run={tactics:true,round:1,hp:20,gold:10,wins:0,capacity:2,levelXp:0,bench:[],members:[],
-  power:1,enemyPower:1,health:1,offense:1,region:'Kanto'};
- run.shop=tacticsShop(run);
- renderTacticsEvent(run);
-}
-function tacticsTypes(members) {
- const counts=new Map();
- for(const member of members)for(const type of dex[member.name].slice(1,3).filter(Boolean))counts.set(type,(counts.get(type) ?? 0)+1);
- return new Set([...counts].filter(([,count])=>count>=2).map(([type])=>type));
-}
-function renderTacticsEvent(run) {
- phase='events';
- showScreen('events');
- const content=byId('event-content');
- const action=(label,handler,disabled=false)=>{
-  const control=element('button',label);
-  control.type='button';control.disabled=disabled;control.onclick=handler;
-  return control;
- };
- const heading=title=>element('h3',title,'bag-section-title');
- const ended=run.hp<=0 || run.round>tacticsRounds;
- if(ended){
-  content.replaceChildren(heading(run.hp<=0?'Run over':'Event complete'),
-   element('p',run.wins+' / '+tacticsRounds+' rounds won · '+run.hp+' HP remaining'),
-   action('Start a new run',startTacticsEvent),action('Back to Events',resetEventsPage));
-  return;
- }
- const resources=element('p','Round '+run.round+' / '+tacticsRounds+' · '+run.hp+' HP · '+run.gold+' gold · '+run.members.length+' / '+run.capacity+' deployed');
- const traits=tacticsTypes(run.members);
- const traitStatus=element('p',traits.size?'Active type bonuses · '+[...traits].join(', '):'Deploy two Pokémon sharing a type to boost their Attack and Sp. Atk by 12%.');
- const shop=element('div',null,'shop-grid');
- run.shop.forEach((name,index)=>{
-  if(!name)return;
-  const cost=tacticsCost(name);
-  const copy=[...run.members,...run.bench].find(member=>member.name===name);
-  const card=tacticsCard(name,copy?'Merge · '+copy.copies+'/3 copies':cost+' gold');
-  card.append(action(copy?'Merge · '+cost+' gold':'Buy',()=>{
-   run.gold-=cost;
-   run.shop[index]=null;
-   if(copy){
-    copy.copies++;
-    if(copy.copies===3)copy.level+=5;
-   }else{
-    const member={...rogueMember(name,8,legalLoadout(name)),copies:1};
-    (run.members.length<run.capacity?run.members:run.bench).push(member);
-   }
-   renderTacticsEvent(run);
-  },run.gold<cost || (!copy && run.members.length+run.bench.length>=10) || copy?.copies===3));
-  shop.append(card);
- });
- if(!shop.children.length)shop.append(element('p','Shop sold out.'));
- const shopActions=element('div',null,'menu-actions');
- shopActions.append(action('Reroll · 2 gold',()=>{
-  run.gold-=2;run.shop=tacticsShop(run);renderTacticsEvent(run);
- },run.gold<2),action('Buy XP · 4 gold',()=>{
-  run.gold-=4;run.levelXp+=4;
-  if(run.levelXp>=8){run.capacity++;run.levelXp=0;}
-  renderTacticsEvent(run);
- },run.gold<4 || run.capacity>=6));
- const formation=element('div',null,'shop-grid');
- for(const member of run.members) {
-  const card=tacticsCard(member.name,'Lv. '+member.level+' · '+(member.copies===3?'★★':'★'));
-  const index=run.members.indexOf(member);
-  card.append(action('Bench',()=>{
-   run.members.splice(index,1);run.bench.push(member);renderTacticsEvent(run);
-  }),action('Move left',()=>{
-   [run.members[index-1],run.members[index]]=[member,run.members[index-1]];renderTacticsEvent(run);
-  },index===0));
-  formation.append(card);
- }
- const bench=element('div',null,'shop-grid');
- for(const member of run.bench) {
-  const card=tacticsCard(member.name,'Lv. '+member.level+' · '+(member.copies===3?'★★':'★'));
-  card.append(action('Deploy',()=>{
-   run.bench.splice(run.bench.indexOf(member),1);run.members.push(member);renderTacticsEvent(run);
-  },run.members.length>=run.capacity),action('Sell · '+tacticsCost(member.name)+' gold',()=>{
-   run.bench.splice(run.bench.indexOf(member),1);run.gold+=tacticsCost(member.name);renderTacticsEvent(run);
-  }));
-  bench.append(card);
- }
- content.replaceChildren(heading('Teamfight Tactics'),resources,...(run.result?[element('p',run.result)]:[]),
-  heading('Shop'),shop,shopActions,element('p','Deployment XP · '+run.levelXp+' / 8'),
-  heading('Formation'),traitStatus,formation,heading('Bench'),bench,
-  action('Start round',()=>startTacticsRound(run),!run.members.length));
-}
-function tacticsCost(name) {
- const level=minimumEncounterLevel(dex[name][0]);
- return level>=24?3:level>=12?2:1;
-}
-function tacticsCard(name,detail) {
- const card=element('div',null,'bag-item');
- const art=element('div',null,'bag-art');
- art.append(idlePokemonPortrait(name,null,null,true));
- card.append(art,element('strong',name),element('small',detail));
- return card;
-}
-function resetEventsPage() {
- const start=element('button','Start event');
- start.onclick=startTacticsEvent;
- byId('event-content').replaceChildren(element('h3','Pokémon Teamfight Tactics','bag-section-title'),
-  element('p','Draft a team from a rotating shop, build type bonuses, and survive eight rounds against AI trainers.'),start);
- openEvents();
-}
-function startTacticsRound(run) {
- const level=5+run.round*2;
- const count=Math.min(6,1+Math.floor((run.round+1)/2));
- run.enemyRoster=drawRogueChoices(tacticsPool(level+5),count).map(name=>({name,level}));
- run.traits=tacticsTypes(run.members);
- openBattle(null,null,null,run);
- startBattle();
-}
-function finishTacticsRound(run,won) {
- if(won)run.wins++;
- const lost=won?0:2+Math.floor(run.round/2);
- run.hp=Math.max(0,run.hp-lost);
- const earned=5+(won?1:0)+Math.min(3,Math.floor(run.gold/10));
- run.gold+=earned;
- run.result=(won?'Round won':'Round lost · −'+lost+' HP')+' · +'+earned+' gold';
- run.round++;
- for(const member of [...run.members,...run.bench])member.level++;
- run.shop=tacticsShop(run);
- rogueRun=null;
- renderTacticsEvent(run);
-}
-
 function drawRogueChoices(pool,count) {
  const available=[...pool];
  return Array.from({length:Math.min(count,available.length)},()=>available.splice(Math.floor(Math.random()*available.length),1)[0]);
@@ -5411,10 +5285,7 @@ function unit(name,x,y,friendly,level=friendly?(ownedPokemon(name)?.level ?? 5):
    stats[0]=Math.round(stats[0]*rogueRun.health);
    stats[1]=Math.round(stats[1]*rogueRun.offense);
    stats[5]=Math.round(stats[5]*rogueRun.offense);
-   if(rogueRun.tactics && dex[name].slice(1,3).some(type=>rogueRun.traits.has(type))) {
-    stats[1]=Math.round(stats[1]*1.12);
-    stats[5]=Math.round(stats[5]*1.12);
-   }
+
   }
  }
  const hp=stats[0];
@@ -5679,12 +5550,12 @@ function renderControls() {
  if(phase!=='battle' && phase!=='setup') stopBattleMusic();
  updateAutoReserveToggle();
  byId('next-gym').hidden=!(phase==='win' && newBadge && clearedGyms.length<gymTeams.length);
- updateActivePanels(rogueRun?.tactics?trainerFields:undefined);
+ updateActivePanels();
  updateScore();
  updateBattleRosters();
  byId('status').textContent = {
   setup:selectedWild ? selectedWild.region+' · Choose one Pokémon to battle.' : selectedTrainer ? selectedTrainer.region+' Trainer · Difficulty '+selectedTrainer.tier.label+' · '+selectedTrainer.format+'v'+selectedTrainer.format+(selectedTrainer.format===1?' · Ready to battle.':' · Choose your lead Pokémon.') : selectedGym ? selectedGym.name+(selectedMasterGym?' · Master · Choose your lead. Defeat all six. ':' · Choose your lead Pokémon. '+gymBrief(selectedGym))+' '+arenaMap.name+' · '+arenaMap.rocks.length+' pillars.'+(clearedGyms.includes(selectedGym.id)?' Rematch challenge: win without losing a Pokémon.':'') : 'Choose your lead Pokémon.',
-  battle:rogueRun?(rogueRun.tactics?'Teamfight Tactics · Round ':'Roguelit · Battle ')+rogueRun.round:'Tap a healthy teammate on the left to switch Pokémon.',
+  battle:rogueRun?'Roguelit · Battle '+rogueRun.round:'Tap a healthy teammate on the left to switch Pokémon.',
   draw:'Draw. Neither side won the battle.',
   win:selectedTrainer ? 'Victory! You earned '+selectedTrainer.coins+' coins.' : selectedWild ? 'Wild Pokémon defeated!' : newBadge ? 'Victory! You earned the '+selectedGym.badge+'.'+speedUnlockMessage() : 'Victory! Your team defeated all six opponents.',
   loss:'Your team was knocked out. Return to the main menu to change your moves.'
@@ -5715,9 +5586,9 @@ function startBattle() {
  phase='battle';
  unlockSkillSound();
  startBattleMusic();
- if(rogueRun?.tactics || selectedTrainer?.format>1) {
-  trainerFields=(rogueRun?.tactics?[allies,enemies]:[trainerLeads(allies,true),trainerLeads(enemies,false)]).map(leads=>leads.map((actor,index)=>{
-   const slot={actor:null,transition:null,y:240+(index-(leads.length-1)/2)*Math.min(112,370/leads.length)};
+ if(selectedTrainer?.format>1) {
+  trainerFields=[trainerLeads(allies,true),trainerLeads(enemies,false)].map(leads=>leads.map((actor,index)=>{
+   const slot={actor:null,transition:null,y:240+(index-(leads.length-1)/2)*112};
    trainerSend(slot,actor);
    return slot;
   }));
@@ -7888,7 +7759,6 @@ function advance(dt,realDt=dt) {
  if(!playerReserve || !enemyReserve || timedOut) {
   const result=timedOut && requiresClear?-1:timedOut?compareTeamHP(allies,enemies):Number(Boolean(playerReserve))-Number(Boolean(enemyReserve));
   phase=result>0?'win':result<0?'loss':'draw';
-  if(rogueRun?.tactics) {finishTacticsRound(rogueRun,phase==='win');return;}
   if(rogueRun) {finishRogueRound(phase==='win');return;}
   if(phase==='loss') {
    const detail=applyDefeatRewards();
@@ -7954,7 +7824,7 @@ function advance(dt,realDt=dt) {
  updateScore();
  updateBattleRosters();
  updateRecallStatus();
- updateActivePanels(rogueRun?.tactics?trainerFields:undefined);
+ updateActivePanels();
 }
 function drawSwitchBall(x,y,spin,opening=0) {
  ctx.save();
@@ -8963,8 +8833,7 @@ byId('home-pvp').onclick=()=>openHomeDialog('PvP',element('p','Available when on
 byId('home-friendlist').onclick=()=>openHomeDialog('Friendlist',element('p','Available when online play is added.'));
 byId('home-guilds').onclick=()=>openHomeDialog('Guilds',element('p','Available when online play is added.'));
 byId('home-leaderboard').onclick=()=>openHomeDialog('Leaderboard',element('p','Available when online play is added.'));
-byId('home-events').onclick=resetEventsPage;
-byId('events-back').onclick=()=>openMenu();
+
 byId('toolbar-messages').onclick=()=>openHomeDialog('Messages',element('p','No messages.'));
 byId('toolbar-notices').onclick=()=>openHomeDialog('Notifications',
  element('p',maximumBattleSpeed()+'× battle speed available.'),
@@ -8982,6 +8851,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.17.0',changes:['Rebuilt Pokémon Teamfight Tactics as an eight-trainer elimination mode with hex combat and a shared shop.']},
  {version:'0.16.0',changes:['Added an eight-round Pokémon Teamfight Tactics event with a shop, bench, merges, and type bonuses.']},
  {version:'0.15.21',changes:['Added 68 individual pixel-art Gym Badge sprites to Gym Collection.']},
  {version:'0.15.20',changes:['Improved Held item label contrast in the PC and raid editor.']},
@@ -9180,4 +9050,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.17.0"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
