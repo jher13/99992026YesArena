@@ -935,7 +935,9 @@
   const setup=element('div',null,'pvp-controls');
   setup.append(mode,format,freeFightLabel);
   const matchmaking=element('div',null,'pvp-controls');
-  matchmaking.append(find,create,code,join);
+  const joinControls=element('div',null,'pvp-join-room');
+  joinControls.append(code,join);
+  matchmaking.append(find,create,joinControls);
   show(title,element('h3','Match setup','bag-section-title'),setup,
    element('h3','Matchmaking','bag-section-title'),matchmaking);
  }
