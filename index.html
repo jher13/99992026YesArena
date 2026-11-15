@@ -663,6 +663,14 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 
 .tactics-combat-space{position:relative;width:100%;height:clamp(220px,46dvh,450px);isolation:isolate}
 .tactics-live-unit{position:absolute;width:clamp(44px,8vw,74px);transform:translate(-50%,-50%);text-align:center}
+.tactics-damage-layer{position:absolute;inset:0;z-index:100;pointer-events:none}
+.tactics-damage-number{position:absolute;transform:translate(-50%,-50%);color:#fff;font-size:14px;font-weight:500;text-shadow:0 1px 3px #000,0 0 2px #000}
+.tactics-damage-number.is-critical{color:#ffab43;font-size:17px;font-weight:800}
+.tactics-cast-bubble{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);white-space:nowrap;padding:3px 7px;border-radius:6px;background:#f5dda0;color:#182629;font-size:12px;font-weight:700;box-shadow:0 1px 4px #101719;pointer-events:none}
+.tactics-cast-bubble::after{content:"";position:absolute;top:100%;left:50%;margin-left:-4px;border:4px solid transparent;border-top-color:#f5dda0}
+.tactics-live-unit.is-casting canvas{animation:tactics-cast-flash .38s ease-out}
+@keyframes tactics-cast-flash{from{filter:drop-shadow(0 0 6px #ffe7a0) brightness(1.6)}to{filter:none}}
+.tactics-signature-description{color:#d5e8e5;font-size:11px}
 .tactics-live-unit canvas{width:100%;height:auto;border:0;background:transparent;image-rendering:pixelated}
 .tactics-live-bars{display:grid;gap:2px;width:80%;margin:0 auto -5px;position:relative;z-index:1}
 .tactics-live-bars progress{appearance:none;width:100%;height:8px;background:#0d171b;border:1px solid #0d171b;border-radius:2px;overflow:hidden}
@@ -1250,6 +1258,7 @@ function pmdImage(index) {
 }
 const pmdMotionOptions={
  idle:['Idle'],walk:['Walk'],run:['Run','Walk'],
+ cast:['Special','Charge','Shoot','Attack','Strike','Swing','Double'],
  attack:['Shoot','Attack','Swing','Double'],lunge:['Strike','Attack','Charge','Swing','Double'],hit:['Hurt','Pain']
 };
 function spriteVariants(name) {
@@ -9029,6 +9038,8 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.21.9',changes:['Added floating damage numbers and orange critical hits in Fight Tactics.']},
+ {version:'0.21.8',changes:['Updated Fight Tactics elemental damage, signature move animations and tooltips, and item recipe tooltips.']},
  {version:'0.21.7',changes:['Moved Poke Fight Tactics below Roguelit and preserved held items on upgrades and sales.']},
  {version:'0.21.6',changes:['Fight Tactics shows base stats with blue bonuses and displays equipped items during preparation.']},
  {version:'0.21.5',changes:['Added individual pixel-art sprites for every Poke Fight Tactics item.']},
@@ -9253,4 +9264,4 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.21.7"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+<script src="./tactics.js?v=0.21.9"></script><script src="./multiplayer.js?v=0.15.19"></script></html>

@@ -104,6 +104,13 @@
   }
   if(item){
    icon.title=item+' · '+describeBonuses(itemBonuses(item));
+   if(Object.hasOwn(components,item)){
+    const combinations=Object.keys(components).map(partner=>{
+     const [result]=recipes[[item,partner].sort().join('+')];
+     return partner+' → '+result;
+    });
+    icon.title+='\nFuses with\n'+combinations.join('\n');
+   }
    icon.setAttribute('aria-label',icon.title);
   }
   return icon;
@@ -247,6 +254,11 @@
    }
   },250);
  }
+ function signatureDescription(move){
+  const [type,power]=moveCatalog[move];
+  const special=moveReferences[move]?.[2]==='Special';
+  return 'At full mana, hits the target for '+type+' damage using '+(special?'Sp. Atk against Sp. Def':'Attack against Defense')+'. Move power '+power+'.';
+ }
  function statCard(unit){
   const trainer=run.scout ?? run.trainers[0];
   const stats=unit.hp===undefined?fighter(unit,false,traits(field(trainer)),trainer):unit;
@@ -290,6 +302,7 @@
   }
   details.append(art,title,meter(stats.hp,stats.max,'HP','is-hp'),meter(stats.mana,60,'Mana','is-mana'),
    element('p',(stats.move ?? 'No signature move')+' · '+stats.role+' · Range '+stats.range),items,numbers);
+  if(stats.move)numbers.before(element('p',signatureDescription(stats.move),'tactics-signature-description'));
   return details;
  }
  function inspectUnit(unit){
@@ -806,10 +819,12 @@
    if(unit.hp>0 && alive[source])unit.hp=Math.max(0,unit.hp-effects.weather[source]);
   }
  }
- function receiveDamage(target,damage){
+ function receiveDamage(target,damage,now=null,critical=false){
   if(damage<=0 || target.hp<=0)return;
   if(target.guard){target.guard=false;return;}
-  target.hp=Math.max(0,target.hp-damage);
+  const actualDamage=Math.min(target.hp,damage);
+  target.hp-=actualDamage;
+  if(now!==null)(target.damageEvents ??= []).push({amount:actualDamage,critical,started:now});
   if(target.secondWind && target.hp>0 && target.hp<target.max/2){
    target.secondWind=false;
    target.hp=Math.min(target.max,target.hp+Math.max(1,Math.round(target.max*.12)));
@@ -833,7 +848,7 @@
   const row=typeChart[type] ?? {};
   return types.reduce((multiplier,defense)=>{
    const factor=row[defense] ?? 1;
-   return multiplier*(factor>1?1.5:factor);
+   return multiplier*(factor>1?1.5:factor || 1);
   },1);
  }
  function tick(units,now=null){
@@ -864,16 +879,17 @@
    const offense=special?unit.specialAttack:unit.attack;
    const defense=special?target.specialDefense:target.defense;
    const critical=Math.random()<unit.critChance?unit.critDamage:1;
-   const damage=match===0?0:Math.max(1,Math.round(combatDamageScale*offense*(cast?1.8+moveCatalog[unit.move][1]/120:1)*match*critical*100/(100+defense)));
+   const damage=Math.max(1,Math.round(combatDamageScale*offense*(cast?1.8+moveCatalog[unit.move][1]/120:1)*match*critical*100/(100+defense)));
    if(now!==null){
-    setBattlerMotion(unit,target.position,cast || unit.range>1?'attack':'lunge',now);
+    setBattlerMotion(unit,target.position,cast?'cast':unit.range>1?'attack':'lunge',now);
+    if(cast)unit.lastCast={started:now,move:unit.move};
     if(!target.animation || now-target.animation.started>=target.animation.duration || target.animation.motion==='walk')
      setBattlerMotion(target,unit.position,'hit',now);
    }
-   receiveDamage(target,damage);
+   receiveDamage(target,damage,now,critical>1);
    if(cast && unit.echo){
     unit.echo=false;
-    if(damage)receiveDamage(target,Math.max(1,Math.round(damage*.35)));
+    if(damage)receiveDamage(target,Math.max(1,Math.round(damage*.35)),now,critical>1);
    }
    if(target.hp<=0 && unit.momentum)unit.hp=Math.min(unit.max,unit.hp+Math.max(1,Math.round(unit.max*.08)));
    if(cast){
@@ -916,6 +932,8 @@
  }
  function combatLayer(units){
   const layer=element('div',null,'tactics-combat-space');
+  const damageLayer=element('div',null,'tactics-damage-layer');
+  const damageLabels=new Map();
   const views=units.map(unit=>{
    const node=element('div',null,'tactics-live-unit'+(unit.opponent?' is-opponent':''));
    const bars=element('div',null,'tactics-live-bars');
@@ -925,13 +943,38 @@
    mana.setAttribute('aria-label',unit.name+' mana');
    bars.append(hp,mana);
    if(unit.items?.length)node.append(equippedItems(unit));
-   node.append(bars,battlerSprite(unit),element('span','★'.repeat(unit.star),'tactics-combat-stars'));
+   const bubble=element('span',null,'tactics-cast-bubble');
+   bubble.hidden=true;
+   node.append(bars,battlerSprite(unit),element('span','★'.repeat(unit.star),'tactics-combat-stars'),bubble);
    unitControls(node,unit,false);
    layer.append(node);
-   return {unit,node,hp,mana};
+   return {unit,node,hp,mana,bubble};
   });
+  layer.append(damageLayer);
   function paint(now){
-   for(const {unit,node,hp,mana} of views){
+   const visibleDamage=new Set();
+   for(const unit of units){
+    if(!unit.damageEvents)continue;
+    unit.damageEvents=unit.damageEvents.filter(event=>now-event.started<850);
+    for(const [index,event] of unit.damageEvents.entries()){
+     visibleDamage.add(event);
+     let label=damageLabels.get(event);
+     if(!label){
+      label=element('span',String(event.amount),'tactics-damage-number'+(event.critical?' is-critical':''));
+      damageLabels.set(event,label);
+      damageLayer.append(label);
+     }
+     const progress=Math.max(0,(now-event.started)/850);
+     placeOnField(label,unit.position.x+(index%3-1)*.22,unit.position.y-.3-progress*.8);
+     label.style.opacity=String(Math.min(1,(1-progress)*3));
+    }
+   }
+   for(const [event,label] of damageLabels){
+    if(visibleDamage.has(event))continue;
+    label.remove();
+    damageLabels.delete(event);
+   }
+   for(const {unit,node,hp,mana,bubble} of views){
     if(unit.hp<=0){node.hidden=true;continue;}
     const at=unit.position,from=unit.moveFrom ?? at;
     const progress=Math.min(1,Math.max(0,(now-(unit.moveStarted ?? now))/combatStepMs));
@@ -939,6 +982,11 @@
     placeOnField(node,x,y);
     node.style.zIndex=String(1+Math.floor(y*10));
     hp.value=unit.hp;mana.value=unit.mana;
+    const cast=unit.lastCast;
+    const casting=Boolean(cast && now-cast.started<950);
+    bubble.hidden=!casting;
+    if(casting && bubble.textContent!==cast.move)bubble.textContent=cast.move;
+    node.classList.toggle('is-casting',Boolean(cast && now-cast.started<380));
     paintBattler(unit,now);
    }
   }
