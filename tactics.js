@@ -2,6 +2,7 @@
  const content=byId('event-content');
  const odds=[[100,0,0],[75,25,0],[55,35,10],[35,45,20],[20,45,35],[12,38,50]];
  const benchLimit=9;
+ const traitHealthPerAlly=.06, traitPowerPerAlly=.10;
  const maxLevel=6;
  const cells=Array.from({length:56},(_,i)=>({x:i%7,y:Math.floor(i/7)}));
  const levels=[0,0,4,8,12,16,Infinity];
@@ -328,7 +329,7 @@
       bars.append(hp,mana);
       tile.append(bars);
      }
-     tile.append(combat?battlerSprite(unit):pokemonPortrait(unit.name,null,false,unit.opponent?0:4),element('small','★'.repeat(unit.star)));
+     tile.append(combat?battlerSprite(unit):idlePokemonPortrait(unit.name,null,null,true,4),element('small','★'.repeat(unit.star)));
      if(!combat)tile.setAttribute('aria-pressed',String(run.selected===unit));
     }
     row.append(tile);
@@ -376,7 +377,14 @@
    const entry=element('div',null,'tactics-trait'+(count>=2?' is-active':''));
    const badge=element('span',type,'home-type-badge');
    badge.style.setProperty('--type-color',moveColors[type] ?? '#b7c7dd');
-   entry.append(badge,element('span',count+' / 2'));
+   const strength=Math.max(0,count-1);
+   const bonus=amount=>Math.round(100*amount*strength);
+   const description=count<2?'Inactive. Deploy 2 '+type+' Pokémon to gain +6% max HP and +10% attack power.':
+    type+' Pokémon gain +'+bonus(traitHealthPerAlly)+'% max HP and +'+bonus(traitPowerPerAlly)+'% attack power.';
+   const tip=element('span',description+' Only the strongest active type bonus applies to a Pokémon.','tactics-trait-tooltip');
+   entry.tabIndex=0;
+   entry.setAttribute('aria-label',type+' trait. '+tip.textContent);
+   entry.append(badge,element('span',count+' / 2'),tip);
    sidebar.append(entry);
   }
   if(!types.length)sidebar.append(element('small','Deploy Pokémon to activate traits.'));
@@ -421,7 +429,7 @@
    if(unit){
     unitControls(tile,unit,!combat);
     tile.setAttribute('aria-pressed',String(run.selected===unit));
-    tile.append(pokemonPortrait(unit.name),element('small','★'.repeat(unit.star)));
+    tile.append(idlePokemonPortrait(unit.name,null,null,true,0),element('small','★'.repeat(unit.star)));
    }
    bench.append(tile);
   }
@@ -437,19 +445,43 @@
   const {layout,middle}=battleLayout(player,player.units);
   const bench=benchView(player);
   const benched=player.units.filter(unit=>unit.position===null);
-  const shop=element('div',null,'tactics-shop');
+  const shop=element('section',null,'tactics-shop');
+  shop.setAttribute('aria-label','Pokémon shop');
+  const bar=element('div',null,'tactics-shop-bar');
+  const level=element('div',null,'tactics-shop-level');
+  level.append(element('strong','Lvl. '+player.level),element('small',player.level>=maxLevel?'Max':player.xp+'/'+levels[player.level]+' XP'));
+  const progress=element('progress');
+  progress.max=player.level>=maxLevel?1:levels[player.level];
+  progress.value=player.level>=maxLevel?1:player.xp;
+  progress.setAttribute('aria-label','Level progress');
+  level.append(progress);
+  const chances=element('div',null,'tactics-shop-odds');
+  odds[player.level-1].forEach((chance,i)=>{
+   const label=element('span',chance+'%','tier-'+(i+1));
+   label.title='Tier '+(i+1)+' shop odds';
+   label.setAttribute('aria-label',label.title+' '+chance+' percent');
+   chances.append(label);
+  });
+  bar.append(level,chances,element('strong',player.gold+' gold','tactics-shop-gold'));
+  shop.append(bar);
   const economy=element('div',null,'tactics-economy');
-  economy.append(element('strong',player.gold+' gold'),element('small','Level '+player.level+(player.level>=maxLevel?' · Max':' · '+player.xp+'/'+levels[player.level]+' XP')),
-   button('Reroll · 2 gold',()=>{player.gold-=2;roll(player);render();},run.round===1 || player.gold<2),
-   button('Buy XP · 4 gold',()=>{player.gold-=4;xp(player,4);render();},player.gold<4 || player.level>=maxLevel));
+  economy.append(button('Buy XP · 4 gold',()=>{player.gold-=4;xp(player,4);render();},player.gold<4 || player.level>=maxLevel),
+   button('Reroll · 2 gold',()=>{player.gold-=2;roll(player);render();},player.gold<2));
   shop.append(economy);
   for(const [index,name] of player.shop.entries()){
    const tile=button('',()=>{if(buy(player,index))render();},!name || player.gold<cost(name) ||
     (benched.length>=benchLimit && player.units.filter(unit=>unit.name===name && unit.star===1).length<2));
    tile.className='tactics-offer'+(name?' tier-'+cost(name):'');
    if(name){
-    tile.append(pokemonPortrait(name),element('small',dex[name].slice(1,3).filter(Boolean).join(' / ')),
-     element('strong',name),element('span',cost(name)+' gold','tactics-offer-cost'));
+    const types=dex[name].slice(1,3).filter(Boolean);
+    const art=element('span',null,'tactics-offer-art');
+    art.style.setProperty('--offer-type',moveColors[types[0]] ?? '#72958a');
+    const labels=element('span',null,'tactics-offer-types');
+    labels.append(...types.map(type=>element('small',type)));
+    art.append(pokemonPortrait(name,null,true,0),labels);
+    const footer=element('span',null,'tactics-offer-footer');
+    footer.append(element('strong',name),element('span','● '+cost(name),'tactics-offer-cost'));
+    tile.append(art,footer);
     tile.setAttribute('aria-label','Buy '+name+' for '+cost(name)+' gold');
    }else tile.append(element('small','Sold'));
    shop.append(tile);
@@ -499,11 +531,11 @@
   const special=base[5]>=base[1];
   const bonus=Math.max(0,...dex[unit.name].slice(1,3).map(t=>(types[t] ?? 0)-1));
   const mods=itemMods(unit,trainer);
-  const hp=Math.round((base[0]*4+180)*1.65**(unit.star-1)*(1+bonus*.06+(mods.health ?? 0)));
+  const hp=Math.round((base[0]*4+180)*1.65**(unit.star-1)*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
   const move=legalMoves(unit.name).filter(m=>moveCatalog[m]?.[1]>0 && !moveCatalog[m][4])
    .sort((a,b)=>Number(moveCatalog[b][0]===dex[unit.name][1])-Number(moveCatalog[a][0]===dex[unit.name][1]) || moveCatalog[b][1]-moveCatalog[a][1])[0];
   return {...unit,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),range:special?3:1,defense:base[special?4:2]+(mods.defense ?? 0),
-   direction:opponent?0:4, power:(Math.max(base[1],base[5])*.35+12)*1.5**(unit.star-1)*(1+bonus*.1+(mods.power ?? 0)),move,wait:0,
+   direction:opponent?0:4, power:(Math.max(base[1],base[5])*.35+12)*1.5**(unit.star-1)*(1+bonus*traitPowerPerAlly+(mods.power ?? 0)),move,wait:0,
    position:opponent?{x:6-unit.position.x,y:7-unit.position.y}:unit.position};
  }
  function battle(a,b){

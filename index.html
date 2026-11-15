@@ -623,6 +623,32 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .tactics-bench-slot{min-height:40px;background:#283537;border-radius:3px}
 #events .tactics-standings button{background:transparent;border:0;padding:0;text-align:left;color:#e7d8b6;font-size:11px}
 .tactics-board.is-combat canvas.tactics-battler{width:100%;max-height:100%;height:auto}
+.tactics-trait{position:relative}
+.tactics-trait-tooltip{display:none;position:absolute;z-index:4;left:100%;top:0;width:min(230px,55vw);padding:8px;border:1px solid #aa925d;border-radius:5px;background:#172226;color:#f5e6c1;line-height:1.4;pointer-events:none}
+.tactics-trait:is(:hover,:focus-visible) .tactics-trait-tooltip{display:block}
+@media(max-width:760px){.tactics-trait-tooltip{left:0;top:100%}}
+
+.tactics-shop{gap:5px;background:#101a1d;border:2px solid #80704b}
+.tactics-shop-bar{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:4px 8px;background:#172628;border-bottom:1px solid #80704b;font-size:12px}
+.tactics-shop-level{display:grid;grid-template-columns:auto auto;align-items:center;gap:2px 8px}
+.tactics-shop-level progress{grid-column:1/-1;width:100%;height:4px;accent-color:#7fd0d7}
+.tactics-shop-odds{display:flex;gap:8px;font-variant-numeric:tabular-nums}
+.tactics-shop-odds span::before{content:'◆';margin-right:3px;font-size:8px}
+.tactics-shop-odds .tier-2{color:#a4e1ab}.tactics-shop-odds .tier-3{color:#aed6ff}
+.tactics-shop-gold{margin-inline-start:auto;color:#f4d990;white-space:nowrap}
+#events .tactics-economy button{border-radius:3px;background:linear-gradient(120deg,#344143,#182325);font-weight:700}
+#events .tactics-offer{display:flex;flex-direction:column;justify-content:center;align-items:stretch;padding:0;gap:0;overflow:hidden;min-height:92px;background:#172528;border-radius:2px}
+#events .tactics-offer:disabled{opacity:1}
+#events .tactics-offer:disabled .tactics-offer-art canvas{opacity:.55}
+.tactics-offer-art{display:flex;align-items:end;position:relative;flex:1;min-height:66px;padding:4px;text-align:left;background:radial-gradient(ellipse at 70% 50%,var(--offer-type),#233638 74%)}
+#events .tactics-offer-art canvas{position:absolute;right:2%;top:0;width:67%;height:100%;max-height:none;object-fit:contain}
+.tactics-offer-types{display:grid;gap:2px;position:relative;text-shadow:0 1px 2px #000}
+.tactics-offer-types small{padding:1px 3px;background:#10191cdd;border-radius:3px}
+.tactics-offer-footer{display:flex;align-items:center;justify-content:space-between;gap:3px;padding:4px;text-align:left;background:#25383c}
+.tactics-offer.tier-2 .tactics-offer-footer{background:#244536}
+.tactics-offer.tier-3 .tactics-offer-footer{background:#28476c}
+.tactics-offer-cost{white-space:nowrap}
+@media(max-width:480px){.tactics-shop-bar{gap:7px}.tactics-shop-odds{gap:4px}.tactics-offer-footer{flex-wrap:wrap}.tactics-offer-footer strong{font-size:10px}}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -1410,10 +1436,10 @@ function paintIdlePortraits(now) {
  }
  idlePortraitFrame=idlePortraits.size?requestAnimationFrame(paintIdlePortraits):null;
 }
-function idlePokemonPortrait(name,className,variant=null,fullSize=false) {
- const canvas=pokemonPortrait(name,className,fullSize,0,variant);
+function idlePokemonPortrait(name,className,variant=null,fullSize=false,direction=0) {
+ const canvas=pokemonPortrait(name,className,fullSize,direction,variant);
  const reduced=typeof matchMedia==='function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
- const clip=pmdMotion({name,direction:0,spriteVariant:variant},'idle');
+ const clip=pmdMotion({name,direction,spriteVariant:variant},'idle');
  if(clip?.duration && !reduced) {
   idlePortraits.set(canvas,clip);
   idlePortraitFrame ??= requestAnimationFrame(paintIdlePortraits);
@@ -8919,6 +8945,8 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.20.3',changes:['Redesigned the Poke Fight Tactics shop strip with tier odds, XP progress, and illustrated offers.']},
+ {version:'0.20.2',changes:['Animated Poke Fight Tactics planning and bench sprites and added trait bonus tooltips.']},
  {version:'0.20.1',changes:['Animated Poke Fight Tactics battlers using directional Pokémon sprite sheets.']},
  {version:'0.20.0',changes:['Added timed TFT planning, starters, drag and drop, scouting, and unit inspection.']},
  {version:'0.19.2',changes:['Renamed the Events mode to Poke Fight Tactics.']},
@@ -9124,4 +9152,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.20.1"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.20.3"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
