@@ -854,18 +854,19 @@
    timer=element('progress');
    timer.max=100;timer.value=100;timer.setAttribute('aria-label','Combat time remaining');
    banner.append(timer,element('strong','Combat'),element('small','Stage '+stageLabel(run.round)+' · '+rival));
-   arena.prepend(banner);
    arena.append(benchView(player,true));
-   middle.append(arena);
+   middle.append(banner,arena);
    const summary=element('div',null,'tactics-combat-wallet');
    summary.append(element('span','Level '+player.level),element('strong',player.gold+' gold'));
    middle.append(summary);
   }else middle.append(stageHeader(player,run.scout?'Scouting · '+run.scout.name:neutralRound(run.round)?'Planning · Neutral round':'Planning'),arena);
-  if(!rival && run.damageReport)middle.append(damageChart(run.damageReport).panel);
+  const left=element('div',null,'tactics-left-column');
+  left.append(sidebar);
+  if(!rival && run.damageReport)left.append(damageChart(run.damageReport).panel);
   const rankings=element('aside',null,'tactics-sidebar');
   rankings.append(heading('Standings'),standingsPanel());
-  layout.append(sidebar,middle,rankings);
-  return {layout,middle,arena,timer};
+  layout.append(left,middle,rankings);
+  return {layout,left,arena,timer};
  }
  function benchView(player,combat=false){
   const bench=element('div',null,'tactics-bench');
@@ -1442,7 +1443,7 @@
    view=combatLayer(match.units);
    battleView.arena.insertBefore(view.layer,battleView.arena.querySelector('.tactics-bench'));
    chart=damageChart(matches[0]);
-   battleView.middle.append(chart.panel);
+   battleView.left.append(chart.panel);
    content.replaceChildren(battleView.layout);
   };
   run.spectate(player);

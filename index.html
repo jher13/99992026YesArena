@@ -775,6 +775,13 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .pass-quests{margin-top:8px}
 #events :is(button,.pass-track):focus-visible{outline:2px solid #397257;outline-offset:2px}
 @media(max-width:620px){.pass-hero,.pass-quests{grid-template-columns:1fr}}
+.tactics-left-column{min-width:0}
+.tactics-center>.tactics-combat-banner{position:relative;top:auto;left:auto;transform:none;width:100%;box-sizing:border-box;margin-bottom:4px;padding:7px 10px;line-height:1.3;text-align:center}
+.tactics-center>.tactics-combat-banner progress{display:block;margin:0 0 3px}
+#tactics .tactics-left-column .tactics-damage-tabs button{padding:5px 3px;font-size:11px;line-height:1.2;white-space:normal}
+.tactics-left-column .tactics-damage-row{grid-template-columns:minmax(0,1fr);gap:2px}
+.tactics-left-column .tactics-damage-row small{text-align:left}
+@media(max-width:760px){.tactics-left-column{grid-column:auto}}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -9217,6 +9224,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.10',changes:['Moved the Fight Tactics damage chart to the left and gave the combat header its own row.']},
  {version:'0.22.9',changes:['Fixed Fight Tactics item hover cards and added a live team damage chart.']},
  {version:'0.22.8',changes:['Added original Fight Tactics gear with 10 components, 36 completed items, and emblems.']},
  {version:'0.22.7',changes:['Added Fight Tactics combat roles, role-specific mana, and readable signature descriptions.']},
@@ -9453,4 +9461,4 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.9"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+<script src="./tactics.js?v=0.22.10"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
