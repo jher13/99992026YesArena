@@ -689,15 +689,15 @@ byId('pc-reset').onclick=()=>{
  boxGeneration.value='0';
  refreshPcFilters();
 };
-function pcCandidates(storage,query,generation) {
+function pcCandidates(storage,query,generation,control=byId) {
  const numeric=query.replace(/^#/,'');
- const natureFilter=byId('pc-nature').value;
- const personalityFilter=byId('pc-personality').value;
- const selectedStat=byId('pc-stat').value;
- const minIv=Math.max(0,Number(byId('pc-min-iv').value)||0);
- const minEv=Math.max(0,Number(byId('pc-min-ev').value)||0);
- const sort=byId('pc-sort').value || 'number';
- const direction=byId('pc-order').value==='desc'?-1:1;
+ const natureFilter=control('pc-nature').value;
+ const personalityFilter=control('pc-personality').value;
+ const selectedStat=control('pc-stat').value;
+ const minIv=Math.max(0,Number(control('pc-min-iv').value)||0);
+ const minEv=Math.max(0,Number(control('pc-min-ev').value)||0);
+ const sort=control('pc-sort').value || 'number';
+ const direction=control('pc-order').value==='desc'?-1:1;
  const readStat=values=>selectedStat==='' ? values.reduce((sum,value)=>sum+value,0) : values[Number(selectedStat)];
  const matches=[];
  for(const name of storage) {
@@ -3267,21 +3267,26 @@ function renderCatalogDetail(name) {
   if(shiny) options.set(label+' · Shiny',shiny);
  }
  if(options.size>1) {
-  const picker=element('select');
+  const picker=element('div',null,'menu-actions');
   picker.setAttribute('aria-label','Pokémon appearance');
-  for(const label of options.keys()) picker.append(element('option',label));
   const credit=element('a','Sprite credits');
   credit.target='_blank';
   credit.rel='noopener';
-  const preview=()=>{
-   const variant=options.get(picker.value);
-   art.replaceChildren(idlePokemonPortrait(name,null,variant,true));
+  const preview=label=>{
+   const variant=options.get(label);
+   for(const button of picker.children)button.setAttribute('aria-pressed',String(button.textContent===label));
+   art.replaceChildren(idlePokemonPortrait(name,'dex-preview',variant,true));
    credit.hidden=!variant;
-   if(variant) credit.href='./assets/variant-atlases/credits.txt';
+   if(variant)credit.href='./assets/variant-atlases/credits.txt';
   };
-  picker.onchange=preview;
+  for(const label of options.keys()) {
+   const button=element('button',label);
+   button.type='button';
+   button.onclick=()=>preview(label);
+   picker.append(button);
+  }
   status.append(picker,credit);
-  preview();
+  preview('Standard');
  }
  const stats=element('dl',null,'dex-base-stats');
  dexStats[dex[name][0]-1].forEach((value,index)=>{
@@ -3772,7 +3777,9 @@ function openMenu() {
  if(starterSave) profileSelect.selectedOptions[0].textContent=starterSave.ign;
  byId('home-badge-count').textContent=progressText();
  byId('home-coins').textContent=wildProgress.coins.toLocaleString()+' coins';
- byId('toolbar-coins').textContent=byId('home-coins').textContent;
+ byId('toolbar-coins').textContent=wildProgress.coins.toLocaleString();
+ byId('toolbar-coins').setAttribute('aria-label',wildProgress.coins.toLocaleString()+' coins');
+ window.refreshCoopTickets?.().catch(()=>{});
  byId('toolbar-profile').textContent='Lv. '+trainerProfileLevel()+' · '+(starterSave?.ign ?? currentPlayer.name);
  const lead=team[0];
 
@@ -6604,7 +6611,7 @@ function tickVortex(area,field,dt) {
  area.remaining-=step;
  return area.remaining>1e-8;
 }
-function isExhausted(actor) {return (actor?.exhaustedUntil ?? 0)>clock;}
+function isExhausted(actor) {return actor?.side!=='boss' && (actor?.exhaustedUntil ?? 0)>clock;}
 function blocksExhaustionRecall(actor) {
  return isExhausted(actor) || (actor?.exhaustion ?? 0)>=100;
 }
@@ -6621,6 +6628,7 @@ function updateExhaustionBar(bar,actor) {
  if(bar.title!==label){bar.title=label;bar.setAttribute('aria-label',label);}
 }
 function addMoveExhaustion(actor,slot,animation,overrideCost) {
+ if(actor.side==='boss')return;
  const move=actor.moves[slot] ?? 'Struggle';
  const power=moveCatalog[move][1];
  const cooldown=actor.moveCooldowns[slot] ?? 2;
@@ -6630,6 +6638,7 @@ function addMoveExhaustion(actor,slot,animation,overrideCost) {
  actor.exhaustionAnimationUntil=Math.max(actor.exhaustionAnimationUntil ?? 0,clock+animation);
 }
 function tickExhaustion(actor,dt) {
+ if(actor.side==='boss'){actor.exhaustion=actor.exhaustedUntil=0;return;}
  if(actor.exhaustedUntil) {
   if(isExhausted(actor))return;
   actor.exhaustion=0;
@@ -7106,7 +7115,7 @@ function drawUnit(actor) {
  const {x,y,name,type} = actor;
  const sprite = getSprite(name);
  const art=battleArt(name,actorSpriteVariant(actor));
- const scale=battleSpriteScale*(actor.raidForm?.startsWith('Gigantamax')?1.45:actor.raidForm?.startsWith('Mega ')?3:actor.raidForm?1.15:1);
+ const scale=battleSpriteScale*(actor.raidForm?.startsWith('Gigantamax')?1.45:actor.raidForm==='Mega Rayquaza'?2:actor.raidForm?.startsWith('Mega ')?3:actor.raidForm?1.15:1);
  const width=art.width*scale;
  const height=art.height*scale;
  const radius = Math.max(10,Math.min(52,width*0.37));
@@ -7990,6 +7999,9 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.15.0',changes:['Added Co-op ticket rewards, fixed raid lobby sprite placement, and added Pokédex appearance buttons. Raid bosses no longer exhaust.']},
+ {version:'0.14.5',changes:['Fixed raid fighter confirmation, capped Pokédex previews, and reduced Mega Rayquaza to 2× size.']},
+ {version:'0.14.4',changes:['Replaced the Co-op raid Pokémon dropdown with the PC grid, filters, and sorting.']},
  {version:'0.14.3',changes:['Reduced Mega raid bosses to 3× sprite size and tuned their builds and moves.']},
  {version:'0.14.2',changes:['Updated Mega raid art, boss stats and moves, and added first-clear rewards.']},
  {version:'0.14.1',changes:['Packed Mega and shiny sprites into shared atlases for easier uploads.']},
