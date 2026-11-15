@@ -2,6 +2,7 @@
  const content=byId('event-content');
  const odds=[[100,0,0],[75,25,0],[55,35,10],[35,45,20],[20,45,35],[12,38,50]];
  const benchLimit=9;
+ const combatTicks=240, combatStepMs=115, combatDamageScale=.55;
  const traitHealthPerAlly=.06, traitPowerPerAlly=.10;
  const maxLevel=6;
  const cells=Array.from({length:56},(_,i)=>({x:i%7,y:Math.floor(i/7)}));
@@ -121,13 +122,23 @@
   const count=Math.abs(streak);
   return count>=6?3:count===5?2:count>=2?1:0;
  }
+ function passiveGold(){return run.round<=3?run.round+1:5;}
+ function economyTooltip(label,title,lines){
+  const wrapper=element('span',null,'tactics-economy-help');
+  wrapper.tabIndex=0;
+  const tip=element('span',null,'tactics-economy-tooltip');
+  tip.append(element('strong',title),...lines.map(line=>element('span',line)));
+  wrapper.append(element('span',label),tip);
+  wrapper.setAttribute('aria-label',[label,title,...lines].join('. '));
+  return wrapper;
+ }
  function payRound(trainer,base,win){
   const interest=goldInterest(trainer.gold), streak=streakGold(trainer.streak);
   trainer.income={base,interest,streak,win};
   trainer.gold+=base+interest+streak+win;
  }
  function completeNeutral(trainer,won){
-  payRound(trainer,run.round<=3?run.round+1:5,run.round>3 && won?1:0);
+  payRound(trainer,passiveGold(),run.round>3 && won?1:0);
   xp(trainer,2);
   if(won || run.round<=3)trainer.items.push(randomComponent());
  }
@@ -312,7 +323,7 @@
    Math.round(x),Math.round(y),Math.round(source.width*scale),Math.round(source.height*scale));
  }
  function setBattlerMotion(unit,target,motion,now){
-  const dx=target.x-unit.position.x+(target.y%2-unit.position.y%2)/2;
+  const dx=target.x-unit.position.x;
   const dy=target.y-unit.position.y;
   unit.direction=pmdDirection(dx,dy);
   const clip=pmdMotion(unit,motion);
@@ -409,7 +420,7 @@
    heading('Augments'),element('small',player.augments.join(' · ') || 'None yet'));
   const middle=element('div',null,'tactics-center');
   const arena=element('div',null,'tactics-field');
-  arena.append(board(run.scout&&!rival?run.scout.units:units,player,Boolean(rival),Boolean(run.scout&&!rival)));
+  if(!rival)arena.append(board(run.scout?run.scout.units:units,player,false,Boolean(run.scout)));
   let timer=null;
   if(rival){
    const banner=element('header',null,'tactics-combat-banner');
@@ -480,11 +491,22 @@
    label.setAttribute('aria-label',label.title+' '+chance+' percent');
    chances.append(label);
   });
-  const gold=element('strong',player.gold+' gold','tactics-shop-gold');
-  gold.title='Interest at current balance: +'+goldInterest(player.gold)+' gold. Earn 1 per 10 saved, up to 5.';
-  const streak=element('span',player.streak?(player.streak>0?'Win':'Loss')+' streak '+Math.abs(player.streak):'No streak','tactics-streak');
-  streak.title='Streak gold: 2–4 wins or losses +1, 5 +2, 6+ +3. Current streak bonus: +'+streakGold(player.streak)+'.';
-  streak.tabIndex=0;
+  const base=passiveGold(),interest=goldInterest(player.gold);
+  const bonus=streakGold(player.streak);
+  const win=run.round>3?1:0;
+  const nextWinBonus=neutralRound(run.round)?bonus:streakGold(Math.max(1,player.streak+1));
+  const nextLossBonus=neutralRound(run.round)?bonus:streakGold(Math.min(-1,player.streak-1));
+  const possible=Math.max(nextWinBonus+win,nextLossBonus);
+  const gold=economyTooltip(player.gold+' gold','Total income possible · '+(base+interest+possible),[
+   'Passive income +'+base,'Interest (max 5) +'+interest,
+   'Win/loss streak · +'+nextWinBonus+' on a win / +'+nextLossBonus+' on a loss','Gold per win +'+win
+  ]);
+  gold.classList.add('tactics-shop-gold');
+  const streakName=player.streak<0?'Loss streak':player.streak>0?'Win streak':'Win/loss streak';
+  const streak=economyTooltip('🔥 '+Math.abs(player.streak),streakName,[
+   'Earn extra gold for consecutive wins or losses.','2–4 rounds · +1 gold','5 rounds · +2 gold',
+   '6+ rounds · +3 gold','Current bonus · +'+bonus+' gold'
+  ]);
   bar.append(level,chances,gold,streak);
   shop.append(bar);
   const economy=element('div',null,'tactics-economy');
@@ -561,9 +583,12 @@
    unit.position=i<trainer.level?cells[(ranged?42:28)+i]:null;
   });
  }
- function distance(a,b){
-  const q=p=>p.x-(p.y-(p.y&1))/2;
-  return (Math.abs(q(a)-q(b))+Math.abs(a.y-b.y)+Math.abs(q(a)+a.y-q(b)-b.y))/2;
+ function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+ function combatPosition(position,opponent){
+  if(!position)return null;
+  const x=opponent?6-position.x:position.x;
+  const y=opponent?7-position.y:position.y;
+  return {x:x+(y%2)*.5,y:y*.85};
  }
  function fighter(unit,opponent,types,trainer){
   const base=dexStats[dex[unit.name][0]-1];
@@ -575,24 +600,22 @@
    .sort((a,b)=>Number(moveCatalog[b][0]===dex[unit.name][1])-Number(moveCatalog[a][0]===dex[unit.name][1]) || moveCatalog[b][1]-moveCatalog[a][1])[0];
   return {...unit,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),range:special?3:1,defense:base[special?4:2]+(mods.defense ?? 0),
    direction:opponent?0:4, power:(Math.max(base[1],base[5])*.35+12)*1.5**(unit.star-1)*(1+bonus*traitPowerPerAlly+(mods.power ?? 0)),move,wait:0,
-   position:opponent?{x:6-unit.position.x,y:7-unit.position.y}:unit.position};
+   position:combatPosition(unit.position,opponent)};
  }
  function battle(a,b){
   return [...field(a).map(unit=>fighter(unit,false,traits(field(a)),a)),
    ...field(b).map(unit=>fighter(unit,true,traits(field(b)),b))];
  }
  function nextStep(unit,target,units){
-  const occupied=new Set(units.filter(other=>other.hp>0).map(other=>other.position.y*7+other.position.x));
-  const queue=[{position:unit.position,first:null}];
-  for(let i=0;i<queue.length;i++){
-   const {position,first}=queue[i];
-   if(first && distance(position,target.position)<=unit.range)return first;
-   for(const cell of cells){
-    const key=cell.y*7+cell.x;
-    if(occupied.has(key) || distance(position,cell)!==1)continue;
-    occupied.add(key);
-    queue.push({position:cell,first:first ?? cell});
-   }
+  const {x,y}=unit.position;
+  const heading=Math.atan2(target.position.y-y,target.position.x-x);
+  const step=Math.min(.34,Math.max(.08,distance(unit.position,target.position)-unit.range+.04));
+  for(const offset of [0,.6,-.6,1.15,-1.15,1.65,-1.65]){
+   const angle=heading+offset;
+   const point={x:Math.max(0,Math.min(6.5,x+Math.cos(angle)*step)),
+    y:Math.max(0,Math.min(5.95,y+Math.sin(angle)*step))};
+   if(distance(point,unit.position)<.01)continue;
+   if(!units.some(other=>other!==unit && other.hp>0 && distance(point,other.position)<.55))return point;
   }
   return null;
  }
@@ -609,6 +632,7 @@
     const step=nextStep(unit,target,units);
     if(step){
      if(now!==null)setBattlerMotion(unit,step,'walk',now);
+     if(now!==null){unit.moveFrom=unit.position;unit.moveStarted=now;}
      unit.position=step;
     }
     continue;
@@ -617,7 +641,7 @@
    const type=cast?moveCatalog[unit.move][0]:dex[unit.name][1];
    const row=typeChart[type] ?? {};
    const match=dex[target.name].slice(1,3).reduce((scale,t)=>scale*(row[t] ?? 1),1);
-   const damage=Math.max(1,Math.round(unit.power*(cast?1.8+moveCatalog[unit.move][1]/120:1)*Math.max(.35,match)*100/(100+target.defense)));
+   const damage=Math.max(1,Math.round(combatDamageScale*unit.power*(cast?1.8+moveCatalog[unit.move][1]/120:1)*Math.max(.35,match)*100/(100+target.defense)));
    if(now!==null){
     setBattlerMotion(unit,target.position,cast || unit.range>1?'attack':'lunge',now);
     if(!target.animation || now-target.animation.started>=target.animation.duration || target.animation.motion==='walk')
@@ -640,7 +664,7 @@
   for(const trainer of [a,b]){
    const lost=losers.includes(trainer);
    trainer.streak=lost?Math.min(-1,trainer.streak-1):Math.max(1,trainer.streak+1);
-   payRound(trainer,5,lost?0:1);
+   payRound(trainer,passiveGold(),lost?0:1);
    xp(trainer,2);
    if(lost)trainer.hp=Math.max(0,trainer.hp-damage);
    if(!trainer.hp){
@@ -652,8 +676,39 @@
   }
  }
  function resolve(units){
-  for(let i=0;i<100 && outcome(units)===null;i++)tick(units);
+  for(let i=0;i<combatTicks && outcome(units)===null;i++)tick(units);
   return outcome(units) ?? 0;
+ }
+ function combatLayer(units){
+  const layer=element('div',null,'tactics-combat-space');
+  const views=units.map(unit=>{
+   const node=element('div',null,'tactics-live-unit'+(unit.opponent?' is-opponent':''));
+   const bars=element('div',null,'tactics-live-bars');
+   const hp=element('progress'),mana=element('progress');
+   hp.max=unit.max;mana.max=60;
+   hp.setAttribute('aria-label',unit.name+' health');
+   mana.setAttribute('aria-label',unit.name+' mana');
+   bars.append(hp,mana);
+   node.append(bars,battlerSprite(unit));
+   node.oncontextmenu=event=>{event.preventDefault();inspectUnit(unit);};
+   layer.append(node);
+   return {unit,node,hp,mana};
+  });
+  function paint(now){
+   for(const {unit,node,hp,mana} of views){
+    if(unit.hp<=0){node.hidden=true;continue;}
+    const at=unit.position,from=unit.moveFrom ?? at;
+    const progress=Math.min(1,Math.max(0,(now-(unit.moveStarted ?? now))/combatStepMs));
+    const x=from.x+(at.x-from.x)*progress,y=from.y+(at.y-from.y)*progress;
+    node.style.left=(12+x/6.5*76)+'%';
+    node.style.top=(9+y/5.95*82)+'%';
+    node.style.zIndex=String(1+Math.floor(y*10));
+    hp.value=unit.hp;mana.value=unit.mana;
+    paintBattler(unit,now);
+   }
+  }
+  paint(performance.now());
+  return {layer,paint};
  }
  async function play(){
   if(run.busy)return;
@@ -669,19 +724,20 @@
   const ghost={units:field(rival).map(unit=>({...unit})),mods:rival.mods};
   const units=battle(player,rival);
   const {layout,arena,timer}=battleLayout(player,units,rival.name);
+  const view=combatLayer(units);
+  arena.insertBefore(view.layer,arena.querySelector('.tactics-bench'));
   content.replaceChildren(layout);
   const animate=now=>{
    if(run!==current || !current.busy || !arena.isConnected)return;
-   for(const unit of units)if(unit.hp>0)paintBattler(unit,now);
+   view.paint(now);
    requestAnimationFrame(animate);
   };
   requestAnimationFrame(animate);
-  for(let i=0;i<100 && outcome(units)===null;i++){
-   await new Promise(resolve=>setTimeout(resolve,115));
+  for(let i=0;i<combatTicks && outcome(units)===null;i++){
+   await new Promise(resolve=>setTimeout(resolve,combatStepMs));
    if(run!==current || phase!=='events')return;
    tick(units,performance.now());
-   timer.value=99-i;
-   arena.querySelector('.tactics-board').replaceWith(board(units.filter(u=>u.hp>0),player,true));
+   timer.value=100*(1-(i+1)/combatTicks);
   }
   const sign=outcome(units) ?? 0;
   if(neutral){
