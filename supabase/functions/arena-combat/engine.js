@@ -3800,6 +3800,8 @@ function openTeamBuilder() {
  renderMenu();
 }
 function openBattle(gym=null,wild=null,trainer=null,run=null,master=false) {
+ setArenaDimensions();
+ byId('battle').classList.remove('is-mega-raid');
  if(master && (!gym || !masterGymsUnlocked()))return;
  selectedMasterGym=master;
  rogueRun=run;
@@ -4235,6 +4237,7 @@ function updateActivePanels(onlineFields) {
  (multiple ? trainerPanels : activePanels).forEach((panel,index)=>{
   const actor=shown[index];
   const node=panel.node ?? byId(panel.id);
+  if(onlineFields && actor?.raidForm?.startsWith('Mega '))return;
   if(!actor) {if(onlineFields){node.replaceChildren();panel.actor=null;}return;}
   if(panel.actor!==actor || panel.form!==actor.name) {
    panel.actor=actor;panel.form=actor.name;
@@ -4519,12 +4522,23 @@ function randomArenaMap() {
  }
  return {...biome,zones,rocks};
 }
+const megaRaidArenaSize={width:1280,height:720};
+function setArenaDimensions({width=960,height=480}={}) {
+ if(canvas.width!==width)canvas.width=width;
+ if(canvas.height!==height)canvas.height=height;
+ Object.assign(sendOut.player,{x:width/4,y:height/2});
+ Object.assign(sendOut.enemy,{x:width*3/4,y:height/2});
+}
+function megaRaidArena(raid) {
+ const biome=arenaBiomes.find(entry=>entry.type===raid.arenaType);
+ return {...biome,...megaRaidArenaSize,raid:true,rocks:[],zones:[]};
+}
 function arenaBonus(actor,type) {
- return arenaMap?.type===type && arenaMap.zones.some(zone=>{
+ return arenaMap?.type===type && (arenaMap.raid || arenaMap.zones.some(zone=>{
   const x=Math.abs(actor.x-zone.x)/(zone.w ?? zone.r);
   const y=Math.abs(actor.y-zone.y)/(zone.h ?? zone.r);
   return zone.shape==='rectangle'?Math.max(x,y)<=1:zone.shape==='diamond'?x+y<=1:x*x+y*y<=1;
- });
+ }));
 }
 function pillarCollisionBodies() {
  return (arenaMap?.rocks ?? []).flatMap(rock=>{
@@ -7170,10 +7184,12 @@ function drawUnit(actor) {
   ctx.fillRect(x-10,y-10,20,20);
  }
  ctx.textAlign = 'center';
- ctx.fillStyle = '#081813';
- ctx.fillRect(x-25,healthY,50,5);
- ctx.fillStyle = actor.friendly ? '#b8ec92' : '#ff8c85';
- ctx.fillRect(x-25,healthY,50*actor.hp/actor.max,5);
+ if(!actor.raidForm?.startsWith('Mega ')) {
+  ctx.fillStyle = '#081813';
+  ctx.fillRect(x-25,healthY,50,5);
+  ctx.fillStyle = actor.friendly ? '#b8ec92' : '#ff8c85';
+  ctx.fillRect(x-25,healthY,50*actor.hp/actor.max,5);
+ }
  ctx.fillStyle = '#f0f6e7';
  ctx.font = '600 13px system-ui';
  const caught=registeredPokemon.has(name);
@@ -7272,7 +7288,7 @@ function paintArenaWeather() {
  const weather=battleWeather;
  const effective=abilityWeather();
  const conditions=byId('arena-conditions');
- const arenaLabel=arenaMap?arenaMap.name+(arenaMap.zones.length?
+ const arenaLabel=arenaMap?arenaMap.name+(arenaMap.raid?' · '+arenaMap.type+' arena: +20% move damage and matching Pokémon speed':arenaMap.zones.length?
   ' · '+arenaMap.type+' zones: +20% move damage and matching Pokémon speed':' · Fixed pillar layout'):'';
  const screenLabels=phase==='online-battle'?[]:[true,false].flatMap(friendly=>[...screenMoves].flatMap(move=>{
   const time=screenTime({friendly},move);
@@ -7300,19 +7316,20 @@ function paintArenaWeather() {
 }
 let raidBattleBackdrop=null;
 function paint() {
+ const {width:arenaWidth,height:arenaHeight}=canvas;
  ctx.fillStyle = arenaMap?.floor ?? '#1c372d';
- ctx.fillRect(0,0,960,480);
- for (let y=0;y<480;y+=40) for (let x=0;x<960;x+=40) {
+ ctx.fillRect(0,0,arenaWidth,arenaHeight);
+ for (let y=0;y<arenaHeight;y+=40) for (let x=0;x<arenaWidth;x+=40) {
   ctx.fillStyle = arenaMap ? ((x/40+y/40)%2?arenaMap.floor:arenaMap.tile) : ((x/40+y/40)%2 ? '#223d33' : '#254137');
   ctx.fillRect(x,y,40,40);
  }
  if(phase==='online-battle' && raidBattleBackdrop?.naturalWidth) {
   const image=raidBattleBackdrop;
-  const scale=Math.max(960/image.naturalWidth,480/image.naturalHeight);
+  const scale=Math.max(arenaWidth/image.naturalWidth,arenaHeight/image.naturalHeight);
   const width=image.naturalWidth*scale,height=image.naturalHeight*scale;
-  ctx.drawImage(image,(960-width)/2,(480-height)/2,width,height);
+  ctx.drawImage(image,(arenaWidth-width)/2,(arenaHeight-height)/2,width,height);
   ctx.fillStyle='#0c13223b';
-  ctx.fillRect(0,0,960,480);
+  ctx.fillRect(0,0,arenaWidth,arenaHeight);
  }
  for(const zone of arenaMap?.zones ?? []) {
   ctx.fillStyle=arenaMap.zone;ctx.beginPath();
@@ -7326,10 +7343,10 @@ function paint() {
  }
  ctx.strokeStyle = '#577967';
  ctx.lineWidth = 2;
- ctx.strokeRect(24,24,912,432);
+ ctx.strokeRect(24,24,arenaWidth-48,arenaHeight-48);
  ctx.beginPath();
- ctx.moveTo(480,24); ctx.lineTo(480,456); ctx.stroke();
- ctx.beginPath(); ctx.arc(480,240,88,0,2*Math.PI); ctx.stroke();
+ ctx.moveTo(arenaWidth/2,24); ctx.lineTo(arenaWidth/2,arenaHeight-24); ctx.stroke();
+ ctx.beginPath(); ctx.arc(arenaWidth/2,arenaHeight/2,88,0,2*Math.PI); ctx.stroke();
  if (phase === 'setup') {
   const {x,y} = sendOut.player;
   ctx.beginPath(); ctx.arc(x,y,30,0,2*Math.PI);
@@ -7998,11 +8015,13 @@ function setToolbarUnread(id,count) {
 }
 // Add each release to the top. The newest version also drives the subtitle.
 const megaRaidTiers={
- coop_mega:{tier:1,name:'Mega Charizard X',species:'Charizard',level:35,hp:5000,coins:25000,masterBalls:2,nature:'Adamant',trait:1,evs:[4, 252, 252, 0, 0, 0],ability:'Tough Claws',secondary:'Dragon',moves:['Flare Blitz', 'Dragon Claw', 'Fire Punch', 'Dragon Rush', 'Dragon Dance', 'Fire Spin', 'Flamethrower', 'Dragon Tail']},
- coop_mega_2:{tier:2,name:'Mega Gengar',species:'Gengar',level:55,hp:8500,coins:65000,masterBalls:5,nature:'Timid',trait:3,evs:[4, 0, 0, 252, 0, 252],ability:'Shadow Tag',secondary:'Poison',moves:['Shadow Ball', 'Sludge Bomb', 'Sludge Wave', 'Hypnosis', 'Hex', 'Venoshock', 'Confuse Ray', 'Nasty Plot']},
- coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
+ coop_mega:{tier:1,name:'Mega Charizard X',species:'Charizard',arenaType:'Fire',level:35,hp:5000,coins:25000,masterBalls:2,nature:'Adamant',trait:1,evs:[4, 252, 252, 0, 0, 0],ability:'Tough Claws',secondary:'Dragon',moves:['Flare Blitz', 'Dragon Claw', 'Fire Punch', 'Dragon Rush', 'Dragon Dance', 'Fire Spin', 'Flamethrower', 'Dragon Tail']},
+ coop_mega_2:{tier:2,name:'Mega Gengar',species:'Gengar',arenaType:'Ghost',level:55,hp:8500,coins:65000,masterBalls:5,nature:'Timid',trait:3,evs:[4, 0, 0, 252, 0, 252],ability:'Shadow Tag',secondary:'Poison',moves:['Shadow Ball', 'Sludge Bomb', 'Sludge Wave', 'Hypnosis', 'Hex', 'Venoshock', 'Confuse Ray', 'Nasty Plot']},
+ coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.15.6',changes:['Expanded Mega raid arenas, added boss-matching terrain without pillars, and moved boss effects under the HP bar.']},
+ {version:'0.15.5',changes:['Limited raid parties to one Pokémon per species across all seats.']},
  {version:'0.15.4',changes:['Fixed raid snapshots, filtered occupied fighters, and added a 30-minute raid countdown.']},
  {version:'0.15.3',changes:['Aligned raid seat controls above START and moved tier buttons under Main menu.']},
  {version:'0.15.2',changes:['Added raid seat levels, chat timestamps, and tier selection buttons. Refined ring alignment above START.']},
@@ -8185,6 +8204,7 @@ function initializeOnline(match) {
  const fighters=raidTeam ?? [...host,...guest];
  const bossLevel=Math.min(100,Math.ceil(Math.max(...fighters.map(a=>a.level))*1.1)+2);
  const raid=Object.hasOwn(megaRaidTiers,match.mode)?megaRaidTiers[match.mode]:null;
+ setArenaDimensions(raid?megaRaidArenaSize:undefined);
  const forms=raidFormRoster[match.mode];
  const guardians=forms ?? ['Onix','Steelix','Golem','Aggron','Tyranitar','Rhyperior'];
  const boss=coop?Array.from({length:raid?1:match.format*2},(_,i)=>{
@@ -8212,7 +8232,7 @@ function initializeOnline(match) {
  const leads=raidTeam ?? (coop?[...host.slice(0,match.format),...guest.slice(0,match.format)]:host.slice(0,match.format));
  trainerFields=[leads,enemies.slice(0,match.format)].map(leads=>
    leads.map((actor,i)=>{
-    const slot={actor:null,owner:actor.side,y:240+(i-(leads.length-1)/2)*Math.min(112,370/leads.length)};
+    const slot={actor:null,owner:actor.side,y:canvas.height/2+(i-(leads.length-1)/2)*Math.min(112,(canvas.height-110)/leads.length)};
     placeOnline(slot,actor);
     return slot;
    }));
@@ -8223,7 +8243,7 @@ function initializeOnline(match) {
  battleWeather=battleTerrain=null;
  effects=[];pendingCasts=[];onlineSounds=[];onlineRecalls={};
  onlineRandomState=Number.parseInt(match.id.slice(0,8),16)>>>0;
- arenaMap=randomArenaMap();
+ arenaMap=raid?megaRaidArena(raid):randomArenaMap();
 }
 const actorReferences=['ailmentSource','lastDamageBy'];
 function saveOnlineState() {
@@ -8241,6 +8261,7 @@ function saveOnlineState() {
 function loadOnlineState(state) {
  ({allies,enemies,effects,clock,lastDamageClock,battleWeather,weatherTime,battleTerrain,terrainTime}=state);
  arenaMap=state.arenaMap ?? null;
+ setArenaDimensions(arenaMap ?? undefined);
  fieldMoveExpiry=state.fieldMoveExpiry ?? {};
  entryHazards=state.entryHazards ?? [{},{}];
  damageBuckets=state.damageBuckets ?? [];

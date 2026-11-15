@@ -58,6 +58,7 @@ function initializeOnline(match) {
  const fighters=raidTeam ?? [...host,...guest];
  const bossLevel=Math.min(100,Math.ceil(Math.max(...fighters.map(a=>a.level))*1.1)+2);
  const raid=Object.hasOwn(megaRaidTiers,match.mode)?megaRaidTiers[match.mode]:null;
+ setArenaDimensions(raid?megaRaidArenaSize:undefined);
  const forms=raidFormRoster[match.mode];
  const guardians=forms ?? ['Onix','Steelix','Golem','Aggron','Tyranitar','Rhyperior'];
  const boss=coop?Array.from({length:raid?1:match.format*2},(_,i)=>{
@@ -85,7 +86,7 @@ function initializeOnline(match) {
  const leads=raidTeam ?? (coop?[...host.slice(0,match.format),...guest.slice(0,match.format)]:host.slice(0,match.format));
  trainerFields=[leads,enemies.slice(0,match.format)].map(leads=>
    leads.map((actor,i)=>{
-    const slot={actor:null,owner:actor.side,y:240+(i-(leads.length-1)/2)*Math.min(112,370/leads.length)};
+    const slot={actor:null,owner:actor.side,y:canvas.height/2+(i-(leads.length-1)/2)*Math.min(112,(canvas.height-110)/leads.length)};
     placeOnline(slot,actor);
     return slot;
    }));
@@ -96,7 +97,7 @@ function initializeOnline(match) {
  battleWeather=battleTerrain=null;
  effects=[];pendingCasts=[];onlineSounds=[];onlineRecalls={};
  onlineRandomState=Number.parseInt(match.id.slice(0,8),16)>>>0;
- arenaMap=randomArenaMap();
+ arenaMap=raid?megaRaidArena(raid):randomArenaMap();
 }
 const actorReferences=['ailmentSource','lastDamageBy'];
 function saveOnlineState() {
@@ -114,6 +115,7 @@ function saveOnlineState() {
 function loadOnlineState(state) {
  ({allies,enemies,effects,clock,lastDamageClock,battleWeather,weatherTime,battleTerrain,terrainTime}=state);
  arenaMap=state.arenaMap ?? null;
+ setArenaDimensions(arenaMap ?? undefined);
  fieldMoveExpiry=state.fieldMoveExpiry ?? {};
  entryHazards=state.entryHazards ?? [{},{}];
  damageBuckets=state.damageBuckets ?? [];
