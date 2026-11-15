@@ -200,6 +200,9 @@
    arenaActors=new Map();rosterRows=new Map();soundsPlayed=new Set();displayedTurn=-1;
    recallSlotOnline=null;battleSnapshot=null;playbackClock=null;playbackDelay=0.25;snapshotArrival=0;arrivalGaps=[];visualSnapshots=[];trainerFields=[[],[]];trainerPanels=null;
    phase='online-battle';speed=1;
+   const mega=Object.hasOwn(megaRaidTiers,match.mode);
+   setArenaDimensions(mega?megaRaidArenaSize:undefined);
+   byId('battle').classList.toggle('is-mega-raid',mega);
    effects=[];pendingCasts=[];playerSwitch=enemySwitch=null;
    battleWeather=battleTerrain=null;arenaMap=null;weatherTime=0;onlineMatchDuration=0;
    showScreen('battle');
@@ -259,6 +262,7 @@
   playbackClock ??= data.clock-playbackDelay;
   updateNormalAttackToggle(data.normalAttacks ?? true,normalAttacks=>send({normalAttacks}));
   const mirror=!isCoop(active.mode) && active.side==='guest';
+  setArenaDimensions(data.arenaMap ?? undefined);
   const mx=x=>mirror?canvas.width-x:x;
   const dx=x=>mirror?-x:x;
   const lineView=line=>!line?line:{...line,x:mx(line.x),dx:dx(line.dx),
@@ -309,6 +313,14 @@
   byId('raid-boss-hud').hidden=!boss;
   if(boss){
    byId('raid-boss-name').textContent=boss.raidForm;
+   updateStageIcons(byId('raid-boss-stages'),boss);
+   const ailment=battleStatusBadges[boss.ailment];
+   const status=byId('raid-boss-status');
+   status.hidden=!ailment;
+   if(ailment) {
+    status.textContent=ailment[1];
+    status.style.backgroundColor=ailment[2];
+   }
    const hp=byId('raid-boss-hp');hp.max=boss.max;hp.value=boss.hp;
    byId('raid-boss-value').textContent=boss.hp.toLocaleString()+' / '+boss.max.toLocaleString()+' HP';
   }
@@ -336,6 +348,7 @@
   byId('status').textContent=commandMode==='Attack'?'Choose an enemy target.':commandMode==='Select'?'Choose a healthy reserve to swap in.':status;
   for(const [friendly,id] of [[true,'player-roster'],[false,'enemy-roster']]) {
    const container=byId(id);
+   if(!friendly && Object.hasOwn(megaRaidTiers,active.mode))continue;
    if(!container.dataset.onlineRoster) {
     container.replaceChildren(element('h2',friendly?'Your side':isCoop(active.mode)?'Guardians':'Opponent'));
     container.dataset.onlineRoster='true';
