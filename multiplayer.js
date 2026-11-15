@@ -519,14 +519,16 @@
    }
    heading.append(types);
   }
-  top.append(roomInfo,heading,actions);
+  const topRight=element('div',null,'raid-room-top-right');
+  topRight.append(actions);
+  top.append(roomInfo,heading,topRight);
   const seats=element('div',null,'raid-room-seats');
   const controls=element('div',null,'raid-room-controls');
   const footer=element('div',null,'raid-room-footer');
   const start=element('div',null,'raid-room-start');
   footer.append(controls,start);
   root.replaceChildren(top,seats,footer);
-  return {root,seats,controls,start,footer};
+  return {root,seats,controls,start,footer,topRight};
  }
  async function raidRpc(action,args) {
   const client=await cloudClient();
@@ -897,7 +899,8 @@
     search.oninput=render;render();
     show('Find Room',search,results);
    });
-   room.controls.append(tiers,find,create,findRoom,code,join);
+   room.topRight.append(tiers);
+   room.controls.append(find,create,findRoom,code,join);
    return;
   }
   show(title,mode,freeFightLabel,format,find,create,code,join);
