@@ -1057,6 +1057,7 @@
    if(!player.hp)run.place=1+run.trainers.filter(t=>t.hp>0).length+
     run.trainers.slice(1).filter(t=>t.eliminated===run.round && t.name.localeCompare(player.name)<0).length;
   }
+  if(!player.hp || run.trainers.filter(t=>t.hp>0).length<=1)recordBattlePass({battles:1,wins:player.hp>0?1:0});
   run.round++;
   for(const trainer of run.trainers)if(trainer.hp)roll(trainer);
   run.result=sign>0?'Victory against '+rival.name:sign<0?'Defeat against '+rival.name:'Draw against '+rival.name;
