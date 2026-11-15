@@ -4,8 +4,22 @@ const path=require('node:path');
 const vm=require('node:vm');
 const read=file=>fs.readFileSync(path.join(__dirname,'..',file),'utf8');
 const html=read('index.html');
+const manifest=JSON.parse(read('version.json'));
+assert.match(manifest.version,/^\d+\.\d+\.\d+$/);
+const migrations=fs.readdirSync(path.join(__dirname,'../supabase/migrations'));
+assert(migrations.length>0);
+const migrationVersions=migrations.map(file=>{
+ assert.match(file,/^\d{14}_[a-z0-9_]+\.sql$/);
+ return file.slice(0,14);
+});
+assert.equal(new Set(migrationVersions).size,migrationVersions.length);
 for(const file of ['index.html','local-test/PokeArena_Local_Test.html']){
- for(const [,script] of read(file).matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)){
+ const markup=read(file);
+ assert.equal(markup.match(/const updateLogEntries\s*=\s*\[\s*\{version:'([^']+)'/)?.[1],manifest.version,file);
+ for(const [,asset] of markup.matchAll(/<script src="([^"?]+)\?v=[^"]+"/g)){
+  assert(fs.existsSync(path.join(__dirname,'..',path.dirname(file),asset)),asset);
+ }
+ for(const [,script] of markup.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)){
   if(script.trim())new vm.Script(script,{filename:file});
  }
 }
@@ -35,7 +49,7 @@ const context=vm.createContext({
 });
 context.button=(label,onclick,disabled)=>Object.assign(element('button',label),{onclick,disabled});
 const source=read('tactics.js');
-const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,receiveDamage,heal,equip,sell,setRound:round=>{run.round=round;},getRun:()=>run};';
+const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,receiveDamage,heal,equip,sell,ignite,setRound:round=>{run.round=round;},getRun:()=>run};';
 new vm.Script(data+'\n'+source.replace(/\}\)\(\);\s*$/,auditExports+'})();'),{filename:'tactics.js'}).runInContext(context);
 const a=context.audit;
 byId('home-tactics').onclick();
@@ -49,6 +63,48 @@ assert(a.equip(trainer,starter,'Claw'));
 assert(a.equip(trainer,starter,'Claw'));
 assert(a.sell(trainer,starter));
 assert.equal(trainer.items[0],'Razor Claws');
+
+const originalUnits=trainer.units;
+trainer.units=[
+ ...Array.from({length:9},()=>({name:'Pikachu',star:1,position:null})),
+ ...Array.from({length:3},(_,x)=>({name:'Pikachu',star:1,position:{x,y:4}})),
+ {name:'Pikachu',star:1,position:null,items:['Captain’s Crown']}
+];
+const captain=trainer.units.at(-1),goldBefore=trainer.gold;
+assert.equal(a.sell(trainer,captain),false);
+assert.equal(trainer.units.length,13);
+assert.equal(trainer.gold,goldBefore);
+assert(a.sell(trainer,trainer.units[0]));
+assert(a.sell(trainer,captain));
+assert.equal(trainer.units.filter(unit=>unit.position===null).length,9);
+trainer.units=originalUnits;
+const afflicted={hp:100,elapsed:500,woundUntil:9000};
+a.ignite(afflicted,5,{});
+assert.equal(afflicted.burnUntil,5500);
+assert.equal(afflicted.woundUntil,9000);
+assert.equal(afflicted.nextBurn,1500);
+
+const cloud=read('cloud.js');
+const keys=cloud.slice(0,cloud.indexOf('const cloudRedirect'));
+const validateStart=cloud.indexOf('function validateArenaSave');
+const validateEnd=cloud.indexOf('let cloudAccount',validateStart);
+const storage=new Map();
+const localStorage={
+ getItem:key=>storage.get(key) ?? null,
+ setItem:(key,value)=>storage.set(key,value),
+ removeItem:key=>storage.delete(key)
+};
+const backups=new Function('localStorage','playerSaveKey',keys+cloud.slice(validateStart,validateEnd)+
+ 'return {arenaSaveKeys,validateArenaSave,restoreArenaSave}')(localStorage,key=>key);
+const backup={version:1,entries:Object.fromEntries(backups.arenaSaveKeys.map(key=>[key,null]))};
+backup.entries['pokemon-arena-team']='["Pikachu"]';
+backup.entries['pokemon-arena-starter']='{"ign":"Smoke test","name":"Pikachu"}';
+backups.restoreArenaSave(backup);
+assert.equal(storage.get('pokemon-arena-team'),'["Pikachu"]');
+const invalid=structuredClone(backup);
+invalid.entries['pokemon-arena-team']='{}';
+assert.throws(()=>backups.restoreArenaSave(invalid),/invalid team/);
+assert.equal(storage.get('pokemon-arena-team'),'["Pikachu"]');
 
 const passCode=html.slice(html.indexOf('const passTierXP='),html.indexOf('let selectedPassReward='));
 const progress={battlePass:{xp:0,claimed:[]},balls:[0]};
@@ -130,3 +186,44 @@ if(process.argv.includes('--balance'))console.table([...report].map(([group,s])=
  heal:Math.round(s.healed/s.samples),shield:Math.round(s.shielded/s.samples),
  firstCast:s.castSamples?+(s.cast/s.castSamples).toFixed(1):null,seconds:+(s.seconds/s.samples).toFixed(1)
 })));
+
+async function verifyRaidRetry(){
+ const start=multiplayer.indexOf('  let retryCount=0, retryButton=null;');
+ const end=multiplayer.indexOf('  if(!active.result)timer=setTimeout(poll,850);',start);
+ assert(start>=0 && end>start);
+ const source=multiplayer.slice(start,end);
+ const scheduled=[];
+ const fakeTimeout=(callback,delay)=>{scheduled.push({callback,delay});return scheduled.length;};
+ for(const stage of ['ready','combat','result']){
+  scheduled.length=0;
+  const status=element('p');
+  const state={active:{id:'test',started:stage!=='ready',seats:[]},rendered:0,snapshots:0,fail:true};
+  const rpc=async()=>{
+   if(state.fail)throw new TypeError('Failed to fetch');
+   return {...state.active,ready:true};
+  };
+  const combat=async()=>{
+   if(state.fail)throw new TypeError('Failed to fetch');
+   return {turn:1,battle:{},result:stage==='result'?'coop_win':null};
+  };
+  const poll=new Function('state','status','rpc','combat','onlineRetryMessage','element','setTimeout','clearTimeout',
+   'let active=state.active, timer, displayedTurn=0;'+
+   'const token=1,generation=1,submitting=false, live=false,began=0,lastPush=0,'+
+   'phase=active.started?"online-battle":"raid-lobby",dialog={open:true},navigator={onLine:true};'+
+   'const raidRpc=rpc,view=status,byId=()=>status,joinBattleChannel=()=>{},render=()=>{state.rendered++;};'+
+   'const button=(text,onclick)=>({text,onclick,disabled:false});'+
+   'const acceptBattle=packet=>{displayedTurn=packet.turn;state.snapshots++;active.result=packet.result;};'+
+   source+'return poll;')(state,status,rpc,combat,retry,element,fakeTimeout,()=>{});
+  await poll();await poll();await poll();
+  assert.match(status.children[0].textContent,/Waiting for a fresh match snapshot/);
+  assert.equal(status.children[1].text,'Request fresh snapshot');
+  assert(scheduled.at(-1).delay>scheduled[0].delay);
+  state.fail=false;
+  await scheduled.pop().callback();
+  if(stage==='ready')assert.equal(state.rendered,1);
+  else assert.equal(state.snapshots,1);
+  if(stage==='result')assert.equal(state.active.result,'coop_win');
+ }
+ console.log('Simulated raid reconnect passed during ready-up, combat and result.');
+}
+verifyRaidRetry().catch(error=>{console.error(error);process.exitCode=1;});
