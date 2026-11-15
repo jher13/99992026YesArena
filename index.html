@@ -158,7 +158,7 @@ main{max-width:1190px}h1{font-size:clamp(26px,5vw,48px);color:#eff8ff}
 .feature-orb canvas.feature-lead{max-width:88%;max-height:88%;width:88%;height:88%;object-fit:contain}
 #home-dialog{width:min(calc(100vw - 32px),490px);color:#f4ebff;background:#19142d;border:1px solid #8e6eb8;border-radius:14px;padding:18px}
 #home-dialog::backdrop{background:#060410b0}
-#home-roguelit{justify-content:center;margin:8px auto 0;width:min(100%,220px)}
+#home-roguelit,#home-tactics{justify-content:center;margin:8px auto 0;width:min(100%,220px)}
 #rogue-choices .gym-card{min-height:76px}
 .home-multiplayer{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:min(100%,220px);margin:8px auto 0}
 .home-multiplayer .home-link{justify-content:center;min-width:0;width:100%}
@@ -264,10 +264,10 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
  #battle-settings-button{padding:4px 7px}
  .battle-settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-:is(#item-bag,#shop,#skill-shop,#friendlist,#events,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page){max-width:680px;margin:12px auto;padding:16px clamp(10px,4vw,32px);background:#f4faef;color:#253d36;border-radius:14px}
-:is(#item-bag,#shop,#skill-shop,#friendlist,#events,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .menu-heading h2{color:#253d36}
-:is(#item-bag,#shop,#skill-shop,#friendlist,#events,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) button{color:#fff;background:#142d23}
-:is(#item-bag,#shop,#skill-shop,#friendlist,#events,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) button:disabled{opacity:1;background:#596961;color:#fff;cursor:default}
+:is(#item-bag,#shop,#skill-shop,#friendlist,#events,#tactics,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page){max-width:680px;margin:12px auto;padding:16px clamp(10px,4vw,32px);background:#f4faef;color:#253d36;border-radius:14px}
+:is(#item-bag,#shop,#skill-shop,#friendlist,#events,#tactics,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .menu-heading h2{color:#253d36}
+:is(#item-bag,#shop,#skill-shop,#friendlist,#events,#tactics,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) button{color:#fff;background:#142d23}
+:is(#item-bag,#shop,#skill-shop,#friendlist,#events,#tactics,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) button:disabled{opacity:1;background:#596961;color:#fff;cursor:default}
 .bag-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
 .bag-section-title{display:flex;align-items:center;gap:10px;margin:20px 0 12px;color:#49635a;font:700 11px system-ui;letter-spacing:.16em;text-transform:uppercase}
 .bag-section-title::before,.bag-section-title::after{content:"";height:1px;background:#cddbcf;flex:1}
@@ -276,7 +276,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .bag-item strong{font-size:13px;overflow-wrap:anywhere}.bag-item small{color:#49635a;font-size:11px}
 .bag-item button{font-size:11px;padding:4px 7px;margin-top:auto}
 .bag-art{position:relative;width:64px;max-width:100%;height:58px;display:grid;place-items:center}
-:is(#item-bag,#shop,#skill-shop,#friendlist,#events,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .bag-art canvas{width:48px;height:48px;max-width:100%;border:0;background:none;image-rendering:pixelated}
+:is(#item-bag,#shop,#skill-shop,#friendlist,#events,#tactics,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .bag-art canvas{width:48px;height:48px;max-width:100%;border:0;background:none;image-rendering:pixelated}
 .bag-item .bag-count{position:absolute;bottom:0;left:0;background:#e1eee0;padding:2px 5px;border-radius:8px;font-weight:700}
 #bag-status:empty{display:none}
 #home-bag{display:inline-grid;place-items:center;min-width:36px;min-height:34px;padding:5px;vertical-align:middle}
@@ -320,11 +320,11 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 #feature-type{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
 .home-type-badge{display:inline-block;padding:3px 9px;border:1px solid var(--type-color);border-radius:5px;background:color-mix(in srgb,var(--type-color) 22%,#171e30);color:#fff;font-size:12px;font-weight:700}
 #shop,#skill-shop{max-width:1120px}
-:is(#shop,#skill-shop,#friendlist,#events,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .shop-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:18px 8px}
-:is(#shop,#skill-shop,#friendlist,#events,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .shop-wallet{color:#36584a}
-:is(#shop,#skill-shop,#friendlist,#events,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .bag-item button{margin-top:auto}
-@media(max-width:850px){:is(#shop,#skill-shop,#friendlist,#events,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .shop-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(max-width:560px){:is(#shop,#skill-shop,#friendlist,#events,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .shop-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+:is(#shop,#skill-shop,#friendlist,#events,#tactics,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .shop-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:18px 8px}
+:is(#shop,#skill-shop,#friendlist,#events,#tactics,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .shop-wallet{color:#36584a}
+:is(#shop,#skill-shop,#friendlist,#events,#tactics,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .bag-item button{margin-top:auto}
+@media(max-width:850px){:is(#shop,#skill-shop,#friendlist,#events,#tactics,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .shop-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:560px){:is(#shop,#skill-shop,#friendlist,#events,#tactics,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .shop-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 #bag-craft-results{margin:auto;width:min(390px,calc(100vw - 32px));max-height:85dvh;padding:20px;border:1px solid #879f91;border-radius:12px;background:#f4faef;color:#253d36}
 #bag-craft-results::backdrop{background:#101725aa}
 #bag-craft-results h3{margin:0 0 12px}
@@ -506,10 +506,10 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .gambit-dialog .gambit-unavailable{color:#8c4828}
 @media(max-width:700px){#home .feature-orb{width:min(100%,130px)}}
 
-:where(#home,#menu,#pokedex,#skillset,#abilities,#item-bag,#shop,#skill-shop,#friendlist,#events,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page,#wild-regions,#wild-result,#roguelit,#battle-settings,#home-dialog.collection-dialog,.gambit-dialog,#shop-purchase,#bag-craft-results){
+:where(#home,#menu,#pokedex,#skillset,#abilities,#item-bag,#shop,#skill-shop,#friendlist,#events,#tactics,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page,#wild-regions,#wild-result,#roguelit,#battle-settings,#home-dialog.collection-dialog,.gambit-dialog,#shop-purchase,#bag-craft-results){
  color-scheme:light;
 }
-:where(#home,#menu,#pokedex,#skillset,#abilities,#item-bag,#shop,#skill-shop,#friendlist,#events,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page,#wild-regions,#wild-result,#roguelit,#battle-settings,#home-dialog.collection-dialog,.gambit-dialog,#shop-purchase,#bag-craft-results) input::placeholder{color:#52675d;opacity:1}
+:where(#home,#menu,#pokedex,#skillset,#abilities,#item-bag,#shop,#skill-shop,#friendlist,#events,#tactics,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page,#wild-regions,#wild-result,#roguelit,#battle-settings,#home-dialog.collection-dialog,.gambit-dialog,#shop-purchase,#bag-craft-results) input::placeholder{color:#52675d;opacity:1}
 :is(#menu,#pokedex,#skillset,#abilities,#battle-settings,#home-dialog.collection-dialog,.gambit-dialog,#friendlist,#guild-directory,#shop-purchase) :is(input,select,button):focus-visible{outline:2px solid #397257;outline-offset:2px}
 #menu :is(.detail-actions,.team-unowned,.skill-teach small,.pc-learnable-skills small){color:#354f44}
 #menu .skill-lesson-status{color:#2a622e}
@@ -546,12 +546,12 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 #gym-collection .gym-badge-sprite.is-uncollected{filter:grayscale(1);opacity:.62}
 
 
-#events{max-width:1400px}
-#events:has(.tactics-layout,.tactics-choice){background:#101c20;color:#eee4c9;border:1px solid #786440;padding:10px clamp(6px,2vw,22px)}
-#events:has(.tactics-layout,.tactics-choice) .menu-heading h2{color:#ead6a7;font-size:18px}
-#events :is(.tactics-layout,.tactics-choice) .bag-section-title{color:#e5cc91;margin:8px 0}
-#events :is(.tactics-layout,.tactics-choice) .bag-section-title::before,
-#events :is(.tactics-layout,.tactics-choice) .bag-section-title::after{background:#887449}
+#tactics{max-width:1400px}
+#tactics:has(.tactics-layout,.tactics-choice){background:#101c20;color:#eee4c9;border:1px solid #786440;padding:10px clamp(6px,2vw,22px)}
+#tactics:has(.tactics-layout,.tactics-choice) .menu-heading h2{color:#ead6a7;font-size:18px}
+#tactics :is(.tactics-layout,.tactics-choice) .bag-section-title{color:#e5cc91;margin:8px 0}
+#tactics :is(.tactics-layout,.tactics-choice) .bag-section-title::before,
+#tactics :is(.tactics-layout,.tactics-choice) .bag-section-title::after{background:#887449}
 .tactics-layout{display:grid;grid-template-columns:minmax(112px,1fr) minmax(0,5fr) minmax(112px,1fr);gap:8px;align-items:start}
 .tactics-sidebar,.tactics-stage,.tactics-shop,.tactics-bench,.tactics-unit-actions,.tactics-choice{background:#172226;border:1px solid #806b44;border-radius:5px;color:#eee4c9}
 .tactics-sidebar{padding:6px;min-width:0}
@@ -566,31 +566,31 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .tactics-board{--hex:min(9vw,clamp(32px,5.5dvh,62px));width:max-content;max-width:100%;padding:3px}
 .tactics-hex-row{display:flex;gap:2px;margin-top:-3px}
 .tactics-hex-row:nth-child(even){padding-left:calc(var(--hex)/2)}
-#events button.tactics-hex{position:relative;padding:2px;width:var(--hex);height:calc(var(--hex)*.87);clip-path:polygon(12% 0,88% 0,100% 50%,88% 100%,12% 100%,0 50%);display:grid;place-items:center;background:#273e36a3;color:#fff0bb;border:0;font-size:clamp(7px,1.65vw,11px)}
-#events button.tactics-hex:disabled{background:#182a2466;color:#fff0bb}
-#events button.tactics-hex.is-opponent{background:#7439319e}
-#events button.tactics-hex[aria-pressed=true]{background:#6e7c3c}
+#tactics button.tactics-hex{position:relative;padding:2px;width:var(--hex);height:calc(var(--hex)*.87);clip-path:polygon(12% 0,88% 0,100% 50%,88% 100%,12% 100%,0 50%);display:grid;place-items:center;background:#273e36a3;color:#fff0bb;border:0;font-size:clamp(7px,1.65vw,11px)}
+#tactics button.tactics-hex:disabled{background:#182a2466;color:#fff0bb}
+#tactics button.tactics-hex.is-opponent{background:#7439319e}
+#tactics button.tactics-hex[aria-pressed=true]{background:#6e7c3c}
 .tactics-hex canvas,.tactics-bench-slot canvas,.tactics-offer canvas{max-width:100%;max-height:30px;border:0;background:transparent;image-rendering:pixelated}
 .tactics-hex small{position:absolute;bottom:0;text-shadow:0 1px #111}
 .tactics-unit-bars{position:absolute;top:2px;left:19%;width:62%;display:grid;gap:1px}
 .tactics-unit-bars progress{width:100%;height:3px;accent-color:#9dde68}
 .tactics-unit-bars progress+progress{accent-color:#69beef}
 .tactics-bench{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:3px;padding:3px}
-#events .tactics-bench-slot{min-width:0;min-height:40px;display:grid;place-items:center;padding:2px;background:#293735;color:#f7db96;border-color:#786b50;border-radius:3px}
-#events .tactics-bench-slot[aria-pressed=true]{border-color:#f4cb77;background:#504526}
+#tactics .tactics-bench-slot{min-width:0;min-height:40px;display:grid;place-items:center;padding:2px;background:#293735;color:#f7db96;border-color:#786b50;border-radius:3px}
+#tactics .tactics-bench-slot[aria-pressed=true]{border-color:#f4cb77;background:#504526}
 .tactics-unit-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;padding:4px}
 .tactics-shop{display:grid;grid-template-columns:minmax(108px,.84fr) repeat(5,minmax(0,1fr));gap:4px;padding:5px;margin-top:6px}
 .tactics-economy{display:grid;gap:3px;text-align:center}
 .tactics-economy strong,.tactics-offer-cost{color:#f3d582}
-#events :is(.tactics-unit-actions,.tactics-economy,.tactics-choice) button{background:#243334;border-color:#88734e;color:#f7eaca;font-size:11px;padding:4px 6px}
-#events .tactics-offer{display:grid;gap:2px;grid-template-rows:auto auto 1fr auto;justify-items:center;min-width:0;padding:4px;background:linear-gradient(145deg,#33464c,#19252b);color:#f6ead0;border:1px solid #7b897b;border-bottom-width:3px;border-radius:3px;overflow-wrap:anywhere;font-size:12px}
-#events .tactics-offer:disabled{opacity:.68}
-#events .tactics-offer.tier-2{border-color:#7cbd85}
-#events .tactics-offer.tier-3{border-color:#79aee2}
-#events .tactics-offer small,.tactics-offer-cost{font-size:10px}
-#events .tactics-hint{color:#c8d3c7;text-align:center;font-size:12px;margin:6px 0}
+#tactics :is(.tactics-unit-actions,.tactics-economy,.tactics-choice) button{background:#243334;border-color:#88734e;color:#f7eaca;font-size:11px;padding:4px 6px}
+#tactics .tactics-offer{display:grid;gap:2px;grid-template-rows:auto auto 1fr auto;justify-items:center;min-width:0;padding:4px;background:linear-gradient(145deg,#33464c,#19252b);color:#f6ead0;border:1px solid #7b897b;border-bottom-width:3px;border-radius:3px;overflow-wrap:anywhere;font-size:12px}
+#tactics .tactics-offer:disabled{opacity:.68}
+#tactics .tactics-offer.tier-2{border-color:#7cbd85}
+#tactics .tactics-offer.tier-3{border-color:#79aee2}
+#tactics .tactics-offer small,.tactics-offer-cost{font-size:10px}
+#tactics .tactics-hint{color:#c8d3c7;text-align:center;font-size:12px;margin:6px 0}
 .tactics-choice{padding:12px}
-#events .tactics-choice .bag-item small{color:#d5dccc}
+#tactics .tactics-choice .bag-item small{color:#d5dccc}
 @media(max-width:760px){
  .tactics-layout{grid-template-columns:repeat(2,minmax(0,1fr))}
  .tactics-center{grid-column:1/-1;grid-row:1}
@@ -608,12 +608,12 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .tactics-board.is-combat .tactics-unit-bars{top:0;z-index:1}
 .tactics-board.is-combat .is-opponent progress:first-child{accent-color:#ec837b}
 .tactics-layout.is-combat .tactics-bench{background:#454637;border-color:#96805a}
-#events .tactics-layout.is-combat .tactics-bench-slot{opacity:1;background:#2c3430}
+#tactics .tactics-layout.is-combat .tactics-bench-slot{opacity:1;background:#2c3430}
 .tactics-combat-wallet{display:flex;justify-content:space-between;gap:8px;padding:5px 10px;color:#f3d582;background:#172226;border:1px solid #806b44;font-size:12px}
 .tactics-standings li{display:grid;grid-template-columns:minmax(0,1fr) auto}
 .tactics-standings progress{grid-column:1/-1;width:100%;height:3px;accent-color:#e8847c}
 .tactics-standings .is-you progress{accent-color:#e3bc6c}
-#events .tactics-stage{flex-wrap:wrap}
+#tactics .tactics-stage{flex-wrap:wrap}
 .tactics-timeline{flex-basis:100%;display:flex;flex-wrap:wrap;justify-content:center;gap:4px}
 .tactics-timeline span{background:#263434;padding:2px 5px;border-radius:4px;font-size:10px}
 .tactics-timeline [aria-current]{color:#ffdd93;outline:1px solid #ac9358}
@@ -621,7 +621,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .tactics-inspect{background:#172226;color:#f5e6c1;border:1px solid #aa925d;border-radius:8px}
 .tactics-inspect p{color:#f5e6c1}
 .tactics-bench-slot{min-height:40px;background:#283537;border-radius:3px}
-#events .tactics-standings button{background:transparent;border:0;padding:0;text-align:left;color:#e7d8b6;font-size:11px}
+#tactics .tactics-standings button{background:transparent;border:0;padding:0;text-align:left;color:#e7d8b6;font-size:11px}
 .tactics-board.is-combat canvas.tactics-battler{width:100%;max-height:100%;height:auto}
 .tactics-trait{position:relative}
 .tactics-trait-tooltip{display:none;position:absolute;z-index:4;left:100%;top:0;width:min(230px,55vw);padding:8px;border:1px solid #aa925d;border-radius:5px;background:#172226;color:#f5e6c1;line-height:1.4;pointer-events:none}
@@ -636,12 +636,12 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .tactics-shop-odds span::before{content:'◆';margin-right:3px;font-size:8px}
 .tactics-shop-odds .tier-2{color:#a4e1ab}.tactics-shop-odds .tier-3{color:#aed6ff}
 .tactics-shop-gold{margin-inline-start:auto;color:#f4d990;white-space:nowrap}
-#events .tactics-economy button{border-radius:3px;background:linear-gradient(120deg,#344143,#182325);font-weight:700}
-#events .tactics-offer{display:flex;flex-direction:column;justify-content:center;align-items:stretch;padding:0;gap:0;overflow:hidden;min-height:92px;background:#172528;border-radius:2px}
-#events .tactics-offer:disabled{opacity:1}
-#events .tactics-offer:disabled .tactics-offer-art canvas{opacity:.55}
+#tactics .tactics-economy button{border-radius:3px;background:linear-gradient(120deg,#344143,#182325);font-weight:700}
+#tactics .tactics-offer{display:flex;flex-direction:column;justify-content:center;align-items:stretch;padding:0;gap:0;overflow:hidden;min-height:92px;background:#172528;border-radius:2px}
+#tactics .tactics-offer:disabled{opacity:1}
+#tactics .tactics-offer:disabled .tactics-offer-art canvas{opacity:.55}
 .tactics-offer-art{display:flex;align-items:end;position:relative;flex:1;min-height:66px;padding:4px;text-align:left;background:radial-gradient(ellipse at 70% 50%,var(--offer-type),#233638 74%)}
-#events .tactics-offer-art canvas{position:absolute;right:2%;top:0;width:67%;height:100%;max-height:none;object-fit:contain}
+#tactics .tactics-offer-art canvas{position:absolute;right:2%;top:0;width:67%;height:100%;max-height:none;object-fit:contain}
 .tactics-offer-types{display:grid;gap:2px;position:relative;text-shadow:0 1px 2px #000}
 .tactics-offer-types small{padding:1px 3px;background:#10191cdd;border-radius:3px}
 .tactics-offer-footer{display:flex;align-items:center;justify-content:space-between;gap:3px;padding:4px;text-align:left;background:#25383c}
@@ -651,15 +651,15 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 @media(max-width:480px){.tactics-shop-bar{gap:7px}.tactics-shop-odds{gap:4px}.tactics-offer-footer{flex-wrap:wrap}.tactics-offer-footer strong{font-size:10px}}
 
 .tactics-shop-slot{position:relative;min-width:0}
-#events .tactics-shop-slot .tactics-offer{width:100%;height:100%}
-#events .tactics-shop-slot .tactics-offer-lock{position:absolute;right:3px;top:3px;padding:1px 4px;border-radius:3px;background:#162225dc;border-color:#8e7b52;font-size:12px;line-height:1.4}
-#events .tactics-shop-slot .tactics-offer-lock[aria-pressed=true]{background:#665330;border-color:#f4d990}
+#tactics .tactics-shop-slot .tactics-offer{width:100%;height:100%}
+#tactics .tactics-shop-slot .tactics-offer-lock{position:absolute;right:3px;top:3px;padding:1px 4px;border-radius:3px;background:#162225dc;border-color:#8e7b52;font-size:12px;line-height:1.4}
+#tactics .tactics-shop-slot .tactics-offer-lock[aria-pressed=true]{background:#665330;border-color:#f4d990}
 .tactics-streak{color:#f4d990;font-size:11px;white-space:nowrap}
 .tactics-field .tactics-bench{width:calc(100% + 4px);align-self:end;margin:10px -2px -10px;border-radius:0;background:linear-gradient(#b4aa89,#827858);border-top:3px solid #574e36;box-shadow:0 -3px 9px #15211377;gap:0;padding:0}
-#events .tactics-field .tactics-bench-slot,#events .tactics-layout.is-combat .tactics-field .tactics-bench-slot{background:linear-gradient(165deg,#b5aa89,#968a68);border:1px solid #71674d;border-radius:0;box-shadow:inset 0 1px #d3c7a9;color:#fff3bd;text-shadow:0 1px 2px #27221b}
-#events .tactics-field .tactics-bench-slot[aria-pressed=true]{outline:2px solid #f4cb77;outline-offset:-3px}
+#tactics .tactics-field .tactics-bench-slot,#tactics .tactics-layout.is-combat .tactics-field .tactics-bench-slot{background:linear-gradient(165deg,#b5aa89,#968a68);border:1px solid #71674d;border-radius:0;box-shadow:inset 0 1px #d3c7a9;color:#fff3bd;text-shadow:0 1px 2px #27221b}
+#tactics .tactics-field .tactics-bench-slot[aria-pressed=true]{outline:2px solid #f4cb77;outline-offset:-3px}
 @media(max-width:480px){.tactics-shop-bar{flex-wrap:wrap}}
-#events .tactics-bench-slot canvas{width:auto;height:auto;max-width:100%;max-height:30px;object-fit:contain}
+#tactics .tactics-bench-slot canvas{width:auto;height:auto;max-width:100%;max-height:30px;object-fit:contain}
 
 .tactics-combat-space{position:relative;width:100%;height:clamp(220px,46dvh,450px);isolation:isolate}
 .tactics-live-unit{position:absolute;width:clamp(44px,8vw,74px);transform:translate(-50%,-50%);text-align:center}
@@ -685,7 +685,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .tactics-item-slot{display:grid;place-items:center;aspect-ratio:1;background:#0c1517;border:1px solid #806b44;color:#f6d777;border-radius:3px}
 .tactics-trait-list .tactics-trait{flex-wrap:wrap}
 .tactics-unit-visual{display:grid;place-items:center;align-content:center;width:max-content;max-width:100%;background:transparent;cursor:grab}
-#events .tactics-unit-visual canvas{width:auto;height:auto;max-width:100%;max-height:30px;object-fit:contain}
+#tactics .tactics-unit-visual canvas{width:auto;height:auto;max-width:100%;max-height:30px;object-fit:contain}
 .tactics-unit-visual small{position:static}
 .tactics-stat-card{width:min(230px,85vw);background:#131e21;color:#f3e8c8;border:1px solid #9f8656;border-radius:6px;overflow:hidden;box-shadow:0 6px 18px #0009}
 .tactics-stat-card.is-hover{position:fixed;z-index:120;pointer-events:none}
@@ -700,24 +700,27 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .tactics-stat-items,.tactics-stat-numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:6px}
 .tactics-stat-items{max-width:126px}.tactics-stat-numbers span{display:grid;text-align:center}
 .tactics-augment-screen{display:grid;align-content:center;text-align:center;min-height:min(75dvh,650px);background:linear-gradient(#122126b5,#101726ef),url('./assets/tactics-arena.webp') center/cover}
-#events .tactics-augment-screen .shop-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(6px,2vw,20px);padding:8px}
-#events .tactics-augment-card{min-height:clamp(220px,44dvh,390px);background:radial-gradient(ellipse at top,#4169a0,#342776 42%,#18143f 88%);border:2px solid #838be7;border-radius:24px 24px 15px 15px;padding:clamp(5px,2vw,22px);justify-content:space-around;box-shadow:inset 0 0 22px #8275e955}
+#tactics .tactics-augment-screen .shop-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(6px,2vw,20px);padding:8px}
+#tactics .tactics-augment-card{min-height:clamp(220px,44dvh,390px);background:radial-gradient(ellipse at top,#4169a0,#342776 42%,#18143f 88%);border:2px solid #838be7;border-radius:24px 24px 15px 15px;padding:clamp(5px,2vw,22px);justify-content:space-around;box-shadow:inset 0 0 22px #8275e955}
 .tactics-augment-icon{display:grid;place-items:center;width:clamp(40px,12vw,112px);aspect-ratio:1;border-radius:50%;color:#ffd475;background:#171934;border:2px solid #8d81cf;font-size:clamp(22px,5vw,56px)}
 
 .tactics-layout .tactics-field{position:relative;padding-top:54px;min-height:clamp(280px,55dvh,520px)}
 .tactics-planning-space{padding:0;max-width:none}
-#events .tactics-planning-space button.tactics-hex{position:absolute;transform:translate(-50%,-50%);width:11.4%;height:11%;clip-path:none;background:transparent;isolation:isolate}
-#events .tactics-planning-space button.tactics-hex::before{content:'';position:absolute;inset:1px;z-index:-1;clip-path:polygon(12% 0,88% 0,100% 50%,88% 100%,12% 100%,0 50%);background:#273e36a3}
-#events .tactics-planning-space button.tactics-hex:disabled::before{background:#182a2466}
-#events .tactics-planning-space button.tactics-hex[aria-pressed=true]::before{background:#6e7c3c}
-#events .tactics-planning-space .tactics-unit-visual small{position:static;line-height:1.1}
+#tactics .tactics-planning-space button.tactics-hex{position:absolute;transform:translate(-50%,-50%);width:11.4%;height:11%;clip-path:none;background:transparent;isolation:isolate}
+#tactics .tactics-planning-space button.tactics-hex::before{content:'';position:absolute;inset:1px;z-index:-1;clip-path:polygon(12% 0,88% 0,100% 50%,88% 100%,12% 100%,0 50%);background:#273e36a3}
+#tactics .tactics-planning-space button.tactics-hex:disabled::before{background:#182a2466}
+#tactics .tactics-planning-space button.tactics-hex[aria-pressed=true]::before{background:#6e7c3c}
+#tactics .tactics-planning-space .tactics-unit-visual small{position:static;line-height:1.1}
 .tactics-combat-stars{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);font-size:11px;line-height:1;color:#ffe8a0;text-shadow:0 1px 2px #000;white-space:nowrap}
-#events .tactics-offer.tier-4{border-color:#c88df7}
-#events .tactics-offer.tier-5{border-color:#efce76}
+#tactics .tactics-offer.tier-4{border-color:#c88df7}
+#tactics .tactics-offer.tier-5{border-color:#efce76}
 .tactics-offer.tier-4 .tactics-offer-footer{background:#594077}
 .tactics-offer.tier-5 .tactics-offer-footer{background:#66522b}
 .tactics-shop-odds .tier-4{color:#deb4fb}.tactics-shop-odds .tier-5{color:#f4d990}
 
+.tactics-stat-bonus{color:#8dcfff}
+.tactics-bench-slot{position:relative}
+.tactics-placement-items{position:absolute;left:50%;top:0;transform:translateX(-50%);z-index:1}
 .tactics-live-items{display:flex;justify-content:center;gap:2px}
 .tactics-live-items .tactics-item-slot{width:16px;height:16px;font-size:10px}
 .tactics-item-rail .tactics-item-slot[draggable=true]{cursor:grab}
@@ -808,7 +811,8 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 <button id="home-coop" class="home-link"><span class="menu-pixel" aria-hidden="true"></span>Co-op</button>
 <button id="home-pvp" class="home-link"><span class="menu-pixel" aria-hidden="true"></span>PvP</button>
 </div>
-<button id="home-roguelit" class="home-link"><span class="menu-pixel" aria-hidden="true"></span>Roguelit</button></div>
+<button id="home-roguelit" class="home-link"><span class="menu-pixel" aria-hidden="true"></span>Roguelit</button>
+<button id="home-tactics" class="home-link" type="button">Poke Fight Tactics</button></div>
 <nav class="home-links" aria-label="Gyms and Pokédex">
 <button id="home-trainer" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Trainer Battles</strong><small>Challenge regional trainers · earn coins</small></span></button>
 <button id="home-gyms" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Gym Battles</strong><small>Challenge themed teams</small></span></button>
@@ -826,7 +830,11 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 </section>
 <section id="events" hidden>
 <div class="menu-heading"><h2>Events</h2><button id="events-back" type="button">Main menu</button></div>
-<div id="event-content"></div>
+<p>No active events.</p>
+</section>
+<section id="tactics" hidden>
+<div class="menu-heading"><h2>Poke Fight Tactics</h2><button id="tactics-back" type="button">Main menu</button></div>
+<div id="tactics-content"></div>
 </section>
 <section id="roguelit" class="gym-screen" hidden>
 <div class="menu-heading"><h2>Roguelit</h2><button id="rogue-back">Main menu</button></div>
@@ -4692,7 +4700,7 @@ function showScreen(screen) {
  if(screen!=='battle' && byId('battle-settings').open)byId('battle-settings').close();
  if(screen!=='home')stopHomeSprite();
  stopBattleMusic();
- for(const id of ['home','login','raid-lobby','events','friendlist','guild-directory','leaderboard-page','roguelit','starter-setup','wild-regions','wild-result','trainer-regions','gyms','gym-collection','pokedex','item-bag','shop','skill-shop','skillset','abilities','menu','battle']) byId(id).hidden=id!==screen;
+ for(const id of ['home','login','raid-lobby','events','tactics','friendlist','guild-directory','leaderboard-page','roguelit','starter-setup','wild-regions','wild-result','trainer-regions','gyms','gym-collection','pokedex','item-bag','shop','skill-shop','skillset','abilities','menu','battle']) byId(id).hidden=id!==screen;
  byId('arena-header').hidden=screen==='home' || screen==='login' || screen==='starter-setup';
  byId('score').hidden=screen!=='battle';
  if(screen!=='battle')void checkGameVersion();
@@ -9021,6 +9029,8 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.21.7',changes:['Moved Poke Fight Tactics below Roguelit and preserved held items on upgrades and sales.']},
+ {version:'0.21.6',changes:['Fight Tactics shows base stats with blue bonuses and displays equipped items during preparation.']},
  {version:'0.21.5',changes:['Added individual pixel-art sprites for every Poke Fight Tactics item.']},
  {version:'0.21.4',changes:['Added TFT attack speed and balanced Pokémon stats, roles, and ranges by rarity.']},
  {version:'0.21.3',changes:['Added six TFT combat stats and replaced flat augments with combat effects.']},
@@ -9239,4 +9249,8 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.21.5"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script>
+byId('home-events').onclick=()=>{phase='events';showScreen('events');};
+byId('events-back').onclick=openMenu;
+</script>
+<script src="./tactics.js?v=0.21.7"></script><script src="./multiplayer.js?v=0.15.19"></script></html>

@@ -1,5 +1,5 @@
 (() => {
- const content=byId('event-content');
+ const content=byId('tactics-content');
  const odds=[[100,0,0,0,0],[75,25,0,0,0],[55,35,10,0,0],[40,35,20,5,0],[28,34,25,11,2],[15,25,30,22,8],[10,18,28,30,14],[6,12,22,35,25],[3,7,15,35,40]];
  const roster=[
   ['Bulbasaur','Charmander','Squirtle','Pikachu','Caterpie','Rattata','Pidgey','Zubat','Geodude','Sandshrew','Oddish','Abra','Machop','Gastly','Eevee'],
@@ -214,8 +214,8 @@
   const node=element('button',label);node.type='button';node.onclick=fn;node.disabled=disabled;return node;
  }
  const heading=title=>element('h3',title,'bag-section-title');
- function events(){
-  clearInterval(planningTimer);run=null;phase='events';showScreen('events');
+ function openTactics(){
+  clearInterval(planningTimer);run=null;phase='tactics';showScreen('tactics');
   content.replaceChildren(heading('Poke Fight Tactics'),
    element('p','Draft from a shared shop, position your Pokémon, and outlast seven AI trainers.'),
    button('Start match',start));
@@ -237,7 +237,7 @@
   render();
   const current=run;
   planningTimer=setInterval(()=>{
-   if(run!==current || phase!=='events'){clearInterval(planningTimer);return;}
+   if(run!==current || phase!=='tactics'){clearInterval(planningTimer);return;}
    const seconds=Math.max(0,Math.ceil((current.deadline-Date.now())/1000));
    const timer=content.querySelector('.tactics-planning-clock');
    if(timer)timer.textContent=seconds+'s';
@@ -272,8 +272,21 @@
    items.append(itemIcon(item));
   }
   const numbers=element('div',null,'tactics-stat-numbers');
-  for(const [label,value] of [['ATK',Math.round(stats.attack)],['S.ATK',Math.round(stats.specialAttack)],['DEF',stats.defense],['S.DEF',stats.specialDefense],['Crit Chance',Math.round(stats.critChance*100)+'%'],['Crit Damage',Math.round(stats.critDamage*100)+'%'],['ATK Speed',stats.attackSpeed.toFixed(2)+'/s']]){
-   const cell=element('span');cell.append(element('small',label),element('strong',String(value)));numbers.append(cell);
+  const statRows=[
+   ['ATK','attack',1,0,''],['S.ATK','specialAttack',1,0,''],
+   ['DEF','defense',1,0,''],['S.DEF','specialDefense',1,0,''],
+   ['Crit Chance','critChance',100,0,'%'],['Crit Damage','critDamage',100,0,'%'],
+   ['ATK Speed','attackSpeed',1,2,'/s']
+  ];
+  for(const [label,key,scale,precision,suffix] of statRows){
+   const base=(stats.baseStats[key]*scale).toFixed(precision);
+   const total=(stats[key]*scale).toFixed(precision);
+   const bonus=Number((Number(total)-Number(base)).toFixed(precision));
+   const value=element('strong',base+suffix);
+   if(bonus)value.append(element('b',(bonus>0?' + ':' − ')+Math.abs(bonus)+suffix,'tactics-stat-bonus'));
+   const cell=element('span');
+   cell.append(element('small',label),value);
+   numbers.append(cell);
   }
   details.append(art,title,meter(stats.hp,stats.max,'HP','is-hp'),meter(stats.mana,60,'Mana','is-mana'),
    element('p',(stats.move ?? 'No signature move')+' · '+stats.role+' · Range '+stats.range),items,numbers);
@@ -355,12 +368,9 @@
    const groupToMerge=[...group.filter(unit=>unit.position!==null),...group.filter(unit=>unit.position===null)].slice(0,3);
    const [keeper,...used]=groupToMerge;
    keeper.star++;
-   for(const unit of used)for(const item of unit.items ?? []){
-    const items=keeper.items ??= [];
-    if(items.length<3 && !Object.hasOwn(components,item))items.push(item);
-    else if(Object.hasOwn(components,item) && equip(trainer,keeper,item))continue;
-    else trainer.items.push(item);
-   }
+   const equipped=groupToMerge.flatMap(unit=>unit.items ?? []);
+   keeper.items=equipped.slice(0,3);
+   trainer.items.push(...equipped.slice(3));
    if(used.includes(run.selected))run.selected=keeper;
    trainer.units=trainer.units.filter(unit=>!used.includes(unit));
   }
@@ -372,6 +382,15 @@
   if(full && trainer.units.filter(unit=>unit.name===name && unit.star===1).length<2)return false;
   trainer.gold-=cost(name);trainer.shop[index]=null;trainer.lockedOffers?.delete(index);
   trainer.units.push({name,star:1,position:null});merge(trainer,name);
+  return true;
+ }
+ function sell(trainer,unit){
+  if(!trainer.units.includes(unit))return false;
+  trainer.gold+=cost(unit.name)*unit.star;
+  run.pool.get(unit.name).copies+=3**(unit.star-1);
+  trainer.items.push(...(unit.items ?? []));
+  trainer.units.splice(trainer.units.indexOf(unit),1);
+  if(run.selected===unit)run.selected=null;
   return true;
  }
  const cost=name=>run.pool.get(name).tier+1;
@@ -466,6 +485,7 @@
     const visual=unitVisual(unit,unit.opponent?0:4);
     unitControls(tile,unit,!scouting,visual);
     tile.append(visual);
+    if(unit.items?.length)tile.append(equippedItems(unit,true));
     tile.setAttribute('aria-pressed',String(run.selected===unit));
    }
    grid.append(tile);
@@ -601,6 +621,7 @@
     unitControls(tile,unit,!combat,visual);
     tile.setAttribute('aria-pressed',String(run.selected===unit));
     tile.append(visual);
+    if(unit.items?.length)tile.append(equippedItems(unit,true));
    }
    bench.append(tile);
   }
@@ -609,7 +630,7 @@
  function render(){
   const player=run.trainers[0];
   if(player.hp<=0 || run.trainers.every(t=>t===player || !t.hp)){
-   content.replaceChildren(heading(player.hp?'First place':'Place '+run.place),standingsPanel(),button('Play again',start),button('Back to Events',events));
+   content.replaceChildren(heading(player.hp?'First place':'Place '+run.place),standingsPanel(),button('Play again',start),button('Back to Poke Fight Tactics',openTactics));
    return;
   }
   if(run.choice){renderChoice(run.choice);return;}
@@ -695,10 +716,7 @@
   const selected=run.selected;
   if(selected){
    controls.append(button('Sell '+selected.name,()=>{
-    player.gold+=cost(selected.name)*selected.star;
-    run.pool.get(selected.name).copies+=3**(selected.star-1);
-    player.items.push(...(selected.items ?? []));
-    player.units=player.units.filter(unit=>unit!==selected);run.selected=null;render();
+    if(!run.busy && sell(player,selected))render();
    }));
    player.items.forEach((item,index)=>controls.append(button('Equip '+item,()=>{
     equipFromInventory(player,selected,index);
@@ -751,13 +769,20 @@
   const hp=Math.round((base[0]*4+180)*profile.hp*(1+rarity*.045)*1.65**(unit.star-1)*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
   const move=legalMoves(unit.name).filter(m=>moveCatalog[m]?.[1]>0 && !moveCatalog[m][4])
    .sort((a,b)=>Number(moveCatalog[b][0]===dex[unit.name][1])-Number(moveCatalog[a][0]===dex[unit.name][1]) || moveCatalog[b][1]-moveCatalog[a][1])[0];
-  const attackScale=profile.attack*(1+rarity*.055)*1.5**(unit.star-1)*(1+bonus*traitPowerPerAlly+(mods.power ?? 0));
+  const attackScale=profile.attack*(1+rarity*.055)*1.5**(unit.star-1);
+  const powerMultiplier=1+bonus*traitPowerPerAlly+(mods.power ?? 0);
   const attackSpeed=Math.max(2.3,Math.min(5.4,(2.75+base[3]*.013)*profile.speed+rarity*.055));
   const defenseScale=profile.defense*(1+rarity*.035)*1.13**(unit.star-1);
-  return {...unit,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),role,range:profile.range,attackSpeed,
+  const baseDefense=base[2]*defenseScale,baseSpecialDefense=base[4]*defenseScale;
+  const baseStats={
    attack:(base[1]*.35+12)*attackScale,specialAttack:(base[5]*.35+12)*attackScale,
-   defense:Math.round(base[2]*defenseScale+(mods.defense ?? 0)),specialDefense:Math.round(base[4]*defenseScale+(mods.defense ?? 0)),
-   critChance:.10,critDamage:1.5,direction:opponent?0:4,move,wait:0,manaRegen:mods.regen ?? 0,
+   defense:Math.round(baseDefense),specialDefense:Math.round(baseSpecialDefense),
+   attackSpeed,critChance:.10,critDamage:1.5
+  };
+  return {...unit,...baseStats,baseStats,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),role,range:profile.range,
+   attack:baseStats.attack*powerMultiplier,specialAttack:baseStats.specialAttack*powerMultiplier,
+   defense:Math.round(baseDefense+(mods.defense ?? 0)),specialDefense:Math.round(baseSpecialDefense+(mods.defense ?? 0)),
+   direction:opponent?0:4,move,wait:0,manaRegen:mods.regen ?? 0,
    guard:mods.guard,echo:mods.echo,secondWind:mods.secondWind,overcharge:mods.overcharge,momentum:mods.momentum,
    position:combatPosition(unit.position,opponent)};
  }
@@ -884,6 +909,11 @@
   for(let i=0;i<combatTicks && outcome(units)===null;i++)tick(units);
   return outcome(units) ?? 0;
  }
+ function equippedItems(unit,onTile=false){
+  const row=element('div',null,'tactics-live-items'+(onTile?' tactics-placement-items':''));
+  row.append(...unit.items.map(itemIcon));
+  return row;
+ }
  function combatLayer(units){
   const layer=element('div',null,'tactics-combat-space');
   const views=units.map(unit=>{
@@ -894,10 +924,7 @@
    hp.setAttribute('aria-label',unit.name+' health');
    mana.setAttribute('aria-label',unit.name+' mana');
    bars.append(hp,mana);
-   if(unit.items?.length){
-    const equipped=element('div',null,'tactics-live-items');
-    equipped.append(...unit.items.map(itemIcon));node.append(equipped);
-   }
+   if(unit.items?.length)node.append(equippedItems(unit));
    node.append(bars,battlerSprite(unit),element('span','★'.repeat(unit.star),'tactics-combat-stars'));
    unitControls(node,unit,false);
    layer.append(node);
@@ -956,14 +983,14 @@
   };
   run.spectate(player);
   const animate=now=>{
-   if(run!==current || !current.busy || phase!=='events')return;
+   if(run!==current || !current.busy || phase!=='tactics')return;
    view.paint(now);
    requestAnimationFrame(animate);
   };
   requestAnimationFrame(animate);
   for(;frame<combatTicks && matches.some(match=>match.sign===null);frame++){
    await new Promise(resolve=>setTimeout(resolve,combatStepMs));
-   if(run!==current || phase!=='events')return;
+   if(run!==current || phase!=='tactics')return;
    for(const match of matches)if(match.sign===null){
     tick(match.units,performance.now());
     match.sign=outcome(match.units);
@@ -990,6 +1017,6 @@
   else startPlanning();
   void checkGameVersion();
  }
- byId('home-events').onclick=events;
- byId('events-back').onclick=()=>{clearInterval(planningTimer);run=null;openMenu();};
+ byId('home-tactics').onclick=openTactics;
+ byId('tactics-back').onclick=()=>{clearInterval(planningTimer);run=null;openMenu();};
 })();
