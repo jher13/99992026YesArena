@@ -667,6 +667,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 
 .tactics-combat-space{position:relative;width:100%;height:clamp(220px,46dvh,450px);isolation:isolate}
 .tactics-live-unit{position:absolute;width:clamp(44px,8vw,74px);transform:translate(-50%,-50%);text-align:center}
+.tactics-signature-effects{position:absolute;inset:0;width:100%;height:100%;z-index:70;background:none;border:0;pointer-events:none}
 .tactics-damage-layer{position:absolute;inset:0;z-index:100;pointer-events:none}
 .tactics-damage-number{position:absolute;transform:translate(-50%,-50%);color:#fff;font-size:14px;font-weight:500;text-shadow:0 1px 3px #000,0 0 2px #000}
 .tactics-damage-number.is-critical{color:#ffab43;font-size:17px;font-weight:800}
@@ -9205,6 +9206,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.6',changes:['Gave each Fight Tactics Pokémon a themed, star-scaling signature move with elemental particles.']},
  {version:'0.22.5',changes:['Slowed Fight Tactics attacks and smoothed combat HP and MP bars.']},
  {version:'0.22.4',changes:['Made Fight Tactics item tooltips match trait hover cards.']},
  {version:'0.22.3',changes:['Matched the Battle Pass to the main menu theme and extended it to 50 reward tiers.']},
@@ -9437,4 +9439,4 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.5"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+<script src="./tactics.js?v=0.22.6"></script><script src="./multiplayer.js?v=0.15.19"></script></html>

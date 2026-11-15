@@ -8,6 +8,91 @@
   ['Venusaur','Charizard','Blastoise','Alakazam','Machamp','Golem','Gengar','Snorlax','Dragonite','Tyranitar','Gardevoir','Metagross','Espeon','Umbreon','Sylveon'],
   ['Regice','Regirock','Registeel','Articuno','Zapdos','Moltres','Mewtwo','Lugia','Ho-Oh','Rayquaza','Raikou','Entei','Suicune','Kyogre','Groudon']
  ];
+ const signatures={
+  'Bulbasaur':['Seed Burst','Grass',true],
+  'Charmander':['Tailflame','Fire',true],
+  'Squirtle':['Water Spout','Water',true],
+  'Pikachu':['Volt Dash','Electric',false],
+  'Caterpie':['Silk Snap','Bug',false],
+  'Rattata':['Fang Rush','Normal',false],
+  'Pidgey':['Wing Gust','Flying',true],
+  'Zubat':['Night Bite','Dark',false],
+  'Geodude':['Stone Knuckle','Rock',false],
+  'Sandshrew':['Sand Drill','Ground',false],
+  'Oddish':['Moonlit Petals','Grass',true],
+  'Abra':['Blink Pulse','Psychic',true],
+  'Machop':['Breaker Punch','Fighting',false],
+  'Gastly':['Haunt Mist','Ghost',true],
+  'Eevee':['Adaptable Tackle','Normal',false],
+  'Ivysaur':['Bud Barrage','Grass',false],
+  'Charmeleon':['Scorch Claw','Fire',false],
+  'Wartortle':['Shell Whirlpool','Water',true],
+  'Raichu':['Thunder Tail','Electric',false],
+  'Pidgeotto':['Crosswind Dive','Flying',false],
+  'Golbat':['Venom Swoop','Poison',false],
+  'Graveler':['Rolling Quake','Ground',false],
+  'Machoke':['Seismic Clinch','Fighting',false],
+  'Kadabra':['Spoon Shock','Psychic',true],
+  'Haunter':['Phantom Grasp','Ghost',true],
+  'Vulpix':['Six-Tail Ember','Fire',true],
+  'Psyduck':['Headache Wave','Psychic',true],
+  'Magnemite':['Polarity Zap','Electric',true],
+  'Growlithe':['Ember Pounce','Fire',false],
+  'Ninetales':['Foxfire Curse','Fire',true],
+  'Golduck':['Gem Torrent','Water',true],
+  'Magneton':['Tri-Coil Surge','Electric',true],
+  'Arcanine':['Blazing Rush','Fire',false],
+  'Clefable':['Lunar Chorus','Fairy',true],
+  'Scyther':['Twin Scythe','Bug',false],
+  'Pinsir':['Pincer Crush','Bug',false],
+  'Rhydon':['Horn Tremor','Ground',false],
+  'Hypno':['Pendulum Pulse','Psychic',true],
+  'Lapras':['Glacial Aria','Ice',true],
+  'Jolteon':['Lightning Quills','Electric',true],
+  'Vaporeon':['Melting Tide','Water',true],
+  'Flareon':['Furnace Flare','Fire',false],
+  'Leafeon':['Verdant Blade','Grass',false],
+  'Glaceon':['Diamond Frost','Ice',true],
+  'Venusaur':['Canopy Cannon','Grass',true],
+  'Charizard':['Inferno Wing','Fire',true],
+  'Blastoise':['Twin Hydro Cannons','Water',true],
+  'Alakazam':['Mind Singularity','Psychic',true],
+  'Machamp':['Four-Fist Barrage','Fighting',false],
+  'Golem':['Granite Avalanche','Rock',false],
+  'Gengar':['Shadow Ambush','Ghost',true],
+  'Snorlax':['Slumber Slam','Normal',false],
+  'Dragonite':['Dragon Tempest','Dragon',true],
+  'Tyranitar':['Sandstorm Tyrant','Rock',false],
+  'Gardevoir':['Gravity Rift','Psychic',true],
+  'Metagross':['Meteor Cross','Steel',false],
+  'Espeon':['Sun Gem Ray','Psychic',true],
+  'Umbreon':['Eclipse Fang','Dark',false],
+  'Sylveon':['Ribbon Resonance','Fairy',true],
+  'Regice':['Absolute Zero','Ice',true],
+  'Regirock':['Continental Crash','Rock',false],
+  'Registeel':['Iron Core Impact','Steel',false],
+  'Articuno':['Polar Gale','Ice',true],
+  'Zapdos':['Stormwing Bolt','Electric',true],
+  'Moltres':['Solar Phoenix','Fire',true],
+  'Mewtwo':['Psystrike','Psychic',true],
+  'Lugia':['Aeroblast','Flying',true],
+  'Ho-Oh':['Sacred Fire','Fire',false],
+  'Rayquaza':['Dragon Ascent','Flying',false],
+  'Raikou':['Storm Crown','Electric',true],
+  'Entei':['Volcanic Roar','Fire',false],
+  'Suicune':['Northern Current','Water',true],
+  'Kyogre':['Origin Pulse','Water',true],
+  'Groudon':['Precipice Blades','Ground',false],
+  'Rhyhorn':['Ridge Charge','Ground',false],
+  'Boldore':['Crystal Volley','Rock',false],
+ };
+ const signaturePowerByTier=[[90,150,245],[105,175,280],[120,200,320],[135,225,365],[150,255,420]];
+ const signatureColors={
+  Grass:'#8af47b',Fire:'#ff8146',Water:'#6de1ff',Electric:'#ffe15b',Bug:'#d1fa77',
+  Normal:'#fff0cc',Flying:'#b5d9ff',Dark:'#bf91ff',Rock:'#ecba77',Ground:'#f3a764',
+  Psychic:'#ff91dc',Fighting:'#ff595e',Ghost:'#bd79ff',Poison:'#ea7efa',
+  Fairy:'#ffb7e3',Ice:'#adf9ff',Dragon:'#9890ff',Steel:'#e1ecff'
+ };
  const roleProfiles={
   Tank:{range:1,hp:1.22,attack:.85,defense:1.17,speed:.82},
   Bruiser:{range:1,hp:1.08,attack:1.03,defense:1.02,speed:1},
@@ -259,10 +344,14 @@
    }
   },250);
  }
- function signatureDescription(move){
-  const [type,power]=moveCatalog[move];
-  const special=moveReferences[move]?.[2]==='Special';
-  return 'At full mana, hits the target for '+type+' damage using '+(special?'Sp. Atk against Sp. Def':'Attack against Defense')+'. Move power '+power+'.';
+ function signatureDescription(stats){
+  const skill=element('p',null,'tactics-signature-description');
+  skill.append('At full mana, deals '+stats.moveType+' damage using '+(stats.moveSpecial?'Sp. Atk against Sp. Def':'Attack against Defense')+'. Move power ');
+  stats.movePowers.forEach((power,index)=>{
+   if(index)skill.append(' / ');
+   skill.append(index===stats.star-1?element('strong',String(power)):String(power));
+  });
+  return skill;
  }
  function statCard(unit){
   const trainer=run.scout ?? run.trainers[0];
@@ -307,7 +396,7 @@
   }
   details.append(art,title,meter(stats.hp,stats.max,'HP','is-hp'),meter(stats.mana,60,'Mana','is-mana'),
    element('p',(stats.move ?? 'No signature move')+' · '+stats.role+' · Range '+stats.range),items,numbers);
-  if(stats.move)numbers.before(element('p',signatureDescription(stats.move),'tactics-signature-description'));
+  if(stats.move)numbers.before(signatureDescription(stats));
   return details;
  }
  function inspectUnit(unit){
@@ -784,8 +873,8 @@
   const profile=roleProfiles[role];
   const rarity=rarities.get(unit.name) ?? 0;
   const hp=Math.round((base[0]*4+180)*profile.hp*(1+rarity*.045)*1.65**(unit.star-1)*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
-  const move=legalMoves(unit.name).filter(m=>moveCatalog[m]?.[1]>0 && !moveCatalog[m][4])
-   .sort((a,b)=>Number(moveCatalog[b][0]===dex[unit.name][1])-Number(moveCatalog[a][0]===dex[unit.name][1]) || moveCatalog[b][1]-moveCatalog[a][1])[0];
+  const [move,moveType,moveSpecial]=signatures[unit.name];
+  const movePowers=unit.name==='Squirtle'?[150,255,450]:signaturePowerByTier[rarity];
   const attackScale=profile.attack*(1+rarity*.055)*1.5**(unit.star-1);
   const powerMultiplier=1+bonus*traitPowerPerAlly+(mods.power ?? 0);
   const attackSpeed=Math.max(2.3,Math.min(5.4,(2.75+base[3]*.013)*profile.speed+rarity*.055))/attackSlowdown;
@@ -799,7 +888,7 @@
   return {...unit,...baseStats,baseStats,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),role,range:profile.range,
    attack:baseStats.attack*powerMultiplier,specialAttack:baseStats.specialAttack*powerMultiplier,
    defense:Math.round(baseDefense+(mods.defense ?? 0)),specialDefense:Math.round(baseSpecialDefense+(mods.defense ?? 0)),
-   direction:opponent?0:4,move,wait:0,manaRegen:mods.regen ?? 0,
+   direction:opponent?0:4,move,moveType,moveSpecial,movePowers,wait:0,manaRegen:mods.regen ?? 0,
    guard:mods.guard,echo:mods.echo,secondWind:mods.secondWind,overcharge:mods.overcharge,momentum:mods.momentum,
    position:combatPosition(unit.position,opponent)};
  }
@@ -877,16 +966,16 @@
     continue;
    }
    const cast=unit.mana>=60 && unit.move;
-   const type=cast?moveCatalog[unit.move][0]:dex[unit.name][1];
+   const type=cast?unit.moveType:dex[unit.name][1];
    const match=elementalMultiplier(type,dex[target.name].slice(1,3));
-   const special=cast && moveReferences[unit.move]?.[2]==='Special';
+   const special=cast && unit.moveSpecial;
    const offense=special?unit.specialAttack:unit.attack;
    const defense=special?target.specialDefense:target.defense;
    const critical=Math.random()<unit.critChance?unit.critDamage:1;
-   const damage=Math.max(1,Math.round(combatDamageScale*offense*(cast?1.8+moveCatalog[unit.move][1]/120:1)*match*critical*100/(100+defense)));
+   const damage=Math.max(1,Math.round(combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*match*critical*100/(100+defense)));
    if(now!==null){
     setBattlerMotion(unit,target.position,cast?'cast':unit.range>1?'attack':'lunge',now);
-    if(cast)unit.lastCast={started:now,move:unit.move};
+    if(cast)unit.lastCast={started:now,move:unit.move,from:unit.position,to:target.position};
     if(!target.animation || now-target.animation.started>=target.animation.duration || target.animation.motion==='walk')
      setBattlerMotion(target,unit.position,'hit',now);
    }
@@ -934,8 +1023,45 @@
   row.append(...unit.items.map(itemIcon));
   return row;
  }
+ function paintSignatureEffects(canvas,units,now){
+  const width=canvas.clientWidth,height=canvas.clientHeight;
+  if(!width || !height)return;
+  if(canvas.width!==width)canvas.width=width;
+  if(canvas.height!==height)canvas.height=height;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,width,height);
+  for(const unit of units){
+   const cast=unit.lastCast;
+   if(!cast)continue;
+   const time=(now-cast.started)/620;
+   if(time<0 || time>=1)continue;
+   const x=point=>width*(.12+point.x/6.5*.76);
+   const y=point=>height*(.09+point.y/5.95*.82);
+   const seed=Array.from(cast.move).reduce((sum,char)=>sum*31+char.charCodeAt(0)>>>0,0);
+   const travel=Math.min(1,time*2.5);
+   const burst=Math.max(0,(time-.4)/.6);
+   const color=signatureColors[unit.moveType];
+   const radius=(16+unit.star*9)*burst;
+   ctx.fillStyle=color;
+   ctx.shadowColor=color;
+   ctx.shadowBlur=7;
+   ctx.globalAlpha=1-time;
+   for(let i=0;i<8+unit.star*4;i++){
+    const angle=i*2.4+(seed%360)*Math.PI/180;
+    const distance=radius*(.45+.55*((i*13+seed)%11)/10);
+    const offset=(1-travel)*Math.sin(angle)*(3+seed%8);
+    const px=x(cast.from)+(x(cast.to)-x(cast.from))*travel+Math.cos(angle)*distance;
+    const py=y(cast.from)+(y(cast.to)-y(cast.from))*travel+Math.sin(angle)*distance+offset;
+    const size=2+(i+seed)%4;
+    ctx.fillRect(Math.round(px),Math.round(py),size,size);
+   }
+  }
+  ctx.globalAlpha=1;
+ }
  function combatLayer(units){
   const layer=element('div',null,'tactics-combat-space');
+  const effects=element('canvas',null,'tactics-signature-effects');
+  effects.setAttribute('aria-hidden','true');
   const damageLayer=element('div',null,'tactics-damage-layer');
   const damageLabels=new Map();
   const views=units.map(unit=>{
@@ -955,7 +1081,7 @@
    layer.append(node);
    return {unit,node,hp,mana,bubble};
   });
-  layer.append(damageLayer);
+  layer.append(effects,damageLayer);
   let lastPaint=performance.now();
   function easeMeter(meter,target,weight){
    const difference=target-meter.value;
@@ -964,6 +1090,7 @@
   function paint(now){
    const weight=1-Math.exp(-Math.max(0,now-lastPaint)/55);
    lastPaint=now;
+   paintSignatureEffects(effects,units,now);
    const visibleDamage=new Set();
    for(const unit of units){
     if(!unit.damageEvents)continue;
@@ -1059,6 +1186,10 @@
    timer.value=100*(1-(frame+1)/combatTicks);
    timer.title=matches.filter(match=>match.sign===null).length+' battles still in progress';
   }
+  const lastVisibleCast=Math.max(0,...(watched?.units ?? []).map(unit=>unit.lastCast?.started ?? 0));
+  const remainingEffect=lastVisibleCast+620-performance.now();
+  if(remainingEffect>0)await new Promise(resolve=>setTimeout(resolve,remainingEffect));
+  if(run!==current || phase!=='tactics')return;
   const sign=matches[0].sign ?? 0;
   if(neutral){
    for(const match of matches)completeNeutral(match.a,match.sign>0);
