@@ -11,7 +11,7 @@
  const signatures={
   'Bulbasaur':['Seed Burst','Grass',true],
   'Charmander':['Tailflame','Fire',true],
-  'Squirtle':['Water Spout','Water',true],
+  'Squirtle':['Water Shell Barrier','Water',true],
   'Pikachu':['Volt Dash','Electric',false],
   'Caterpie':['Silk Snap','Bug',false],
   'Rattata':['Fang Rush','Normal',false],
@@ -26,7 +26,7 @@
   'Eevee':['Adaptable Tackle','Normal',false],
   'Ivysaur':['Bud Barrage','Grass',false],
   'Charmeleon':['Scorch Claw','Fire',false],
-  'Wartortle':['Shell Whirlpool','Water',true],
+  'Wartortle':['Shellguard Current','Water',true],
   'Raichu':['Thunder Tail','Electric',false],
   'Pidgeotto':['Crosswind Dive','Flying',false],
   'Golbat':['Venom Swoop','Poison',false],
@@ -55,7 +55,7 @@
   'Glaceon':['Diamond Frost','Ice',true],
   'Venusaur':['Canopy Cannon','Grass',true],
   'Charizard':['Inferno Wing','Fire',true],
-  'Blastoise':['Twin Hydro Cannons','Water',true],
+  'Blastoise':['Hydro Bulwark','Water',true],
   'Alakazam':['Mind Singularity','Psychic',true],
   'Machamp':['Four-Fist Barrage','Fighting',false],
   'Golem':['Granite Avalanche','Rock',false],
@@ -75,7 +75,7 @@
   'Zapdos':['Stormwing Bolt','Electric',true],
   'Moltres':['Solar Phoenix','Fire',true],
   'Mewtwo':['Psystrike','Psychic',true],
-  'Lugia':['Aeroblast','Flying',true],
+  'Lugia':['Silverwind Aegis','Flying',true],
   'Ho-Oh':['Sacred Fire','Fire',false],
   'Rayquaza':['Dragon Ascent','Flying',false],
   'Raikou':['Storm Crown','Electric',true],
@@ -93,12 +93,29 @@
   Psychic:'#ff91dc',Fighting:'#ff595e',Ghost:'#bd79ff',Poison:'#ea7efa',
   Fairy:'#ffb7e3',Ice:'#adf9ff',Dragon:'#9890ff',Steel:'#e1ecff'
  };
+ const roleSignatureEffects={Tank:'shield',Fighter:'rally',Reaper:'execute',Carry:'volley',Caster:'burst'};
+ const personalSignatureEffects={
+  Squirtle:'teamShield',Wartortle:'teamShield',Blastoise:'teamShield',Lugia:'teamShield',Lapras:'heal',
+  Caterpie:'snare',Clefable:'heal',Umbreon:'weaken',Rayquaza:'volley',Sylveon:'heal',Gardevoir:'snare'
+ };
+ const signatureEffectText={
+  shield:'Shields itself for 20% / 30% / 45% of max HP for 5 seconds.',
+  teamShield:'Shields every living ally for the listed amount for 5 seconds.',
+  rally:'Hits the target and gains 15% / 25% / 40% attack speed for 5 seconds.',
+  execute:'Deals 25% / 40% / 60% more damage against targets below half HP.',
+  volley:'Hits the target and the nearest other enemy within 2 tiles of it for 30% / 45% / 60% splash damage.',
+  burst:'Deals concentrated damage to one enemy.',
+  heal:'Heals the two living allies with the lowest HP percentage for 10% / 16% / 25% of their max HP.',
+  snare:'Hits and delays the target’s next action by 0.5 / 0.75 / 1 second.',
+  weaken:'Hits and reduces the target’s damage by 15% / 25% / 35% for 4 seconds.'
+ };
+ const utilitySignature=effect=>effect==='teamShield' || effect==='heal';
  const roleProfiles={
-  Tank:{range:1,hp:1.22,attack:.85,defense:1.17,speed:.82,mana:5,regen:0,rule:'5 mana per hit and 5 when damaged. Draws aggro at equal range.'},
+  Tank:{range:1,hp:1.32,attack:.76,defense:1.25,speed:.82,mana:5,regen:0,rule:'5 mana per hit and 5 when damaged. Draws aggro at equal range.'},
   Fighter:{range:1,hp:1.08,attack:1.03,defense:1.02,speed:1,mana:10,regen:0,rule:'10 mana per hit. Gains 5% attack speed per stage, up to 30%.'},
   Reaper:{range:1,hp:.9,attack:1.18,defense:.91,speed:1.15,mana:10,regen:0,rule:'10 mana per hit. Prioritizes backline damage dealers and takes 15% less attack damage from other enemies.'},
-  Caster:{range:3,hp:.88,attack:1.12,defense:.91,speed:.94,mana:7,regen:2,rule:'7 mana per hit and 2 mana per second.'},
-  Carry:{range:4,hp:.91,attack:1.02,defense:.91,speed:1.03,mana:10,regen:0,rule:'10 mana per hit. Long range for backline positioning.'},
+  Caster:{range:3,hp:.86,attack:1.06,defense:.87,speed:.90,mana:7,regen:2,rule:'7 mana per hit and 2 mana per second.'},
+  Carry:{range:4,hp:.85,attack:1.13,defense:.84,speed:1.14,mana:10,regen:0,rule:'10 mana per hit. Long range for backline positioning.'},
   Specialist:{range:2,hp:1.02,attack:1.02,defense:1.03,speed:.98,mana:0,regen:0}
  };
  const specialists={
@@ -431,9 +448,12 @@
  }
  function signatureDescription(stats){
   const skill=element('p',null,'tactics-signature-description');
-  skill.append('At full mana, deals '+stats.moveType+' damage using '+(stats.moveSpecial?'S.ATK against S.DEF':'ATK against DEF')+'.'+
-   (stats.manaLockMs>1000?' Mana lock: '+(stats.manaLockMs/1000)+'s.':''));
-  const powers=element('span','Move Power ','tactics-signature-power');
+  const utility=utilitySignature(stats.moveEffect);
+  const effect=signatureEffectText[stats.moveEffect];
+  skill.append(utility?effect:'At full mana, deals '+stats.moveType+' damage using '+(stats.moveSpecial?'S.ATK against S.DEF':'ATK against DEF')+'. '+effect);
+  if(stats.manaLockMs>1000)skill.append(' Mana lock: '+(stats.manaLockMs/1000)+'s.');
+  if(stats.moveEffect==='heal')return skill;
+  const powers=element('span',utility?'Shield HP ':'Move Power ','tactics-signature-power');
   stats.movePowers.forEach((power,index)=>{
    if(index)powers.append(' / ');
    powers.append(index===stats.star-1?element('strong',String(power)):String(power));
@@ -848,12 +868,15 @@
     position:{x:6-unit.position.x,y:7-unit.position.y}})):[];
    arena.append(board([...(run.scout?run.scout.units:units),...preview],player,Boolean(run.scout)));
   }
-  let timer=null;
+  let timer=null, countdown=null;
   if(rival){
    const banner=element('header',null,'tactics-combat-banner');
    timer=element('progress');
    timer.max=100;timer.value=100;timer.setAttribute('aria-label','Combat time remaining');
-   banner.append(timer,element('strong','Combat'),element('small','Stage '+stageLabel(run.round)+' · '+rival));
+   countdown=element('span',Math.ceil(combatTicks*combatStepMs/1000)+'s','tactics-combat-countdown');
+   const title=element('div',null,'tactics-combat-title');
+   title.append(element('strong','Combat'),countdown);
+   banner.append(timer,title,element('small','Stage '+stageLabel(run.round)+' · '+rival));
    arena.append(benchView(player,true));
    middle.append(banner,arena);
    const summary=element('div',null,'tactics-combat-wallet');
@@ -866,7 +889,7 @@
   const rankings=element('aside',null,'tactics-sidebar');
   rankings.append(heading('Standings'),standingsPanel());
   layout.append(left,middle,rankings);
-  return {layout,left,middle,arena,timer};
+  return {layout,left,middle,arena,timer,countdown};
  }
  function benchView(player,combat=false){
   const bench=element('div',null,'tactics-bench');
@@ -1036,6 +1059,7 @@
   const rarity=rarities.get(unit.name) ?? 0;
   const hp=Math.round(((base[0]*4+180)*profile.hp*(1+rarity*.045)*1.65**(unit.star-1)+(mods.flatHP ?? 0))*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
   const [move,moveType,moveSpecial]=signatures[unit.name];
+  const moveEffect=personalSignatureEffects[unit.name] ?? roleSignatureEffects[role];
   const movePowers=unit.name==='Squirtle'?[150,255,450]:signaturePowerByTier[rarity];
   const attackScale=profile.attack*(1+rarity*.055)*1.5**(unit.star-1);
   const powerMultiplier=1+bonus*traitPowerPerAlly+(mods.power ?? 0);
@@ -1056,7 +1080,7 @@
    critDamage:baseStats.critDamage+(mods.critDamage ?? 0),gear:mods,
    elapsed:0,gearStacks:0,attackStacks:0,critStacks:0,shield:hp*(mods.startShield ?? 0),shieldUntil:8000,
    defense:Math.round(baseDefense+(mods.defense ?? 0)+(mods.armor ?? 0)),specialDefense:Math.round(baseSpecialDefense+(mods.defense ?? 0)+(mods.spDefense ?? 0)),
-   direction:opponent?0:4,move,moveType,moveSpecial,movePowers,wait:0,manaRegen:(specialist?.regen ?? profile.regen)+(mods.regen ?? 0),
+   direction:opponent?0:4,move,moveType,moveSpecial,moveEffect,movePowers,wait:0,manaRegen:(specialist?.regen ?? profile.regen)+(mods.regen ?? 0),
    manaOnHit:specialist?.hit ?? profile.mana,manaOnDamage:specialist?.incoming ?? (role==='Tank'?5:0),
    manaOnTravel:specialist?.travel ?? 0,manaLock:0,manaLockMs:channeledSignatures.has(move)?1500:1000,
    guard:mods.guard,echo:mods.echo,secondWind:mods.secondWind,overcharge:mods.overcharge,momentum:mods.momentum,
@@ -1102,6 +1126,11 @@
   if(source && !periodic && target.role==='Reaper' && target.target!==source)damage*=.85;
   if(source && !periodic)damage*=1-Math.min(.75,(target.gear.durability ?? 0)+(target.hp>target.max/2?(target.gear.healthyGuard ?? 0):0));
   damage=Math.max(1,Math.round(damage));
+  if(target.signatureShieldUntil>target.elapsed && target.signatureShield>0){
+   const blocked=Math.min(target.signatureShield,damage);
+   target.signatureShield-=blocked;
+   damage-=blocked;
+  }
   if(target.shield>0){
    const blocked=Math.min(target.shield,damage);
    target.shield-=blocked;
@@ -1206,6 +1235,32 @@
    distance(unit.position,a.position)-distance(unit.position,b.position) ||
    Number(b.role==='Tank')-Number(a.role==='Tank') || a.hp-b.hp)[0];
  }
+ function applySignature(unit,target,units,damage,now){
+  const star=unit.star-1;
+  const allies=units.filter(other=>other.hp>0 && other.opponent===unit.opponent);
+  if(unit.moveEffect==='teamShield' || unit.moveEffect==='shield'){
+   const team=unit.moveEffect==='teamShield';
+   for(const ally of team?allies:[unit]){
+    const amount=team?unit.movePowers[star]:Math.round(unit.max*[.2,.3,.45][star]);
+    ally.signatureShield=Math.max(ally.signatureShieldUntil>ally.elapsed?ally.signatureShield:0,amount);
+    ally.signatureShieldUntil=ally.elapsed+5000;
+   }
+  }
+  if(unit.moveEffect==='heal'){
+   allies.sort((a,b)=>a.hp/a.max-b.hp/b.max).slice(0,2).forEach(ally=>heal(ally,ally.max*[.10,.16,.25][star]));
+  }
+  if(unit.moveEffect==='rally')unit.rallyUntil=unit.elapsed+5000;
+  if(unit.moveEffect==='snare')target.wait=Math.max(0,target.wait)+[500,750,1000][star];
+  if(unit.moveEffect==='weaken'){
+   target.weakenUntil=target.elapsed+4000;
+   target.weakenAmount=[.15,.25,.35][star];
+  }
+  if(unit.moveEffect==='volley'){
+   const victim=units.filter(other=>other!==target && other.hp>0 && other.opponent!==unit.opponent &&
+    distance(target.position,other.position)<=2).sort((a,b)=>distance(a.position,target.position)-distance(b.position,target.position))[0];
+   if(victim)receiveDamage(victim,damage*[.30,.45,.60][star],now,false,unit);
+  }
+ }
  function tick(units,now=null){
   tickWeather(units);
   for(const unit of units)if(unit.hp>0)updateGear(unit,units,now);
@@ -1219,7 +1274,9 @@
    unit.wait=Math.max(-combatStepMs,unit.wait-combatStepMs);
    if(unit.wait>0)continue;
    const gap=distance(unit.position,target.position);
-   if(gap>unit.range){
+   const cast=unit.manaLock===0 && unit.mana>=60 && unit.move;
+   const utility=cast && utilitySignature(unit.moveEffect);
+   if(gap>unit.range && !utility){
     const step=nextStep(unit,target,units);
     if(step){
      if(now!==null)setBattlerMotion(unit,step,'walk',now);
@@ -1229,10 +1286,9 @@
     }
     continue;
    }
-   const cast=unit.manaLock===0 && unit.mana>=60 && unit.move;
    const type=cast?unit.moveType:dex[unit.name][1];
    const match=elementalMultiplier(type,dex[target.name].slice(1,3));
-   const special=cast && unit.moveSpecial;
+   const special=cast?unit.moveSpecial:unit.role==='Carry' && unit.moveSpecial;
    const gear=unit.gear;
    const stackBonus=unit.gearStacks*(gear.hitStack ?? 0);
    const stance=gear.stance && unit.hp>unit.max/2?.2:0;
@@ -1245,26 +1301,30 @@
    const defense=((special?target.specialDefense:target.defense)+focus)*(defenseDown?.7:1);
    const critical=Math.random()<unit.critChance?unit.critDamage:1;
    const amp=1+(gear.amp ?? 0)+unit.critStacks*(gear.critAmp ?? 0)+(target.role==='Tank'?(gear.tankAmp ?? 0):0);
-   const damage=Math.max(1,Math.round(combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*match*critical*amp*100/(100+defense)));
+   const execute=cast && unit.moveEffect==='execute' && target.hp<target.max/2?1+[.25,.40,.60][unit.star-1]:1;
+   const weaken=unit.weakenUntil>unit.elapsed?1-unit.weakenAmount:1;
+   const damage=utility?0:Math.max(1,Math.round(execute*weaken*combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*match*critical*amp*100/(100+defense)));
    if(now!==null){
     setBattlerMotion(unit,target.position,cast?'cast':unit.range>1?'attack':'lunge',now);
-    if(cast)unit.lastCast={started:now,move:unit.move,from:unit.position,to:target.position};
-    if(!target.animation || now-target.animation.started>=target.animation.duration || target.animation.motion==='walk')
+    if(cast)unit.lastCast={started:now,move:unit.move,from:unit.position,to:utility?unit.position:target.position};
+    if(!utility && (!target.animation || now-target.animation.started>=target.animation.duration || target.animation.motion==='walk'))
      setBattlerMotion(target,unit.position,'hit',now);
    }
    let dealt=receiveDamage(target,damage,now,critical>1,unit);
-   if(cast && unit.echo){
+   if(cast && !utility && unit.echo){
     unit.echo=false;
     dealt+=receiveDamage(target,Math.max(1,Math.round(damage*.35)),now,critical>1,unit);
    }
-   gearHit(unit,target,units,dealt,cast,critical>1,now);
+   if(!utility)gearHit(unit,target,units,dealt,cast,critical>1,now);
+   if(cast)applySignature(unit,target,units,damage,now);
    if(target.hp<=0 && unit.momentum)heal(unit,unit.max*.08);
    if(cast){
     unit.mana=unit.overcharge?10:0;
     unit.overcharge=false;
     unit.manaLock=unit.manaLockMs;
    }else gainMana(unit,unit.manaOnHit+(gear.hitMana ?? 0)+(critical>1?(gear.critMana ?? 0):0));
-   unit.wait+=1000/(unit.attackSpeed*(1+Math.floor(unit.elapsed/1000)*(gear.rampSpeed ?? 0)));
+   const rally=unit.rallyUntil>unit.elapsed?[.15,.25,.40][unit.star-1]:0;
+   unit.wait+=1000/(unit.attackSpeed*(1+rally+Math.floor(unit.elapsed/1000)*(gear.rampSpeed ?? 0)));
   }
  }
  function outcome(units){
@@ -1401,6 +1461,7 @@
     const casting=Boolean(cast && now-cast.started<950);
     bubble.hidden=!casting;
     if(casting && bubble.textContent!==cast.move)bubble.textContent=cast.move;
+    node.classList.toggle('is-shielded',unit.signatureShieldUntil>unit.elapsed && unit.signatureShield>0);
     node.classList.toggle('is-casting',Boolean(cast && now-cast.started<380));
     paintBattler(unit,now);
    }
@@ -1432,7 +1493,7 @@
    for(let i=0;i+1<opponents.length;i+=2)addMatch(opponents[i],opponents[i+1]);
    if(opponents.length%2)addMatch(opponents.at(-1),ghost,true);
   }
-  let watched, watchedTrainer, view, timer, chart, frame=0;
+  let watched, watchedTrainer, view, timer, countdown, chart, frame=0;
   run.spectate=trainer=>{
    const match=matches.find(entry=>entry.a===trainer || entry.b===trainer);
    if(!match || match===watched && trainer===watchedTrainer)return;
@@ -1440,6 +1501,7 @@
    const opponent=match.b.name ?? 'Mirror team';
    const battleView=battleLayout(match.a,match.units,match.a.name+' vs '+opponent,trainer);
    timer=battleView.timer;
+   countdown=battleView.countdown;
    view=combatLayer(match.units);
    battleView.arena.insertBefore(view.layer,battleView.arena.querySelector('.tactics-bench'));
    chart=damageChart(matches[0]);
@@ -1463,6 +1525,7 @@
    }
    chart.update();
    timer.value=100*(1-(frame+1)/combatTicks);
+   countdown.textContent=Math.ceil((combatTicks-frame-1)*combatStepMs/1000)+'s';
    timer.title=matches.filter(match=>match.sign===null).length+' battles still in progress';
   }
   const lastVisibleCast=Math.max(0,...(watched?.units ?? []).map(unit=>unit.lastCast?.started ?? 0));
