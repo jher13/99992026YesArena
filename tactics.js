@@ -103,15 +103,19 @@
    icon.append(sprite);
   }
   if(item){
-   icon.title=item+' · '+describeBonuses(itemBonuses(item));
+   let description=item+' · '+describeBonuses(itemBonuses(item));
    if(Object.hasOwn(components,item)){
     const combinations=Object.keys(components).map(partner=>{
      const [result]=recipes[[item,partner].sort().join('+')];
      return partner+' → '+result;
     });
-    icon.title+='\nFuses with\n'+combinations.join('\n');
+    description+='\nFuses with\n'+combinations.join('\n');
    }
-   icon.setAttribute('aria-label',icon.title);
+   const tip=element('span',description,'tactics-trait-tooltip tactics-item-tooltip');
+   tip.setAttribute('aria-hidden','true');
+   icon.tabIndex=0;
+   icon.setAttribute('aria-label',description);
+   icon.append(tip);
   }
   return icon;
  }
@@ -546,7 +550,6 @@
    const item=inspected.items[i];
    const slot=itemIcon(item);
    if(item){
-    slot.tabIndex=0;
     if(!rival && !run.scout){
      slot.draggable=true;
      slot.ondragstart=event=>{

@@ -625,7 +625,11 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .tactics-board.is-combat canvas.tactics-battler{width:100%;max-height:100%;height:auto}
 .tactics-trait{position:relative}
 .tactics-trait-tooltip{display:none;position:absolute;z-index:4;left:100%;top:0;width:min(230px,55vw);padding:8px;border:1px solid #aa925d;border-radius:5px;background:#172226;color:#f5e6c1;line-height:1.4;pointer-events:none}
-.tactics-trait:is(:hover,:focus-visible) .tactics-trait-tooltip{display:block}
+.tactics-trait:is(:hover,:focus-visible) .tactics-trait-tooltip,
+.tactics-item-slot:is(:hover,:focus-visible)>.tactics-item-tooltip{display:block}
+.tactics-item-slot{position:relative}
+.tactics-item-slot:is(:hover,:focus-visible){z-index:5}
+.tactics-item-tooltip{white-space:pre-line;text-align:left;font-size:12px;font-weight:400}
 @media(max-width:760px){.tactics-trait-tooltip{left:0;top:100%}}
 
 .tactics-shop{gap:5px;background:#101a1d;border:2px solid #80704b}
@@ -9201,6 +9205,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.4',changes:['Made Fight Tactics item tooltips match trait hover cards.']},
  {version:'0.22.3',changes:['Matched the Battle Pass to the main menu theme and extended it to 50 reward tiers.']},
  {version:'0.22.2',changes:['Restyled the Battle Pass with a magma-themed featured reward and horizontal reward track.']},
  {version:'0.22.1',changes:['Improved Battle Pass text contrast and made unstyled text inherit its surface color.']},
@@ -9431,4 +9436,4 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.0"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+<script src="./tactics.js?v=0.22.4"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
