@@ -581,19 +581,8 @@
   return earned;
  };
  async function collectMegaRaidRewards() {
-  const client=await cloudClient();
-  const {data,error}=await client.rpc('arena_mega_raid_clears');
-  if(error) throw error;
-  const rewards=[];
-  for(const mode of data ?? []) {
-   const tier=megaRaidTiers[mode];
-   if(!tier || wildProgress.megaRaidRewards.includes(mode))continue;
-   wildProgress.megaRaidRewards.push(mode);
-   wildProgress.coins+=tier.coins;
-   wildProgress.balls[7]+=tier.masterBalls;
-   rewards.push('Tier '+tier.tier+' first clear · '+tier.masterBalls+' Master Balls · '+tier.coins.toLocaleString()+' coins');
-  }
-  if(rewards.length)saveWildProgress();
+  const awarded=await window.collectServerRaidRewards();
+  const rewards=awarded.map(reward=>'Tier '+megaRaidTiers[reward.mode].tier+' first clear · '+reward.master_balls+' Master Balls · '+reward.coins.toLocaleString()+' coins · '+reward.pvp_item+' (PvP-verified)');
   const tickets=await window.refreshCoopTickets();
   if(tickets)rewards.push('+'+tickets+' Co-op '+(tickets===1?'ticket':'tickets'));
   return rewards;
@@ -943,6 +932,7 @@
   joinControls.append(code,join);
   matchmaking.append(find,create,joinControls);
   show(title,element('h3','Match setup','bag-section-title'),setup,
+   element('p','PvP held items must be earned through verified Mega Raid first clears.'),
    element('h3','Matchmaking','bag-section-title'),matchmaking);
  }
  function showMatch(title) {

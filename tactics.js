@@ -414,9 +414,13 @@
  }
  function draftCarousel(trainer,offer){
   const {name,item}=offer;
-  trainer.units.push({name,star:1,position:null,items:[]});
+  const plan=fusionPlan(trainer,{name,star:1,position:null,items:[]});
+  if(plan.overflow)return false;
+  if(trainer===run.trainers[0] && plan.displaced.length && !window.confirm(
+   'Fusion moves '+plan.displaced.map(unit=>unit.name).join(', ')+' to the bench. Choose this offer?'))return false;
   trainer.items.push(item);
-  merge(trainer,name);
+  applyFusion(trainer,plan);
+  return true;
  }
  function beginChoices(){
   const player=run.trainers[0];
@@ -436,7 +440,9 @@
    }
    const order=[...living].sort((a,b)=>a.hp-b.hp);
    const aiPick=trainer=>{
-    if(offers.length && trainer.units.filter(u=>u.position===null).length<benchLimit)draftCarousel(trainer,offers.splice(Math.floor(Math.random()*offers.length),1)[0]);
+    if(!offers.length || trainer.units.filter(unit=>unit.position===null).length>=benchLimit)return;
+   const index=Math.floor(Math.random()*offers.length);
+   if(draftCarousel(trainer,offers[index]))offers.splice(index,1);
    };
    while(order.length && order[0]!==player)aiPick(order.shift());
    if(!offers.length || player.units.filter(u=>u.position===null).length>=benchLimit){
@@ -457,7 +463,7 @@
    if(choice.kind==='augment'){tile.classList.add('tactics-augment-card');tile.append(element('span',['✦','◆','✹'][index],'tactics-augment-icon'),element('strong',offer[0]),element('small',offer[1]));}
    tile.append(button('Choose',()=>{
     if(choice.kind==='augment')grantAugment(player,offer);
-    else {draftCarousel(player,choice.offers.splice(index,1)[0]);choice.complete();}
+    else {if(!draftCarousel(player,offer))return;choice.offers.splice(index,1);choice.complete();}
     run.choice=null;
     startPlanning();
    }));
@@ -689,32 +695,50 @@
  const teamSize=trainer=>trainer.level+trainer.units.reduce((total,unit)=>total+
   (unit.items ?? []).reduce((sum,item)=>sum+(itemBonuses(item).teamSize ?? 0),0),0);
 
- function merge(trainer,name){
+ function fusionPlan(trainer,incoming){
+  const units=[...trainer.units,incoming];
+  const returned=[];
+  const upgrades=[];
   for(const star of [1,2]){
-   const group=trainer.units.filter(unit=>unit.name===name && unit.star===star);
+   const group=units.filter(unit=>unit.name===incoming.name && unit.star===star);
    if(group.length<3)continue;
-   const groupToMerge=[...group.filter(unit=>unit.position!==null),...group.filter(unit=>unit.position===null)].slice(0,3);
-   const [keeper,...used]=groupToMerge;
-   keeper.star++;
-   const equipped=groupToMerge.flatMap(unit=>unit.items ?? []);
-   keeper.items=equipped.includes('Mirage Goggles')?['Mirage Goggles']:equipped.slice(0,3);
-   const retained=[...keeper.items];
+   const [keeper,...used]=[...group.filter(unit=>unit.position!==null),...group.filter(unit=>unit.position===null)].slice(0,3);
+   const equipped=[keeper,...used].flatMap(unit=>unit.items ?? []);
+   const items=equipped.includes('Mirage Goggles')?['Mirage Goggles']:equipped.slice(0,3);
+   const retained=[...items];
    for(const item of equipped){
     const index=retained.indexOf(item);
     if(index>=0)retained.splice(index,1);
-    else trainer.items.push(item);
+    else returned.push(item);
    }
-   if(used.includes(run.selected))run.selected=keeper;
-   trainer.units=trainer.units.filter(unit=>!used.includes(unit));
+   const upgraded={...keeper,star:star+1,items};
+   upgrades.push({keeper,used,upgraded});
+   units[units.indexOf(keeper)]=upgraded;
+   for(const unit of used)units.splice(units.indexOf(unit),1);
+  }
+  const capacity=teamSize({...trainer,units});
+  const deployed=units.filter(unit=>unit.position!==null);
+  const displaced=deployed.slice(capacity);
+  const overflow=Math.max(0,units.length-deployed.length+displaced.length-benchLimit);
+  return {units,upgrades,returned,displaced,overflow};
+ }
+ function applyFusion(trainer,plan){
+  trainer.units=plan.units;
+  trainer.items.push(...plan.returned);
+  for(const unit of plan.displaced)unit.position=null;
+  for(const {keeper,used,upgraded} of plan.upgrades){
+   if(run.selected===keeper || used.includes(run.selected))run.selected=upgraded;
   }
  }
  function buy(trainer,index){
   const name=trainer.shop[index];
   if(!name || trainer.gold<cost(name))return false;
-  const full=trainer.units.filter(unit=>unit.position===null).length>=benchLimit;
-  if(full && trainer.units.filter(unit=>unit.name===name && unit.star===1).length<2)return false;
+  const plan=fusionPlan(trainer,{name,star:1,position:null});
+  if(plan.overflow || (trainer===run.trainers[0] && plan.displaced.length && !window.confirm(
+   'Fusion reduces your deployment limit and moves '+plan.displaced.map(unit=>unit.name).join(', ')+' to the bench. Buy anyway?')))
+   return false;
   trainer.gold-=cost(name);trainer.shop[index]=null;trainer.lockedOffers?.delete(index);
-  trainer.units.push({name,star:1,position:null});merge(trainer,name);
+  applyFusion(trainer,plan);
   return true;
  }
  function salePlan(trainer,unit){
@@ -1073,8 +1097,14 @@
   shop.append(economy);
   for(const [index,name] of player.shop.entries()){
    const tile=button('',()=>{if(buy(player,index))render();},!name || player.gold<cost(name) ||
-    (benched.length>=benchLimit && player.units.filter(unit=>unit.name===name && unit.star===1).length<2));
+    Boolean(name && fusionPlan(player,{name,star:1,position:null}).overflow));
    tile.className='tactics-offer'+(name?' tier-'+cost(name):'');
+   if(name){
+    const preview=fusionPlan(player,{name,star:1,position:null});
+    if(preview.displaced.length)tile.title=preview.overflow
+     ?'Free '+preview.overflow+' bench slot(s) before this fusion.'
+     :'Fusion moves '+preview.displaced.map(unit=>unit.name).join(', ')+' to the bench.';
+   }
    if(name){
     const types=dex[name].slice(1,3).filter(Boolean);
     const art=element('span',null,'tactics-offer-art');

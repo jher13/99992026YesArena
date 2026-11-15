@@ -2,6 +2,7 @@ const arenaSaveKeys = [
  'team','moves','profiles','wild-progress','gym-badges','starter',
  'roguelit-progress','trainer-options','music','sfx'
 ].map(key=>'pokemon-arena-'+key);
+const campaignSaveKeys=['pokemon-arena-gym-badges/master','pokemon-arena-gym-badges/clean-records'];
 const cloudRedirect='https://jher13.github.io/PokeArena/';
 let arenaCloudClient;
 const rememberedEmailKey='arena-remembered-email';
@@ -19,6 +20,7 @@ try {
  localStorage.removeItem('sb-ckgcuhaiuwlccyaxewbv-auth-token');
 } catch {}
 function clearCloudAccountMarker() {
+ sessionStorage.removeItem('arena-cloud-revision');
  sessionStorage.removeItem('arena-online-user');
  sessionStorage.removeItem('arena-sync-reload');
 }
@@ -29,18 +31,21 @@ function cloudClient() {
   .catch(error=>{arenaCloudClient=null;throw error;});
 }
 function readArenaSave() {
- return {version:1,entries:Object.fromEntries(arenaSaveKeys.map(key=>[key,playerStorage.getItem(key)]))};
+ const entries=Object.fromEntries([...arenaSaveKeys,...campaignSaveKeys].map(key=>[key,playerStorage.getItem(key)]));
+ entries[campaignSaveKeys[1]]=JSON.stringify(gymRematchRecords);
+ return {version:2,entries};
 }
 function validateArenaSave(save){
- if(save?.version!==1 || !save.entries || !arenaSaveKeys.every(key=>
+ const keys=save?.version===2?[...arenaSaveKeys,...campaignSaveKeys]:arenaSaveKeys;
+ if(![1,2].includes(save?.version) || !save.entries || !keys.every(key=>
   Object.hasOwn(save.entries,key) && (save.entries[key]===null || typeof save.entries[key]==='string')))
   throw new Error('This is not a supported Pokemon Arena save.');
  const decoded={};
- for(const key of arenaSaveKeys){
+ for(const key of keys){
   const value=save.entries[key];
   if(value===null || ['pokemon-arena-music','pokemon-arena-sfx'].includes(key))continue;
   const parsed=JSON.parse(value);
-  const expectsArray=key==='pokemon-arena-team' || key==='pokemon-arena-gym-badges';
+  const expectsArray=['pokemon-arena-team','pokemon-arena-gym-badges',campaignSaveKeys[0]].includes(key);
   if(!parsed || typeof parsed!=='object' || Array.isArray(parsed)!==expectsArray)
    throw new Error('The backup contains invalid '+key.replace('pokemon-arena-','')+' data.');
   decoded[key]=parsed;
@@ -49,15 +54,24 @@ function validateArenaSave(save){
 }
 function restoreArenaSave(save,writeKey=playerSaveKey) {
  validateArenaSave(save);
- const previous=Object.fromEntries(arenaSaveKeys.map(key=>[key,localStorage.getItem(writeKey(key))]));
+ const keys=save.version===2?[...arenaSaveKeys,...campaignSaveKeys]:arenaSaveKeys;
+ const legacyPrefix=writeKey('pokemon-arena-gym-badges/clean/');
+ const legacyKeys=save.version===2?Array.from({length:localStorage.length},(_,index)=>localStorage.key(index))
+  .filter(key=>key?.startsWith(legacyPrefix)):[];
+ const previous=Object.fromEntries(keys.map(key=>[key,localStorage.getItem(writeKey(key))]));
+ const legacyValues=legacyKeys.map(key=>[key,localStorage.getItem(key)]);
  function write(entries) {
-  for(const key of arenaSaveKeys) {
+  for(const key of keys) {
    if(entries[key]===null) localStorage.removeItem(writeKey(key));
    else localStorage.setItem(writeKey(key),entries[key]);
   }
  }
- try {write(save.entries);}
- catch(error) {write(previous);throw error;}
+ try {write(save.entries);for(const key of legacyKeys)localStorage.removeItem(key);}
+ catch(error) {
+  write(previous);
+  for(const [key,value] of legacyValues)localStorage.setItem(key,value);
+  throw error;
+ }
 
 }
 let cloudAccount=null;
@@ -176,6 +190,7 @@ async function flushArenaSave() {
    throw rejected;
   }
   cloudRevision=data.updated_at;
+  sessionStorage.setItem('arena-cloud-revision',cloudRevision);
   if(!localSaveFailed)syncError.hidden=true;
   saveState.textContent=localSaveFailed?'Local save failed':dirty?'Saved locally · sync pending':'Cloud synced';
   if(dirty) window.queueArenaSave();
@@ -211,6 +226,64 @@ window.queueArenaSave=()=>{
  clearTimeout(saveTimer);
  saveTimer=setTimeout(()=>flushArenaSave().catch(()=>{}),350);
 };
+let leaseCheck=null;
+async function checkArenaLease(){
+ if(!cloudAccount || leaseCheck)return;
+ const id=cloudAccount;
+ leaseCheck=(async()=>{
+  try{
+   const client=await cloudClient();
+   if(await claimArenaSession(client)){
+    if(cloudAccount===id && !dirty && !saving && !localSaveFailed)saveState.textContent=cloudRevision?'Cloud synced':'Saved locally';
+    return;
+   }
+   if(cloudAccount!==id)return;
+   clearInterval(leaseTimer);
+   clearTimeout(saveTimer);
+   cloudAccount=null;
+   const dialog=element('dialog',null,'client-update-dialog');
+   const detail=dirty || saving?'Latest changes may exist only in this browser. Download a backup before signing in again.':'The last synced save is available when you sign in again.';
+   const download=element('button','Download local backup');
+   download.onclick=downloadLocalSave;
+   const leave=element('button','Return to sign-in');
+   leave.onclick=async()=>{
+    await client.auth.signOut({scope:'local'}).catch(()=>{});
+    clearCloudAccountMarker();
+    window.location.reload();
+   };
+   dialog.oncancel=event=>event.preventDefault();
+   dialog.append(element('strong','Your online session ended.'),element('p','This account is now active in another session. '+detail),download,leave);
+   document.body.append(dialog);
+   dialog.showModal();
+  }catch{if(cloudAccount===id)saveState.textContent='Waiting to verify online session…';}
+ })();
+ try{await leaseCheck;}finally{leaseCheck=null;}
+}
+window.collectServerRaidRewards=async()=>{
+ if(!cloudAccount)throw new Error('Sign in to collect raid rewards.');
+ if(saving)throw new Error('Waiting for cloud save. Try again.');
+ await flushArenaSave();
+ if(saving || dirty)throw new Error('Sync your save before collecting raid rewards.');
+ saving=true;
+ try {
+  const {data,error}=await (await cloudClient()).rpc('arena_collect_raid_rewards',{expected_revision:cloudRevision});
+  if(error)throw error;
+  if(data?.status!=='ok')throw new Error('Cloud save changed. Sync or reload before collecting rewards.');
+  cloudRevision=data.updated_at;
+  for(const reward of data.rewards){
+   if(!wildProgress.megaRaidRewards.includes(reward.mode))wildProgress.megaRaidRewards.push(reward.mode);
+   wildProgress.coins+=reward.coins;
+   wildProgress.balls[7]+=reward.master_balls;
+   wildProgress.items[reward.pvp_item]=(wildProgress.items[reward.pvp_item] ?? 0)+1;
+  }
+  if(data.rewards.length)saveWildProgress();
+  if(!localSaveFailed)sessionStorage.setItem('arena-cloud-revision',cloudRevision);
+  return data.rewards;
+ }finally{
+  saving=false;
+  if(dirty)window.queueArenaSave();
+ }
+};
 async function claimArenaSession(client){
  const {data,error}=await client.rpc('arena_claim_session');
  if(error)throw error;
@@ -227,37 +300,29 @@ async function enterCloudAccount(client,user,proceed){
   if(row)restoreArenaSave(row.save_data,key=>'arena-online:'+id+':'+key);
   sessionStorage.setItem('arena-online-user',id);
   sessionStorage.setItem('arena-sync-reload',id);
+  if(row)sessionStorage.setItem('arena-cloud-revision',row.updated_at);
   window.location.reload();
   return;
  }
  cloudAccount=id;
  cloudRevision=row?.updated_at ?? null;
  // Always load the accepted server copy before resuming a signed-in session.
- if(row && sessionStorage.getItem('arena-sync-reload')!==id){
+ if(row && (sessionStorage.getItem('arena-sync-reload')!==id || sessionStorage.getItem('arena-cloud-revision')!==row.updated_at)){
   restoreArenaSave(row.save_data);
   sessionStorage.setItem('arena-sync-reload',id);
+  sessionStorage.setItem('arena-cloud-revision',row.updated_at);
   window.location.reload();
   return;
  }
  saveState.textContent=row?'Cloud synced':'Saved locally';
  clearInterval(leaseTimer);
- leaseTimer=setInterval(async()=>{
-  if(cloudAccount!==id)return;
-  try{
-   if(await claimArenaSession(client))return;
-   clearInterval(leaseTimer);
-   clearTimeout(saveTimer);
-   cloudAccount=null;
-   await client.auth.signOut({scope:'local'}).catch(()=>{});
-   clearCloudAccountMarker();
-   window.location.reload();
-  }catch{}
- },30000);
+ leaseTimer=setInterval(checkArenaLease,30000);
  proceed();
 }
-window.addEventListener('online',()=>flushArenaSave().catch(()=>{}));
+window.addEventListener('online',async()=>{await checkArenaLease();await flushArenaSave().catch(()=>{});});
 document.addEventListener('visibilitychange',()=>{
- if(document.visibilityState==='hidden') flushArenaSave().catch(()=>{});
+ if(document.visibilityState==='hidden')flushArenaSave().catch(()=>{});
+ else if(document.visibilityState==='visible')void checkArenaLease();
 });
 let returnToAccountGate;
 function installAccountGate() {

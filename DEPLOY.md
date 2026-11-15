@@ -34,3 +34,9 @@ limit 100;
 Run `tests/save-integrity.sql` after applying migrations to a test database. Then sign in with one account in two isolated browser profiles. Verify that the second profile is blocked, the first can still sync and play, and the second can enter after the first signs out. Repeat by closing the first browser and waiting three minutes. Verify offline backup import and signed-in recovery from the last accepted cloud save.
 
 Server checks validate game limits and ownership consistency within the save. They do not verify the origin of every in-range value earned in local game modes.
+
+## Campaign backups and verified rewards in 0.22.18
+
+Apply `20261115190000_campaign_save_and_reward_ledger.sql` before publishing the client, and deploy the regenerated arena-combat engine. Version 2 backups add Master clears and clean rematches. Version 1 imports preserve Campaign records they do not contain.
+
+On a test project, clear each Mega Raid tier, collect rewards twice, and verify the server adds the payout only once. First-clear rewards also authorize one PvP held item per tier in order, Leftovers, Muscle Band, and Wise Glasses. Previously paid clears are credited when both the old save and the server's clear records agree. Verify an unverified held item is excluded at battle start. Client-run modes still sync ordinary inventory and do not establish the provenance of all in-range progress.
