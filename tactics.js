@@ -93,10 +93,83 @@
   Psychic:'#ff91dc',Fighting:'#ff595e',Ghost:'#bd79ff',Poison:'#ea7efa',
   Fairy:'#ffb7e3',Ice:'#adf9ff',Dragon:'#9890ff',Steel:'#e1ecff'
  };
- const roleSignatureEffects={Tank:'shield',Fighter:'rally',Reaper:'execute',Carry:'volley',Caster:'burst'};
- const personalSignatureEffects={
-  Squirtle:'teamShield',Wartortle:'teamShield',Blastoise:'teamShield',Lugia:'teamShield',Lapras:'heal',
-  Caterpie:'snare',Clefable:'heal',Umbreon:'weaken',Rayquaza:'volley',Sylveon:'heal',Gardevoir:'snare'
+ const signatureEffects={
+  Bulbasaur:'sunder sap',
+  Charmander:'rally burn',
+  Squirtle:'teamShield',
+  Pikachu:'rush snare',
+  Caterpie:'snare sap',
+  Rattata:'execute leech',
+  Pidgey:'volley gale',
+  Zubat:'leech weaken',
+  Geodude:'shield sunder',
+  Sandshrew:'sunder rush',
+  Oddish:'sap bloom',
+  Abra:'sap blink',
+  Machop:'rally sunder',
+  Gastly:'weaken spread',
+  Eevee:'rally blink',
+  Ivysaur:'volley thorn',
+  Charmeleon:'burn sunder',
+  Wartortle:'cover',
+  Raichu:'volley snare',
+  Pidgeotto:'gale execute',
+  Golbat:'shield spread',
+  Graveler:'spread wound',
+  Machoke:'snare sunder',
+  Kadabra:'sap shred',
+  Haunter:'weaken blink',
+  Vulpix:'burn sap',
+  Psyduck:'snare shred',
+  Magnemite:'shred spark',
+  Growlithe:'rally leech',
+  Ninetales:'burn weaken',
+  Golduck:'volley sap',
+  Magneton:'shred spread',
+  Arcanine:'burn rush',
+  Clefable:'heal cleanse',
+  Scyther:'volley rush',
+  Pinsir:'snare execute',
+  Rhydon:'sunder spread',
+  Hypno:'sap weaken',
+  Lapras:'heal frost',
+  Jolteon:'rush spark',
+  Vaporeon:'heal tide',
+  Flareon:'burn rally leech',
+  Leafeon:'thorn rush',
+  Glaceon:'frost spread',
+  Venusaur:'thorn bloom',
+  Charizard:'burn spread rally',
+  Blastoise:'fortify',
+  Alakazam:'sap spread shred',
+  Machamp:'rally spread sunder',
+  Golem:'shield thorn',
+  Gengar:'execute blink',
+  Snorlax:'shield bloom',
+  Dragonite:'rally spark',
+  Tyranitar:'spread sunder weaken',
+  Gardevoir:'snare spread',
+  Metagross:'shield rally',
+  Espeon:'shred execute',
+  Umbreon:'weaken veil',
+  Sylveon:'heal rally',
+  Regice:'shield frost',
+  Regirock:'shield quake',
+  Registeel:'shield cleanse',
+  Articuno:'frost gale',
+  Zapdos:'spread spark',
+  Moltres:'burn gale',
+  Mewtwo:'sap execute',
+  Lugia:'aegis',
+  'Ho-Oh':'burn cleanse',
+  Rayquaza:'volley gale rush',
+  Raikou:'spark snare',
+  Entei:'rally burn execute',
+  Suicune:'heal veil',
+  Kyogre:'tide spread',
+  Groudon:'quake sunder',
+  Rhyhorn:'rush quake',
+  Boldore:'thorn frost',
  };
  const signatureEffectText={
   shield:'Shields itself for 20% / 30% / 45% of max HP for 5 seconds.',
@@ -109,7 +182,24 @@
   snare:'Hits and delays the target’s next action by 0.5 / 0.75 / 1 second.',
   weaken:'Hits and reduces the target’s damage by 15% / 25% / 35% for 4 seconds.'
  };
- const utilitySignature=effect=>effect==='teamShield' || effect==='heal';
+ const extraSignatureText={
+  sunder:'Reduces the target’s DEF by 30% for 4 seconds.',shred:'Reduces the target’s S.DEF by 30% for 4 seconds.',
+  sap:'Drains 8 / 12 / 18 mana from the target.',burn:'Burns for 1% max HP per second and Wounds for 5 seconds.',
+  rush:'Shortens the caster’s next attack cooldown by 20% / 30% / 45%.',leech:'Heals the caster for 20% / 30% / 45% of damage dealt.',
+  gale:'Pushes the target away from the caster.',spread:'Deals 18% / 26% / 38% splash damage to other enemies within 1.5 tiles.',
+  bloom:'Heals the caster for 8% / 12% / 18% of missing HP.',blink:'Repositions away from the nearest enemy after casting.',
+  thorn:'Grants the caster 15 / 25 / 40 DEF and S.DEF for 4 seconds.',
+  wound:'Reduces healing received by the target by 33% for 6 seconds.',
+  spark:'Gives 8 / 12 / 18 mana to the ally with the highest current mana.',
+  cleanse:'Clears Burn, Wound, Sunder, Shred and damage reduction from the caster and its nearest teammate.',
+  frost:'Slows the target’s attack speed for 4 seconds.',tide:'Heals all living allies for 3% / 5% / 8% of their max HP.',
+  veil:'Grants the caster and weakest ally 15% / 22% / 30% attack damage reduction for 4 seconds.',
+  quake:'Delays all enemies near the caster by 0.3 / 0.5 / 0.8 seconds.',
+  cover:'Shields the weakest ally for the listed amount and the caster for half that amount.',
+  fortify:'Shields up to 3 allies nearest the caster for the listed amount.',
+  aegis:'Shields backline allies and the caster for the listed amount and clears their damage-over-time effects.'
+ };
+ const utilitySignature=effect=>['teamShield','heal','cover','fortify','aegis'].includes(effect);
  const roleProfiles={
   Tank:{range:1,hp:1.32,attack:.76,defense:1.25,speed:.82,mana:5,regen:0,rule:'5 mana per hit and 5 when damaged. Draws aggro at equal range.'},
   Fighter:{range:1,hp:1.08,attack:1.03,defense:1.02,speed:1,mana:10,regen:0,rule:'10 mana per hit. Gains 5% attack speed per stage, up to 30%.'},
@@ -449,7 +539,7 @@
  function signatureDescription(stats){
   const skill=element('p',null,'tactics-signature-description');
   const utility=utilitySignature(stats.moveEffect);
-  const effect=signatureEffectText[stats.moveEffect];
+  const effect=stats.moveEffects.map(key=>signatureEffectText[key] ?? extraSignatureText[key]).join(' ');
   skill.append(utility?effect:'At full mana, deals '+stats.moveType+' damage using '+(stats.moveSpecial?'S.ATK against S.DEF':'ATK against DEF')+'. '+effect);
   if(stats.manaLockMs>1000)skill.append(' Mana lock: '+(stats.manaLockMs/1000)+'s.');
   if(stats.moveEffect==='heal')return skill;
@@ -1059,7 +1149,8 @@
   const rarity=rarities.get(unit.name) ?? 0;
   const hp=Math.round(((base[0]*4+180)*profile.hp*(1+rarity*.045)*1.65**(unit.star-1)+(mods.flatHP ?? 0))*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
   const [move,moveType,moveSpecial]=signatures[unit.name];
-  const moveEffect=personalSignatureEffects[unit.name] ?? roleSignatureEffects[role];
+  const moveEffects=signatureEffects[unit.name].split(' ');
+  const moveEffect=moveEffects[0];
   const movePowers=unit.name==='Squirtle'?[150,255,450]:signaturePowerByTier[rarity];
   const attackScale=profile.attack*(1+rarity*.055)*1.5**(unit.star-1);
   const powerMultiplier=1+bonus*traitPowerPerAlly+(mods.power ?? 0);
@@ -1080,7 +1171,7 @@
    critDamage:baseStats.critDamage+(mods.critDamage ?? 0),gear:mods,
    elapsed:0,gearStacks:0,attackStacks:0,critStacks:0,shield:hp*(mods.startShield ?? 0),shieldUntil:8000,
    defense:Math.round(baseDefense+(mods.defense ?? 0)+(mods.armor ?? 0)),specialDefense:Math.round(baseSpecialDefense+(mods.defense ?? 0)+(mods.spDefense ?? 0)),
-   direction:opponent?0:4,move,moveType,moveSpecial,moveEffect,movePowers,wait:0,manaRegen:(specialist?.regen ?? profile.regen)+(mods.regen ?? 0),
+   direction:opponent?0:4,move,moveType,moveSpecial,moveEffect,moveEffects,movePowers,wait:0,manaRegen:(specialist?.regen ?? profile.regen)+(mods.regen ?? 0),
    manaOnHit:specialist?.hit ?? profile.mana,manaOnDamage:specialist?.incoming ?? (role==='Tank'?5:0),
    manaOnTravel:specialist?.travel ?? 0,manaLock:0,manaLockMs:channeledSignatures.has(move)?1500:1000,
    guard:mods.guard,echo:mods.echo,secondWind:mods.secondWind,overcharge:mods.overcharge,momentum:mods.momentum,
@@ -1124,7 +1215,7 @@
   if(damage<=0 || target.hp<=0)return 0;
   if(target.guard){target.guard=false;return 0;}
   if(source && !periodic && target.role==='Reaper' && target.target!==source)damage*=.85;
-  if(source && !periodic)damage*=1-Math.min(.75,(target.gear.durability ?? 0)+(target.hp>target.max/2?(target.gear.healthyGuard ?? 0):0));
+  if(source && !periodic)damage*=1-Math.min(.75,(target.gear.durability ?? 0)+(target.veilUntil>target.elapsed?target.veilAmount:0)+(target.hp>target.max/2?(target.gear.healthyGuard ?? 0):0));
   damage=Math.max(1,Math.round(damage));
   if(target.signatureShieldUntil>target.elapsed && target.signatureShield>0){
    const blocked=Math.min(target.signatureShield,damage);
@@ -1238,27 +1329,61 @@
  function applySignature(unit,target,units,damage,now){
   const star=unit.star-1;
   const allies=units.filter(other=>other.hp>0 && other.opponent===unit.opponent);
-  if(unit.moveEffect==='teamShield' || unit.moveEffect==='shield'){
-   const team=unit.moveEffect==='teamShield';
-   for(const ally of team?allies:[unit]){
-    const amount=team?unit.movePowers[star]:Math.round(unit.max*[.2,.3,.45][star]);
-    ally.signatureShield=Math.max(ally.signatureShieldUntil>ally.elapsed?ally.signatureShield:0,amount);
-    ally.signatureShieldUntil=ally.elapsed+5000;
+  const others=allies.filter(ally=>ally!==unit);
+  const enemies=units.filter(other=>other.hp>0 && other.opponent!==unit.opponent);
+  const weakest=[...others].sort((a,b)=>a.hp/a.max-b.hp/b.max)[0] ?? unit;
+  const byDistance=(a,b)=>distance(unit.position,a.position)-distance(unit.position,b.position);
+  const barrier=(ally,amount)=>{
+   ally.signatureShield=Math.max(ally.signatureShieldUntil>ally.elapsed?ally.signatureShield:0,amount);
+   ally.signatureShieldUntil=ally.elapsed+5000;
+  };
+  const cleanse=ally=>{for(const key of ['burnUntil','woundUntil','shredUntil','sunderUntil','weakenUntil'])ally[key]=0;};
+  const delay=(enemy,ms)=>{enemy.wait=Math.max(0,enemy.wait)+ms;};
+  const displace=(actor,away,amount)=>{
+   const heading=Math.atan2(actor.position.y-away.position.y,actor.position.x-away.position.x);
+   const position={x:Math.max(0,Math.min(6.5,actor.position.x+Math.cos(heading)*amount)),
+    y:Math.max(0,Math.min(5.95,actor.position.y+Math.sin(heading)*amount))};
+   if(units.some(other=>other!==actor && other.hp>0 && distance(position,other.position)<.55))return;
+   if(now!==null){actor.moveFrom=actor.position;actor.moveStarted=now;}
+   actor.position=position;
+  };
+  const power=unit.movePowers[star];
+  for(const effect of unit.moveEffects){
+   switch(effect){
+    case 'teamShield': for(const ally of allies)barrier(ally,power);break;
+    case 'shield': barrier(unit,Math.round(unit.max*[.2,.3,.45][star]));break;
+    case 'cover': barrier(weakest,power);barrier(unit,Math.round(power/2));break;
+    case 'fortify': for(const ally of [...allies].sort(byDistance).slice(0,3))barrier(ally,power);break;
+    case 'aegis': for(const ally of allies.filter(ally=>ally===unit || ally.range>=3)){barrier(ally,power);cleanse(ally);}break;
+    case 'heal': for(const ally of [...allies].sort((a,b)=>a.hp/a.max-b.hp/b.max).slice(0,2))heal(ally,ally.max*[.10,.16,.25][star]);break;
+    case 'tide': for(const ally of allies)heal(ally,ally.max*[.03,.05,.08][star]);break;
+    case 'bloom': heal(unit,(unit.max-unit.hp)*[.08,.12,.18][star]);break;
+    case 'leech': heal(unit,damage*[.2,.3,.45][star]);break;
+    case 'rally': unit.rallyUntil=unit.elapsed+5000;break;
+    case 'rush': unit.signatureRush=[.20,.30,.45][star];break;
+    case 'snare': delay(target,[500,750,1000][star]);break;
+    case 'quake': for(const enemy of enemies)if(distance(unit.position,enemy.position)<=2)delay(enemy,[300,500,800][star]);break;
+    case 'weaken': target.weakenUntil=target.elapsed+4000;target.weakenAmount=[.15,.25,.35][star];break;
+    case 'sunder': target.sunderUntil=target.elapsed+4000;break;
+    case 'shred': target.shredUntil=target.elapsed+4000;break;
+    case 'frost': target.frostUntil=target.elapsed+4000;break;
+    case 'sap': target.mana=Math.max(0,target.mana-[8,12,18][star]);break;
+    case 'spark': gainMana([...others].sort((a,b)=>b.mana-a.mana)[0] ?? unit,[8,12,18][star]);break;
+    case 'burn': ignite(target,5,unit);break;
+    case 'wound': target.woundUntil=Math.max(target.woundUntil ?? 0,target.elapsed+6000);break;
+    case 'cleanse': cleanse(unit);cleanse([...others].sort(byDistance)[0] ?? unit);break;
+    case 'thorn': unit.thornUntil=unit.elapsed+4000;unit.thornArmor=[15,25,40][star];break;
+    case 'veil': for(const ally of [unit,weakest]){ally.veilUntil=ally.elapsed+4000;ally.veilAmount=[.15,.22,.30][star];}break;
+    case 'blink': displace(unit,target,[.6,.9,1.2][star]);break;
+    case 'gale': if(target.hp>0)displace(target,unit,[.5,.75,1][star]);break;
+    case 'volley':
+    case 'spread': {
+     const nearby=enemies.filter(enemy=>enemy!==target && distance(target.position,enemy.position)<=(effect==='volley'?2:1.5));
+     const victims=effect==='volley'?nearby.sort((a,b)=>distance(a.position,target.position)-distance(b.position,target.position)).slice(0,1):nearby;
+     for(const victim of victims)receiveDamage(victim,damage*(effect==='volley'?[.30,.45,.60][star]:[.18,.26,.38][star]),now,false,unit);
+     break;
+    }
    }
-  }
-  if(unit.moveEffect==='heal'){
-   allies.sort((a,b)=>a.hp/a.max-b.hp/b.max).slice(0,2).forEach(ally=>heal(ally,ally.max*[.10,.16,.25][star]));
-  }
-  if(unit.moveEffect==='rally')unit.rallyUntil=unit.elapsed+5000;
-  if(unit.moveEffect==='snare')target.wait=Math.max(0,target.wait)+[500,750,1000][star];
-  if(unit.moveEffect==='weaken'){
-   target.weakenUntil=target.elapsed+4000;
-   target.weakenAmount=[.15,.25,.35][star];
-  }
-  if(unit.moveEffect==='volley'){
-   const victim=units.filter(other=>other!==target && other.hp>0 && other.opponent!==unit.opponent &&
-    distance(target.position,other.position)<=2).sort((a,b)=>distance(a.position,target.position)-distance(b.position,target.position))[0];
-   if(victim)receiveDamage(victim,damage*[.30,.45,.60][star],now,false,unit);
   }
  }
  function tick(units,now=null){
@@ -1298,10 +1423,10 @@
    const defenseDown=(special?target.shredUntil:target.sunderUntil)>target.elapsed ||
     units.some(other=>other.hp>0 && other.opponent===unit.opponent && other.gear[aura] && distance(target.position,other.position)<=2);
    const focus=target.gear.focusArmor?units.filter(other=>other.hp>0 && other.target===target).length*target.gear.focusArmor:0;
-   const defense=((special?target.specialDefense:target.defense)+focus)*(defenseDown?.7:1);
+   const defense=((special?target.specialDefense:target.defense)+focus+(target.thornUntil>target.elapsed?target.thornArmor:0))*(defenseDown?.7:1);
    const critical=Math.random()<unit.critChance?unit.critDamage:1;
    const amp=1+(gear.amp ?? 0)+unit.critStacks*(gear.critAmp ?? 0)+(target.role==='Tank'?(gear.tankAmp ?? 0):0);
-   const execute=cast && unit.moveEffect==='execute' && target.hp<target.max/2?1+[.25,.40,.60][unit.star-1]:1;
+   const execute=cast && unit.moveEffects.includes('execute') && target.hp<target.max/2?1+[.25,.40,.60][unit.star-1]:1;
    const weaken=unit.weakenUntil>unit.elapsed?1-unit.weakenAmount:1;
    const damage=utility?0:Math.max(1,Math.round(execute*weaken*combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*match*critical*amp*100/(100+defense)));
    if(now!==null){
@@ -1324,7 +1449,9 @@
     unit.manaLock=unit.manaLockMs;
    }else gainMana(unit,unit.manaOnHit+(gear.hitMana ?? 0)+(critical>1?(gear.critMana ?? 0):0));
    const rally=unit.rallyUntil>unit.elapsed?[.15,.25,.40][unit.star-1]:0;
-   unit.wait+=1000/(unit.attackSpeed*(1+rally+Math.floor(unit.elapsed/1000)*(gear.rampSpeed ?? 0)));
+   const frost=unit.frostUntil>unit.elapsed?.75:1;
+   unit.wait+=1000*(1-(unit.signatureRush ?? 0))/(frost*unit.attackSpeed*(1+rally+Math.floor(unit.elapsed/1000)*(gear.rampSpeed ?? 0)));
+   unit.signatureRush=0;
   }
  }
  function outcome(units){
@@ -1407,14 +1534,18 @@
    hp.value=unit.hp;mana.value=unit.mana;
    hp.setAttribute('aria-label',unit.name+' health');
    mana.setAttribute('aria-label',unit.name+' mana');
-   bars.append(hp,mana);
+   const health=element('div',null,'tactics-live-health');
+   const shield=element('span',null,'tactics-shield-fill');
+   shield.setAttribute('aria-hidden','true');
+   health.append(hp,shield);
+   bars.append(health,mana);
    if(unit.combatItems?.length)node.append(equippedItems({...unit,items:unit.combatItems}));
    const bubble=element('span',null,'tactics-cast-bubble');
    bubble.hidden=true;
    node.append(bars,battlerSprite(unit),element('span','★'.repeat(unit.star),'tactics-combat-stars'),bubble);
    unitControls(node,unit,false);
    layer.append(node);
-   return {unit,node,hp,mana,bubble};
+   return {unit,node,hp,mana,bubble,shield,shownShield:0};
   });
   layer.append(effects,damageLayer);
   let lastPaint=performance.now();
@@ -1448,8 +1579,16 @@
     label.remove();
     damageLabels.delete(event);
    }
-   for(const {unit,node,hp,mana,bubble} of views){
+   for(const view of views){
+    const {unit,node,hp,mana,bubble,shield}=view;
     easeMeter(hp,unit.hp,weight);
+    const activeShield=unit.hp>0?unit.shield+(unit.signatureShieldUntil>unit.elapsed?unit.signatureShield:0):0;
+    view.shownShield+=(activeShield-view.shownShield)*weight;
+    if(Math.abs(view.shownShield-activeShield)<.1)view.shownShield=activeShield;
+    const capacity=Math.max(unit.max,hp.value+view.shownShield);
+    hp.max=capacity;
+    shield.style.left=(100*hp.value/capacity)+'%';
+    shield.style.width=(100*view.shownShield/capacity)+'%';
     easeMeter(mana,unit.mana,weight);
     if(unit.hp<=0 && hp.value===0){node.hidden=true;continue;}
     const at=unit.position,from=unit.moveFrom ?? at;
@@ -1461,7 +1600,6 @@
     const casting=Boolean(cast && now-cast.started<950);
     bubble.hidden=!casting;
     if(casting && bubble.textContent!==cast.move)bubble.textContent=cast.move;
-    node.classList.toggle('is-shielded',unit.signatureShieldUntil>unit.elapsed && unit.signatureShield>0);
     node.classList.toggle('is-casting',Boolean(cast && now-cast.started<380));
     paintBattler(unit,now);
    }
