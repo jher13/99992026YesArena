@@ -36,7 +36,8 @@
   'Weather Trio':{color:'#76bcb2',members:['Kyogre','Groudon','Rayquaza'],tiers:[[1,{weather:1}],[2,{weather:2}],[3,{weather:3}]]}
  };
  const benchLimit=9;
- const combatTicks=240, combatStepMs=115, combatDamageScale=.55;
+ const attackSlowdown=3;
+ const combatTicks=240*attackSlowdown, combatStepMs=115, combatDamageScale=.55;
  const traitHealthPerAlly=.06, traitPowerPerAlly=.10;
  const maxLevel=9;
  const cells=Array.from({length:56},(_,i)=>({x:i%7,y:Math.floor(i/7)}));
@@ -787,7 +788,7 @@
    .sort((a,b)=>Number(moveCatalog[b][0]===dex[unit.name][1])-Number(moveCatalog[a][0]===dex[unit.name][1]) || moveCatalog[b][1]-moveCatalog[a][1])[0];
   const attackScale=profile.attack*(1+rarity*.055)*1.5**(unit.star-1);
   const powerMultiplier=1+bonus*traitPowerPerAlly+(mods.power ?? 0);
-  const attackSpeed=Math.max(2.3,Math.min(5.4,(2.75+base[3]*.013)*profile.speed+rarity*.055));
+  const attackSpeed=Math.max(2.3,Math.min(5.4,(2.75+base[3]*.013)*profile.speed+rarity*.055))/attackSlowdown;
   const defenseScale=profile.defense*(1+rarity*.035)*1.13**(unit.star-1);
   const baseDefense=base[2]*defenseScale,baseSpecialDefense=base[4]*defenseScale;
   const baseStats={
@@ -942,6 +943,7 @@
    const bars=element('div',null,'tactics-live-bars');
    const hp=element('progress'),mana=element('progress');
    hp.max=unit.max;mana.max=60;
+   hp.value=unit.hp;mana.value=unit.mana;
    hp.setAttribute('aria-label',unit.name+' health');
    mana.setAttribute('aria-label',unit.name+' mana');
    bars.append(hp,mana);
@@ -954,7 +956,14 @@
    return {unit,node,hp,mana,bubble};
   });
   layer.append(damageLayer);
+  let lastPaint=performance.now();
+  function easeMeter(meter,target,weight){
+   const difference=target-meter.value;
+   meter.value=Math.abs(difference)<.1?target:meter.value+difference*weight;
+  }
   function paint(now){
+   const weight=1-Math.exp(-Math.max(0,now-lastPaint)/55);
+   lastPaint=now;
    const visibleDamage=new Set();
    for(const unit of units){
     if(!unit.damageEvents)continue;
@@ -978,13 +987,14 @@
     damageLabels.delete(event);
    }
    for(const {unit,node,hp,mana,bubble} of views){
-    if(unit.hp<=0){node.hidden=true;continue;}
+    easeMeter(hp,unit.hp,weight);
+    easeMeter(mana,unit.mana,weight);
+    if(unit.hp<=0 && hp.value===0){node.hidden=true;continue;}
     const at=unit.position,from=unit.moveFrom ?? at;
     const progress=Math.min(1,Math.max(0,(now-(unit.moveStarted ?? now))/combatStepMs));
     const x=from.x+(at.x-from.x)*progress,y=from.y+(at.y-from.y)*progress;
     placeOnField(node,x,y);
     node.style.zIndex=String(1+Math.floor(y*10));
-    hp.value=unit.hp;mana.value=unit.mana;
     const cast=unit.lastCast;
     const casting=Boolean(cast && now-cast.started<950);
     bubble.hidden=!casting;
