@@ -58,7 +58,14 @@ const syncError=byId('arena-sync-error');
 const saveState=element('span','Saved on this browser');
 saveState.id='toolbar-save-state';
 saveState.setAttribute('role','status');
-byId('toolbar-profile').after(saveState);
+byId('home-sync').prepend(saveState);
+const homeScreen=byId('home');
+const placeSyncError=()=>{
+ if(homeScreen.hidden)document.body.append(syncError);
+ else byId('home-sync').append(syncError);
+};
+new MutationObserver(placeSyncError).observe(homeScreen,{attributes:true,attributeFilter:['hidden']});
+placeSyncError();
 function downloadLocalSave(){
  const url=URL.createObjectURL(new Blob([JSON.stringify(readArenaSave())],{type:'application/json'}));
  const link=element('a');
