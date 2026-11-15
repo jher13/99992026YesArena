@@ -655,7 +655,7 @@
   const tier=megaRaidTiers[match.mode];
   const room=raidRoom(tier?tier.name+' · Tier '+tier.tier:'Co-op Raid',
    match.public?'Public room':'Private room',async()=>{
-    await raidRpc('leave',{id:match.id});if(token===generation)openMenu();
+    await raidRpc('leave',{id:match.id});if(token===generation)lobby(true,match.mode);
    },tier?.tier ?? 1,match.code);
   const status=element('p');
   const actions=element('div',null,'raid-left-actions');
@@ -859,12 +859,12 @@
   draw();
   if(token===generation)timer=setTimeout(pollRaid,900);
  }
- function lobby(coop) {
+ function lobby(coop,previousTier) {
   stop();
   pvpVersionContext=!coop;
   const title=coop?'Co-op':'PvP';
   const mode=select('Match type',[['unranked','Unranked'],['ranked','Ranked']]);
-  let raidMode=Object.keys(megaRaidTiers)[0];
+  let raidMode=Object.hasOwn(megaRaidTiers,previousTier)?previousTier:Object.keys(megaRaidTiers)[0];
   const format=select('Battle format',[[1,'1v1'],[2,'2v2'],[3,'3v3']]);
   const freeFight=element('input');freeFight.type='checkbox';
   const freeFightLabel=element('label','Free Fight · Lv. 100 ');freeFightLabel.append(freeFight);
@@ -893,7 +893,7 @@
   }
   const find=button(coop?'Auto Match':'Find match',()=>begin('queue'));
   if(coop){
-   const room=raidRoom('Co-op Raids','Raid selection');
+   const room=raidRoom('Co-op Raids','Raid selection',undefined,megaRaidTiers[raidMode].tier);
    collectMegaRaidRewards().then(rewards=>{for(const reward of rewards)room.controls.append(element('p',reward));}).catch(()=>{});
    const tiers=element('div',null,'raid-room-actions raid-tier-buttons');
    tiers.setAttribute('aria-label','Raid tier');
@@ -1131,21 +1131,61 @@
   if(!active.result)timer=setTimeout(poll,850);
  }
  async function friends() {
-  const rows=await rpc('friends'),name=input('Player name');
-  show('Friendlist',name,button('Send request',async()=>{await rpc('friend_request',{name:name.value});await friends();}),
-   ...rows.map(friend=>{
-    const row=element('p',friend.name+' · '+(friend.accepted?'Friend':friend.incoming?'Incoming request':'Request sent'));
+  const rows=await rpc('friends');
+  if(phase!=='friendlist' && !dialog.open)return;
+  phase='friendlist';
+  if(dialog.open)dialog.close();
+  showScreen('friendlist');
+  const name=input('Player name');
+  name.required=true;
+  name.maxLength=24;
+  const form=element('form',null,'friend-request-form');
+  const send=element('button','Send request');
+  send.type='submit';
+  const feedback=element('p');
+  feedback.id='friendlist-status';
+  feedback.setAttribute('role','status');
+  form.append(name,send);
+  async function request(player,control) {
+   if(!player || control.disabled)return;
+   control.disabled=true;
+   feedback.textContent='';
+   try {
+    await rpc('friend_request',{name:player});
+    if(phase==='friendlist')await friends();
+   } catch(error) {feedback.textContent=error.message;}
+   finally {control.disabled=false;}
+  }
+  form.onsubmit=event=>{event.preventDefault();void request(name.value.trim(),send);};
+  const groups=[
+   ['Friends',rows.filter(friend=>friend.accepted),'No friends yet.'],
+   ['Incoming requests',rows.filter(friend=>!friend.accepted && friend.incoming)],
+   ['Sent requests',rows.filter(friend=>!friend.accepted && !friend.incoming)],
+  ];
+  const sections=groups.flatMap(([label,entries,empty])=>{
+   if(!entries.length && !empty)return [];
+   const grid=element('div',null,'shop-grid');
+   for(const friend of entries) {
+    const card=element('div',null,'bag-item');
+    const art=element('div',null,'bag-art');
+    art.append(collectionPixelArt(['....oooo....','...olccgo...','...occcgo...','....oooo....','.....oo.....','...ooccoo...','..olccccgo..','..occcccgo..','..oooooooo..'],'#8d9cd2'));
+    card.append(art,element('strong',friend.name));
     if(friend.accepted) {
-     const presence=element('span',null,'friend-presence'+(friend.online?' is-online':''));
-     presence.title=friend.online?'Online':'Offline';
-     presence.setAttribute('role','img');
-     presence.setAttribute('aria-label',presence.title);
-     row.prepend(presence);
+     const status=element('small');
+     status.append(element('span',null,'friend-presence'+(friend.online?' is-online':'')),friend.online?'Online':'Offline');
+     card.append(status);
+    } else if(friend.incoming) {
+     const accept=element('button','Accept');
+     accept.onclick=()=>request(friend.name,accept);
+     card.append(accept);
     }
-    if(friend.incoming&&!friend.accepted)row.append(button('Accept',async()=>{await rpc('friend_request',{name:friend.name});await friends();}));
-    return row;
-   }));
+    grid.append(card);
+   }
+   return [element('h3',label,'bag-section-title'),entries.length?grid:element('p',empty)];
+  });
+  byId('friendlist-content').replaceChildren(form,feedback,...sections);
  }
+ byId('friends-back').onclick=()=>openMenu();
  async function guilds() {
   const data=await rpc('guilds'),name=input('Guild name');
   show('Guilds',element('p',data.membership?'Your guild: '+data.membership:'You have no guild.'),
