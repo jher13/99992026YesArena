@@ -648,7 +648,7 @@
    const eligible=available.filter(name=>{
     const used=match.seats.filter((seat,index)=>index!==slot && seat?.pokemon===name).length;
     const pending=slot!==match.ownSlot && !match.seats[match.ownSlot]?.pokemon && fighter===name?1:0;
-    return used+pending<1+(wildProgress.copies[name]?.length ?? 0);
+    return used+pending===0;
    });
    const editor=element('dialog',null,'raid-pc-dialog');
    const panel=byId('pokemon-detail');
