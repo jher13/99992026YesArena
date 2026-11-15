@@ -1,6 +1,15 @@
 (() => {
  const content=byId('event-content');
- const odds=[[100,0,0],[75,25,0],[55,35,10],[35,45,20],[20,45,35],[12,38,50]];
+ const odds=[[100,0,0,0,0],[75,25,0,0,0],[55,35,10,0,0],[40,35,20,5,0],[28,34,25,11,2],[15,25,30,22,8]];
+ const roster=[
+  ['Bulbasaur','Charmander','Squirtle','Pikachu','Caterpie','Rattata','Pidgey','Zubat','Geodude','Sandshrew','Oddish','Abra','Machop','Gastly','Eevee'],
+  ['Ivysaur','Charmeleon','Wartortle','Raichu','Pidgeotto','Golbat','Graveler','Machoke','Kadabra','Haunter','Vulpix','Psyduck','Magnemite','Growlithe'],
+  ['Ninetales','Golduck','Magneton','Arcanine','Clefable','Scyther','Pinsir','Rhydon','Hypno','Lapras','Jolteon','Vaporeon','Flareon'],
+  ['Venusaur','Charizard','Blastoise','Alakazam','Machamp','Golem','Gengar','Snorlax','Dragonite','Tyranitar','Gardevoir','Metagross'],
+  ['Regice','Regirock','Registeel','Articuno','Zapdos','Moltres','Mewtwo','Lugia','Ho-Oh','Rayquaza']
+ ];
+ const regis=new Set(['Regice','Regirock','Registeel']);
+ const regiBoost={health:.18,power:.18,defense:24,mana:15,regen:2};
  const benchLimit=9;
  const combatTicks=240, combatStepMs=115, combatDamageScale=.55;
  const traitHealthPerAlly=.06, traitPowerPerAlly=.10;
@@ -20,6 +29,7 @@
   'Berry+Scale':['Berry Armor',{health:.25,defense:28}], 'Scale+Scale':['Dragon Armor',{defense:55}]
  };
  const augments=[
+  ['Regi Power Core','Regi-Trio members start with 20 extra mana once the trait is active.','regiMana',20],
   ['Battle Focus','Your team gains 12% attack power.','power',.12],
   ['Deep Reserves','Your team gains 15% max HP.','health',.15],
   ['Quick Charge','Your team starts with 15 mana.','mana',15],
@@ -72,7 +82,7 @@
   }else if(run.round>=7 && (run.round-7)%7===0){
    const offers=[];
    for(let i=0;i<living.length+2;i++){
-    const pool=[...run.pool].filter(([,entry])=>entry.copies>0 && entry.tier<=Math.min(2,Math.floor(run.round/8)));
+    const pool=[...run.pool].filter(([,entry])=>entry.copies>0 && entry.tier<=Math.min(4,Math.floor(run.round/6)));
     const selected=drawRogueChoices(pool,1)[0];
     if(!selected)break;
     const [name,entry]=selected;entry.copies--;
@@ -154,14 +164,8 @@
    button('Start match',start));
  }
  function start(){
-  const available=dexNames.filter(name=>!isLegendaryEncounter(name) && isAvailablePokemon(name));
-  const tiers=[[],[],[]];
-  for(const name of drawRogueChoices(available.filter(n=>minimumEncounterLevel(dex[n][0])<16),26))tiers[0].push(name);
-  for(const name of drawRogueChoices(available.filter(n=>{
-   const level=minimumEncounterLevel(dex[n][0]);return level>=16 && level<34;
-  }),20))tiers[1].push(name);
-  for(const name of drawRogueChoices(available.filter(n=>minimumEncounterLevel(dex[n][0])>=34),14))tiers[2].push(name);
-  const pool=new Map(tiers.flatMap((names,tier)=>names.map(name=>[name,{tier,copies:[22,18,14][tier]}])));
+  const tiers=roster;
+  const pool=new Map(tiers.flatMap((names,tier)=>names.map(name=>[name,{tier,copies:[26,22,18,12,9][tier]}])));
   run={round:1,trainers:[makeTrainer('You'),...Array.from({length:7},(_,i)=>makeTrainer('Trainer '+(i+1)))],tiers,pool,selected:null,busy:false,result:''};
   for(const [index,trainer] of run.trainers.entries()){
    const name=drawRogueChoices(tiers[0].filter(name=>pool.get(name).copies>0),1)[0];
@@ -272,8 +276,8 @@
   trainer.shop=Array.from({length:5},(_,i)=>{
    if(locked.has(i) && previous[i])return previous[i];
    const chances=odds[trainer.level-1];
-   const roll=Math.random()*100;
-   const tier=roll<chances[0]?0:roll<chances[0]+chances[1]?1:2;
+   let tierRoll=Math.random()*100;
+   const tier=chances.findIndex(chance=>(tierRoll-=chance)<0);
    const names=run.tiers[tier].filter(name=>run.pool.get(name).copies>0);
    const total=names.reduce((sum,name)=>sum+run.pool.get(name).copies,0);
    let ticket=Math.random()*total;
@@ -338,6 +342,7 @@
  function traits(units){
   const counts={};
   for(const unit of units)for(const type of dex[unit.name].slice(1,3).filter(Boolean))counts[type]=(counts[type] ?? 0)+1;
+  counts['Regi-Trio']=new Set(units.map(unit=>unit.name).filter(name=>regis.has(name))).size;
   return counts;
  }
  const battlerCanvases=new WeakMap();
@@ -401,7 +406,7 @@
    placeOnField(tile,center.x,center.y);
    if(!scouting && y>=4)dropUnit(tile,unit=>moveUnit(player,position,unit));
    if(unit){
-    const visual=unitVisual(unit,4);
+    const visual=unitVisual(unit,unit.opponent?0:4);
     unitControls(tile,unit,!scouting,visual);
     tile.append(visual);
     tile.setAttribute('aria-pressed',String(run.selected===unit));
@@ -416,7 +421,7 @@
    const entry=element('li',null,trainer===run.trainers[0]?'is-you':'');
    const health=element('progress');
    health.max=100;health.value=trainer.hp;health.setAttribute('aria-label',trainer.name+' HP');
-   const name=button(trainer.name,()=>{run.scout=trainer===run.trainers[0]?null:trainer;render();},run.busy || !trainer.hp);
+   const name=button(trainer.name,()=>{if(run.busy)run.spectate?.(trainer);else {run.scout=trainer===run.trainers[0]?null:trainer;render();}},!trainer.hp);
    entry.append(name,element('strong',String(trainer.hp)),health);
    standings.append(entry);
   }
@@ -455,19 +460,21 @@
   const traitList=element('div',null,'tactics-trait-list');
   traitList.append(heading('Traits'));
   sidebar.append(inventory,traitList);
-  const types=Object.entries(traits(field(player))).sort((a,b)=>b[1]-a[1]);
+  const types=Object.entries(traits(field(player))).filter(([,count])=>count>0).sort((a,b)=>b[1]-a[1]);
   for(const [type,count] of types){
-   const entry=element('div',null,'tactics-trait'+(count>=2?' is-active':''));
+   const isRegi=type==='Regi-Trio';
+   const active=count>=(isRegi?3:2);
+   const entry=element('div',null,'tactics-trait'+(active?' is-active':''));
    const badge=element('span',type,'home-type-badge');
    badge.style.setProperty('--type-color',moveColors[type] ?? '#b7c7dd');
    const strength=Math.max(0,count-1);
    const bonus=amount=>Math.round(100*amount*strength);
    const description=count<2?'Inactive. Deploy 2 '+type+' Pokémon to gain +6% max HP and +10% attack power.':
     type+' Pokémon gain +'+bonus(traitHealthPerAlly)+'% max HP and +'+bonus(traitPowerPerAlly)+'% attack power.';
-   const next=count<2?2:count<maxLevel?count+1:null;
+   const next=isRegi?(active?null:3):count<2?2:count<maxLevel?count+1:null;
    const progress=next?count+' / '+next:count+' · Max';
    const needed=next?' Next tier: '+(next-count)+' more.':' Maximum tier reached.';
-   const tip=element('span',description+needed+' Only the strongest active type bonus applies to a Pokémon.','tactics-trait-tooltip');
+   const tip=element('span',(isRegi?'Deploy Regice, Regirock, and Registeel. Active trio: +18% max HP and attack, +24 defense, +15 starting mana, and 2 mana per second.':description+' Only the strongest active type bonus applies to a Pokémon.')+needed,'tactics-trait-tooltip');
    entry.tabIndex=0;
    entry.setAttribute('aria-label',type+' trait. '+tip.textContent);
    entry.append(badge,element('span',progress),tip);
@@ -477,7 +484,11 @@
   if(player.augments.length)traitList.append(heading('Augments'),element('small',player.augments.join(' · ')));
   const middle=element('div',null,'tactics-center');
   const arena=element('div',null,'tactics-field');
-  if(!rival)arena.append(board(run.scout?run.scout.units:units,player,Boolean(run.scout)));
+  if(!rival){
+   const preview=neutralRound(run.round)?neutralTrainer().units.map(unit=>({...unit,opponent:true,
+    position:{x:6-unit.position.x,y:7-unit.position.y}})):[];
+   arena.append(board([...(run.scout?run.scout.units:units),...preview],player,Boolean(run.scout)));
+  }
   let timer=null;
   if(rival){
    const banner=element('header',null,'tactics-combat-banner');
@@ -601,6 +612,7 @@
     lock.setAttribute('aria-pressed',String(locked.has(index)));
     offer.append(lock);
    }
+   if(name){offer.tabIndex=0;unitControls(offer,{name,star:1,position:null},false);}
    shop.append(offer);
   }
   const controls=element('div',null,'tactics-unit-actions');
@@ -653,11 +665,16 @@
   const special=base[5]>=base[1];
   const bonus=Math.max(0,...dex[unit.name].slice(1,3).map(t=>(types[t] ?? 0)-1));
   const mods=itemMods(unit,trainer);
+  const trio=types['Regi-Trio']===3 && regis.has(unit.name)?regiBoost:{};
+  mods.health=(mods.health ?? 0)+(trio.health ?? 0);
+  mods.power=(mods.power ?? 0)+(trio.power ?? 0);
+  mods.defense=(mods.defense ?? 0)+(trio.defense ?? 0);
+  mods.mana=(mods.mana ?? 0)+(trio.mana ?? 0)+(trio.regen?(mods.regiMana ?? 0):0);
   const hp=Math.round((base[0]*4+180)*1.65**(unit.star-1)*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
   const move=legalMoves(unit.name).filter(m=>moveCatalog[m]?.[1]>0 && !moveCatalog[m][4])
    .sort((a,b)=>Number(moveCatalog[b][0]===dex[unit.name][1])-Number(moveCatalog[a][0]===dex[unit.name][1]) || moveCatalog[b][1]-moveCatalog[a][1])[0];
   return {...unit,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),range:special?3:1,defense:base[special?4:2]+(mods.defense ?? 0),
-   direction:opponent?0:4, power:(Math.max(base[1],base[5])*.35+12)*1.5**(unit.star-1)*(1+bonus*traitPowerPerAlly+(mods.power ?? 0)),move,wait:0,
+   direction:opponent?0:4, power:(Math.max(base[1],base[5])*.35+12)*1.5**(unit.star-1)*(1+bonus*traitPowerPerAlly+(mods.power ?? 0)),move,wait:0,manaRegen:trio.regen ?? 0,
    position:combatPosition(unit.position,opponent)};
  }
  function battle(a,b){
@@ -680,6 +697,7 @@
  function tick(units,now=null){
   for(const unit of units){
    if(unit.hp<=0)continue;
+   unit.mana=Math.min(60,unit.mana+unit.manaRegen*combatStepMs/1000);
    const targets=units.filter(other=>other.hp>0 && other.opponent!==unit.opponent)
     .sort((a,b)=>distance(unit.position,a.position)-distance(unit.position,b.position) || a.hp-b.hp);
    const target=targets[0];
@@ -779,36 +797,54 @@
   const neutral=neutralRound(run.round);
   const rival=neutral?neutralTrainer():opponents.shift();
   const ghost={units:field(rival).map(unit=>({...unit})),mods:rival.mods};
-  const units=battle(player,rival);
-  const {layout,arena,timer}=battleLayout(player,units,rival.name);
-  const view=combatLayer(units);
-  arena.insertBefore(view.layer,arena.querySelector('.tactics-bench'));
-  content.replaceChildren(layout);
+  const matches=[];
+  const addMatch=(a,b,mirror=false)=>{
+   const match={a,b,units:battle(a,b),mirror,sign:null};
+   match.sign=outcome(match.units);
+   matches.push(match);
+  };
+  addMatch(player,rival);
+  if(neutral)for(const trainer of opponents)addMatch(trainer,rival);
+  else {
+   for(let i=0;i+1<opponents.length;i+=2)addMatch(opponents[i],opponents[i+1]);
+   if(opponents.length%2)addMatch(opponents.at(-1),ghost,true);
+  }
+  let watched, view, timer, frame=0;
+  run.spectate=trainer=>{
+   const match=matches.find(entry=>entry.a===trainer || entry.b===trainer);
+   if(!match || match===watched)return;
+   watched=match;
+   const opponent=match.b.name ?? 'Mirror team';
+   const battleView=battleLayout(match.a,match.units,match.a.name+' vs '+opponent);
+   timer=battleView.timer;
+   view=combatLayer(match.units);
+   battleView.arena.insertBefore(view.layer,battleView.arena.querySelector('.tactics-bench'));
+   content.replaceChildren(battleView.layout);
+  };
+  run.spectate(player);
   const animate=now=>{
-   if(run!==current || !current.busy || !arena.isConnected)return;
+   if(run!==current || !current.busy || phase!=='events')return;
    view.paint(now);
    requestAnimationFrame(animate);
   };
   requestAnimationFrame(animate);
-  for(let i=0;i<combatTicks && outcome(units)===null;i++){
+  for(;frame<combatTicks && matches.some(match=>match.sign===null);frame++){
    await new Promise(resolve=>setTimeout(resolve,combatStepMs));
    if(run!==current || phase!=='events')return;
-   tick(units,performance.now());
-   timer.value=100*(1-(i+1)/combatTicks);
-  }
-  const sign=outcome(units) ?? 0;
-  if(neutral){
-   completeNeutral(player,sign>0);
-   for(const trainer of opponents)completeNeutral(trainer,resolve(battle(trainer,rival))>0);
-  }else{
-   result(player,rival,units,sign);
-   for(let i=0;i+1<opponents.length;i+=2){
-    const a=opponents[i],b=opponents[i+1],fight=battle(a,b);
-    result(a,b,fight,resolve(fight));
+   for(const match of matches)if(match.sign===null){
+    tick(match.units,performance.now());
+    match.sign=outcome(match.units);
    }
-   if(opponents.length%2){
-    const a=opponents.at(-1),fight=battle(a,ghost);
-    result(a,{units:[],shop:[],hp:100,gold:0,level:maxLevel,streak:0},fight,resolve(fight));
+   timer.value=100*(1-(frame+1)/combatTicks);
+   timer.title=matches.filter(match=>match.sign===null).length+' battles still in progress';
+  }
+  const sign=matches[0].sign ?? 0;
+  if(neutral){
+   for(const match of matches)completeNeutral(match.a,match.sign>0);
+  }else{
+   for(const match of matches){
+    const enemy=match.mirror?{units:[],shop:[],hp:100,gold:0,level:maxLevel,streak:0}:match.b;
+    result(match.a,enemy,match.units,match.sign ?? 0);
    }
    if(!player.hp)run.place=1+run.trainers.filter(t=>t.hp>0).length+
     run.trainers.slice(1).filter(t=>t.eliminated===run.round && t.name.localeCompare(player.name)<0).length;
@@ -816,7 +852,7 @@
   run.round++;
   for(const trainer of run.trainers)if(trainer.hp)roll(trainer);
   run.result=sign>0?'Victory against '+rival.name:sign<0?'Defeat against '+rival.name:'Draw against '+rival.name;
-  run.selected=null;run.busy=false;beginChoices();
+  run.selected=null;run.busy=false;run.spectate=null;beginChoices();
   if(run.choice || !player.hp || run.trainers.filter(t=>t.hp>0).length<=1)render();
   else startPlanning();
   void checkGameVersion();
