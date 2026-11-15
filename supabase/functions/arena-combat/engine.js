@@ -4429,7 +4429,7 @@ function stepSwitch(transition,dt,realDt=dt) {
  if(transition.stage==='recall') {
   const ability=activeAbility(transition.outgoing);
   if(ability==='Regenerator') healActor(transition.outgoing,transition.outgoing.max/3);
-  if(ability==='Natural Cure') {transition.outgoing.ailment=null;transition.outgoing.ailmentSource=null;}
+  if(ability==='Natural Cure')clearArenaAilment(transition.outgoing);
   if(!transition.forced && transition.outgoing.friendly && !selectedWild && !selectedGym) restoreOpponentTeam();
   if(transition.passSubstitute)transition.incoming.substituteHP=transition.passSubstitute;
   if(transition.passStages)transition.incoming.stages=[...transition.passStages];
@@ -4867,7 +4867,13 @@ function entryAbility(actor,opponent) {
  }
  if(ability==='Screen Cleaner') {actor.guard=0;opponent.guard=0;clearScreens(actor);clearScreens(opponent);}
 }
+const hardStatusRecoverySeconds=10;
+function blocksHardStatus(actor,condition) {
+ return (condition===2 && actor.side==='boss') ||
+  ([2,3].includes(condition) && (actor.hardStatusRecoveryUntil ?? 0)>clock);
+}
 function canInflictAilment(victim,condition,source) {
+ if(blocksHardStatus(victim,condition))return false;
  if(source!==victim && victim.safeguardUntil>clock)return false;
  if(victim.hp<=0 || victim.ailment || ![1,2,3,4,5,6].includes(condition)) return false;
  const types=[victim.type,extraTypes[victim.name]];
@@ -4901,7 +4907,7 @@ function tickAbility(actor,dt) {
  actor.abilityTimer-=4;
  if(ability==='Speed Boost') applyChanges(actor,[[6,1]]);
  if(actor.ailment && ((ability==='Shed Skin' && onlineRandom()<1/3) || (ability==='Hydration' && weather==='Rain'))) {
-  actor.ailment=null;actor.ailmentSource=null;
+  clearArenaAilment(actor);
  }
  if((ability==='Rain Dish'||ability==='Dry Skin') && weather==='Rain') healActor(actor,actor.max/(ability==='Dry Skin'?8:16));
  if(ability==='Ice Body' && weather==='Snow') healActor(actor,actor.max/16);
@@ -4975,7 +4981,7 @@ function tickStatus(actor,dt) {
    actor.dot+=1;
   }
  }
- if(actor.ailmentTime<=1e-8) {actor.ailment=null;actor.ailmentSource=null;}
+ if(actor.ailmentTime<=1e-8)clearArenaAilment(actor);
 }
 function healActor(actor,amount) {
  if(actor.healBlockUntil>clock)return;
@@ -5213,6 +5219,7 @@ function forceSwitch(victim,defender,passStages=false,passSubstitute=0,chooseRes
  return true;
 }
 function clearArenaAilment(actor) {
+ if([2,3].includes(actor.ailment))actor.hardStatusRecoveryUntil=clock+hardStatusRecoverySeconds;
  actor.ailment=null;
  actor.ailmentSource=null;
 }
@@ -5734,8 +5741,8 @@ const additionalStatusMoves={
   apply:actor=>(actor.friendly?allies:enemies).filter(member=>member.hp>0).forEach(clearArenaAilment)},
  Aromatherapy:{description:'Cures status conditions on the user’s team.',score:actor=>(actor.friendly?allies:enemies).some(member=>member.hp>0&&member.ailment)?65:0,
   apply:actor=>(actor.friendly?allies:enemies).filter(member=>member.hp>0).forEach(clearArenaAilment)},
- Rest:{description:'Restores '+100*battleDamageScale+'% max HP, clears the current status, and puts the user to sleep until hit.',score:actor=>actor.hp<actor.max*.35 && !(actor.healBlockUntil>clock)?90:0,
-  apply:actor=>{if(actor.healBlockUntil>clock)return;healActor(actor,actor.max*battleDamageScale);clearArenaAilment(actor);actor.ailment=2;actor.ailmentTime=null;}},
+ Rest:{description:'Restores '+100*battleDamageScale+'% max HP, clears the current status, and puts the user to sleep until hit.',score:actor=>actor.hp<actor.max*.35 && ![2,3].includes(actor.ailment) && !blocksHardStatus(actor,2) && !(actor.healBlockUntil>clock)?90:0,
+  apply:actor=>{if(actor.healBlockUntil>clock || [2,3].includes(actor.ailment) || blocksHardStatus(actor,2))return;healActor(actor,actor.max*battleDamageScale);clearArenaAilment(actor);actor.ailment=2;actor.ailmentTime=null;}},
  'Pain Split':{description:'Averages the current HP of the user and target, capped by their maximum HP.',score:(actor,target)=>target.hp>actor.hp+5?55:0,
   apply:(actor,target)=>{const hp=Math.ceil((actor.hp+target.hp)/2);actor.hp=Math.min(actor.max,hp);target.hp=Math.min(target.max,hp);}},
 };
@@ -6578,7 +6585,7 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
    const slot=actor.moves.indexOf(move);
    if(victim.grudgeUntil>clock && slot>=0)actor.moveTimers[slot]+=12;
   }
-  if(dealt>0 && wasAsleep){victim.ailment=null;victim.ailmentSource=null;}
+  if(dealt>0 && wasAsleep)clearArenaAilment(victim);
   if(dealt>0) playSkillSound(move,'impact');
   recordOpponentDamage(actor,victim,dealt);
   respondToHit(actor,victim,move,element,rules.category!==3,dealt);
@@ -8025,6 +8032,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.15.12',changes:['Added a shared 10-second recovery window after sleep or freeze and made raid bosses immune to sleep.']},
  {version:'0.15.11',changes:['Restored standard arena dimensions and expanded automatic update checks outside PvP.']},
  {version:'0.15.10',changes:['Matched the Mega raid viewport to standard battles with opponent cards hidden.']},
  {version:'0.15.9',changes:['Restored the 960 × 480 raid viewport while keeping the 1080 × 600 playable arena.']},
