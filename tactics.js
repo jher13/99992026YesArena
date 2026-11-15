@@ -866,7 +866,7 @@
   const rankings=element('aside',null,'tactics-sidebar');
   rankings.append(heading('Standings'),standingsPanel());
   layout.append(left,middle,rankings);
-  return {layout,left,arena,timer};
+  return {layout,left,middle,arena,timer};
  }
  function benchView(player,combat=false){
   const bench=element('div',null,'tactics-bench');
