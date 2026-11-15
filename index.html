@@ -393,11 +393,19 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
  .has-room-chat .raid-seat:nth-child(1),.has-room-chat .raid-seat:nth-child(6){transform:translateY(-158px)}
 }
 @media(max-width:700px){.raid-chat{width:100%;justify-self:stretch}}
-#raid-boss-effects{display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap}
+#raid-boss-hud{width:min(100%,1080px)}
+.raid-boss-reading{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px;min-height:24px}
+#raid-boss-value{grid-column:2;grid-row:1;white-space:nowrap}
+#raid-boss-effects{grid-column:1;grid-row:1;display:flex;justify-content:flex-start;align-items:center;gap:4px;flex-wrap:wrap}
+#raid-boss-stages{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+#raid-boss-effects .battle-status-badge{margin:0}
 #battle.is-mega-raid #enemy-active,#battle.is-mega-raid #enemy-roster{display:none}
-#battle.is-mega-raid #arena{aspect-ratio:16/9;max-width:none}
+#battle.is-mega-raid #arena{aspect-ratio:1080/600;max-width:1080px;height:auto;justify-self:center}
 @media(min-width:760px) and (orientation:landscape){
  #battle.is-mega-raid .battle-board{grid-template-columns:minmax(75px,.65fr) minmax(105px,1fr) minmax(0,8fr)}
+ #battle.is-mega-raid #raid-boss-hud{grid-column:3;grid-row:1;margin-bottom:0}
+ #battle.is-mega-raid .arena-header-info{grid-column:3;grid-row:2;width:min(100%,1080px);justify-self:center}
+ #battle.is-mega-raid :is(#arena,#player-roster,#player-active){grid-row:3}
 }
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
@@ -626,7 +634,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 </div>
 </section>
 <section id="raid-lobby" class="raid-lobby" hidden></section>
-<div id="battle" hidden><section id="raid-boss-hud" hidden aria-label="Raid boss health"><strong id="raid-boss-name"></strong><progress id="raid-boss-hp"></progress><span id="raid-boss-value"></span><div id="raid-boss-effects" aria-label="Boss buffs, debuffs and status"><span id="raid-boss-stages" class="battle-stage-icons"></span><span id="raid-boss-status" class="battle-status-badge" hidden></span></div></section><p id="status" role="status"></p><div class="battle-board"><div id="legendary-intro" role="status" aria-live="polite" hidden><strong>Legendary Encounter!</strong></div><div class="arena-header-info"><div id="arena-conditions" class="arena-conditions"></div><div id="arena-weather" class="arena-conditions"></div><div id="arena-duration" class="arena-conditions"></div></div><div class="arena-stage"><div id="player-roster" class="arena-roster"></div><canvas id="arena" width="960" height="480" aria-label="Battle arena. Choose your lead Pokémon from the team roster."></canvas><div id="enemy-roster" class="arena-roster"></div></div>
+<div id="battle" hidden><p id="status" role="status"></p><div class="battle-board"><section id="raid-boss-hud" hidden aria-label="Raid boss health"><strong id="raid-boss-name"></strong><progress id="raid-boss-hp"></progress><div class="raid-boss-reading"><span id="raid-boss-value"></span><div id="raid-boss-effects" aria-label="Boss buffs, debuffs and status"><span id="raid-boss-stages" class="battle-stage-icons"></span><span id="raid-boss-status" class="battle-status-badge" hidden></span></div></div></section><div id="legendary-intro" role="status" aria-live="polite" hidden><strong>Legendary Encounter!</strong></div><div class="arena-header-info"><div id="arena-conditions" class="arena-conditions"></div><div id="arena-weather" class="arena-conditions"></div><div id="arena-duration" class="arena-conditions"></div></div><div class="arena-stage"><div id="player-roster" class="arena-roster"></div><canvas id="arena" width="960" height="480" aria-label="Battle arena. Choose your lead Pokémon from the team roster."></canvas><div id="enemy-roster" class="arena-roster"></div></div>
 <section id="battle-dps" aria-label="Live battle damage"></section>
 <section class="active-hud" aria-label="Active Pokémon and move cooldowns">
 <div id="player-active" class="active-panel" data-side="player"></div>
@@ -5149,7 +5157,7 @@ function randomArenaMap() {
  }
  return {...biome,zones,rocks};
 }
-const megaRaidArenaSize={width:1280,height:720};
+const megaRaidArenaSize={width:1080,height:600};
 function setArenaDimensions({width=960,height=480}={}) {
  if(canvas.width!==width)canvas.width=width;
  if(canvas.height!==height)canvas.height=height;
@@ -8647,6 +8655,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.15.7',changes:['Centered the raid HUD, resized the arena, and added tier-scaled daily Co-op ticket rewards.']},
  {version:'0.15.6',changes:['Expanded Mega raid arenas, added boss-matching terrain without pillars, and moved boss effects under the HP bar.']},
  {version:'0.15.5',changes:['Limited raid parties to one Pokémon per species across all seats.']},
  {version:'0.15.4',changes:['Fixed raid snapshots, filtered occupied fighters, and added a 30-minute raid countdown.']},
