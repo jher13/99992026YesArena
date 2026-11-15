@@ -613,6 +613,16 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .tactics-standings li{display:grid;grid-template-columns:minmax(0,1fr) auto}
 .tactics-standings progress{grid-column:1/-1;width:100%;height:3px;accent-color:#e8847c}
 .tactics-standings .is-you progress{accent-color:#e3bc6c}
+#events .tactics-stage{flex-wrap:wrap}
+.tactics-timeline{flex-basis:100%;display:flex;flex-wrap:wrap;justify-content:center;gap:4px}
+.tactics-timeline span{background:#263434;padding:2px 5px;border-radius:4px;font-size:10px}
+.tactics-timeline [aria-current]{color:#ffdd93;outline:1px solid #ac9358}
+.tactics-planning-clock{color:#ffdd93;font-variant-numeric:tabular-nums}
+.tactics-inspect{background:#172226;color:#f5e6c1;border:1px solid #aa925d;border-radius:8px}
+.tactics-inspect p{color:#f5e6c1}
+.tactics-bench-slot{min-height:40px;background:#283537;border-radius:3px}
+#events .tactics-standings button{background:transparent;border:0;padding:0;text-align:left;color:#e7d8b6;font-size:11px}
+.tactics-board.is-combat canvas.tactics-battler{width:100%;max-height:100%;height:auto}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -8909,6 +8919,9 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.20.1',changes:['Animated Poke Fight Tactics battlers using directional Pokémon sprite sheets.']},
+ {version:'0.20.0',changes:['Added timed TFT planning, starters, drag and drop, scouting, and unit inspection.']},
+ {version:'0.19.2',changes:['Renamed the Events mode to Poke Fight Tactics.']},
  {version:'0.19.1',changes:['Restyled the TFT combat phase with floating unit bars, a combat banner, and a visible bench.']},
  {version:'0.19.0',changes:['Reworked the TFT interface with a central arena, side panels, bench, and bottom shop.']},
  {version:'0.18.0',changes:['Added TFT item crafting, augments, carousels, and neutral rounds.']},
@@ -9111,4 +9124,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.19.1"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.20.1"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
