@@ -9299,6 +9299,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.17',changes:['Added server-side save validation, private integrity flags, and one active game session per account.']},
  {version:'0.22.16',changes:['Fixed Tactics bench overflow and status stacking, added backup restore and raid recovery, and improved Campaign navigation.']},
  {version:'0.22.15',changes:['Moved cloud status above the title and stacked multiplayer button labels.']},
  {version:'0.22.14',changes:['Improved combat reports, Battle Pass quests, save recovery, and mode guidance. Renamed Campaign and Badge Collection.']},
@@ -9538,7 +9539,7 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="pass-battle-notice" role="status" hidden></p><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.22.16"></script><script>
+</script><p id="pass-battle-notice" role="status" hidden></p><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.22.17"></script><script>
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>

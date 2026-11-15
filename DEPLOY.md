@@ -17,3 +17,20 @@ From the repository root, run `node tests/release-smoke.cjs`. It checks the vers
 - Start a raid. Disconnect one browser during combat, then reconnect and verify the timer, boss HP, and player state agree on both clients. After repeated failures, exercise **Request fresh snapshot**.
 - Repeat around the result screen. Verify that each account sees the same result and that reopening or retrying the result grants rewards only once.
 - In Settings, download a local backup, preview it, and restore it on a test profile. Check that the restored data survives a reload. For an online profile, check that a newer cloud revision prompts for a choice.
+
+## Save integrity and account sessions
+
+Deploy the save-integrity migration and the updated arena-combat function together with client 0.22.17. The migration relies on the existing `public.arena_saves` table with a unique `user_id`. Older clients can't sign into the updated game until they refresh. Existing cloud records remain in place, and team validation runs before competitive use.
+
+Review rejected save submissions from the SQL Editor using an administrator account. Treat flags as review signals because a damaged save can also fail validation.
+
+```sql
+select user_id, reason, occurred_at
+from arena_private.integrity_events
+order by occurred_at desc
+limit 100;
+```
+
+Run `tests/save-integrity.sql` after applying migrations to a test database. Then sign in with one account in two isolated browser profiles. Verify that the second profile is blocked, the first can still sync and play, and the second can enter after the first signs out. Repeat by closing the first browser and waiting three minutes. Verify offline backup import and signed-in recovery from the last accepted cloud save.
+
+Server checks validate game limits and ownership consistency within the save. They do not verify the origin of every in-range value earned in local game modes.

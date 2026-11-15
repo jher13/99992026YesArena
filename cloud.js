@@ -20,6 +20,7 @@ try {
 } catch {}
 function clearCloudAccountMarker() {
  sessionStorage.removeItem('arena-online-user');
+ sessionStorage.removeItem('arena-sync-reload');
 }
 function cloudClient() {
  return arenaCloudClient ??= import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm')
@@ -64,7 +65,7 @@ let cloudRevision=null;
 let saveTimer;
 let saving=false;
 let dirty=false;
-let restoreConflict=false;
+let leaseTimer;
 const syncError=byId('arena-sync-error');
 const saveState=element('span','Saved on this browser');
 saveState.id='toolbar-save-state';
@@ -84,7 +85,6 @@ window.reportLocalSaveError=error=>{
  syncError.textContent='This browser could not save your latest progress. '+error.message;
  syncError.hidden=false;
 };
-const restoredBackupKey='arena-restore-backup';
 window.arenaBackupControls=()=>{
  const download=element('button','Download local save');
  download.onclick=downloadLocalSave;
@@ -94,6 +94,22 @@ window.arenaBackupControls=()=>{
  file.setAttribute('aria-label','Select a Pokémon Arena backup');
  const preview=element('p');
  preview.setAttribute('role','status');
+ if(onlineSaveId || cloudAccount){
+  const load=element('button','Load cloud save');
+  load.onclick=async()=>{
+   if(saving || !window.confirm('Replace this browser’s progress with the latest cloud save?'))return;
+   try{
+    clearTimeout(saveTimer);
+    const row=await fetchArenaSave(await cloudClient(),cloudAccount);
+    if(!row)throw new Error('Cloud save unavailable.');
+    restoreArenaSave(row.save_data);
+    dirty=false;
+    window.location.reload();
+   }catch(error){window.reportLocalSaveError(error);}
+  };
+  return [element('h3','Save backup'),download,load,
+   element('p','Importing a backup is available when playing offline.')];
+ }
  const apply=element('button','Restore backup');
  apply.disabled=true;
  let backup=null;
@@ -113,17 +129,14 @@ window.arenaBackupControls=()=>{
   }catch(error){if(file.files[0]===selected)preview.textContent=error.message;}
  };
  apply.onclick=()=>{
-  if(!backup || saving)return;
-  const destination=cloudAccount?'this browser and sync it to your account':'this browser';
-  if(!window.confirm('Restore this backup to '+destination+'? Download your current save first if you want to keep a copy.'))return;
+  if(!backup || saving || onlineSaveId || cloudAccount)return;
+  if(!window.confirm('Restore this offline backup? Download your current save first if you want to keep a copy.'))return;
   try{
-   if(cloudAccount)sessionStorage.setItem(restoredBackupKey,JSON.stringify({account:cloudAccount,revision:cloudRevision}));
    restoreArenaSave(backup);
    clearTimeout(saveTimer);
    dirty=false;
    window.location.reload();
   }catch(error){
-   sessionStorage.removeItem(restoredBackupKey);
    window.reportLocalSaveError(error);
    preview.textContent=error.message;
   }
@@ -144,24 +157,25 @@ async function fetchArenaSave(client,id) {
  return data;
 }
 async function flushArenaSave() {
- if(!cloudAccount || restoreConflict || !team.length || saving || !dirty) return;
+ if(!cloudAccount || !team.length || saving || !dirty) return;
  saving=true;
  saveState.textContent='Syncing…';
  dirty=false;
  try {
   const client=await cloudClient();
-  const values={save_data:readArenaSave(),updated_at:new Date().toISOString()};
-  const query=client.from('arena_saves');
-  const {data,error}=await (cloudRevision
-   ?query.update(values).eq('user_id',cloudAccount).eq('updated_at',cloudRevision)
-   :query.insert({...values,user_id:cloudAccount})).select('updated_at');
-  if(error) throw error;
-  if(!data?.length){
+  const {data,error}=await client.rpc('arena_write_save',{payload:readArenaSave(),expected_revision:cloudRevision});
+  if(error)throw error;
+  if(data?.status==='conflict'){
    const conflict=new Error('Progress changed on another device.');
    conflict.saveConflict=true;
    throw conflict;
   }
-  cloudRevision=data[0].updated_at;
+  if(data?.status!=='ok'){
+   const rejected=new Error('The server rejected invalid save data.');
+   rejected.saveConflict=true;
+   throw rejected;
+  }
+  cloudRevision=data.updated_at;
   if(!localSaveFailed)syncError.hidden=true;
   saveState.textContent=localSaveFailed?'Local save failed':dirty?'Saved locally · sync pending':'Cloud synced';
   if(dirty) window.queueArenaSave();
@@ -191,48 +205,54 @@ async function flushArenaSave() {
  } finally {saving=false;}
 }
 window.queueArenaSave=()=>{
- if(!cloudAccount || restoreConflict) return;
+ if(!cloudAccount) return;
  dirty=true;
  if(!localSaveFailed)saveState.textContent='Saved locally · sync pending';
  clearTimeout(saveTimer);
  saveTimer=setTimeout(()=>flushArenaSave().catch(()=>{}),350);
 };
-async function enterCloudAccount(client,user,proceed,allowGuestImport=false) {
+async function claimArenaSession(client){
+ const {data,error}=await client.rpc('arena_claim_session');
+ if(error)throw error;
+ return data===true;
+}
+async function enterCloudAccount(client,user,proceed){
  const id=user.id;
- let row=await fetchArenaSave(client,id);
- if(!row && allowGuestImport && !onlineSaveId && team.length &&
-    window.confirm('Link this browser’s guest progress to your account?')) {
-  const {error}=await client.from('arena_saves').insert({user_id:id,save_data:readArenaSave()});
-  if(error) throw error;
-  row=await fetchArenaSave(client,id);
+ if(!await claimArenaSession(client)){
+  await client.auth.signOut({scope:'local'});
+  throw new Error('This account is already active on another device. Sign out there or try again after three minutes.');
  }
- if(onlineSaveId!==id) {
-  if(row) restoreArenaSave(row.save_data,key=>'arena-online:'+id+':'+key);
+ const row=await fetchArenaSave(client,id);
+ if(onlineSaveId!==id){
+  if(row)restoreArenaSave(row.save_data,key=>'arena-online:'+id+':'+key);
   sessionStorage.setItem('arena-online-user',id);
+  sessionStorage.setItem('arena-sync-reload',id);
   window.location.reload();
   return;
  }
  cloudAccount=id;
  cloudRevision=row?.updated_at ?? null;
- saveState.textContent=row?'Cloud synced':'Saved locally';
- const restored=JSON.parse(sessionStorage.getItem(restoredBackupKey) ?? 'null');
- if(restored?.account===id){
-  if(restored.revision===cloudRevision){sessionStorage.removeItem(restoredBackupKey);window.queueArenaSave();}
-  else {
-   restoreConflict=true;
-   saveState.textContent='Backup restored locally · cloud changed';
-   syncError.textContent='The cloud save changed while restoring the backup. The restored copy is on this browser.';
-   const keep=element('button','Keep restored backup');
-   keep.onclick=()=>{if(window.confirm('Sync the restored backup over the current cloud save?')){sessionStorage.removeItem(restoredBackupKey);restoreConflict=false;window.queueArenaSave();}};
-   const load=element('button','Load cloud save');
-   load.onclick=()=>{
-    if(!row || !window.confirm('Replace this browser’s restored copy with the cloud save?'))return;
-    try{restoreArenaSave(row.save_data);sessionStorage.removeItem(restoredBackupKey);window.location.reload();}catch(error){window.reportLocalSaveError(error);}
-   };
-   syncError.append(keep,load);
-   syncError.hidden=false;
-  }
+ // Always load the accepted server copy before resuming a signed-in session.
+ if(row && sessionStorage.getItem('arena-sync-reload')!==id){
+  restoreArenaSave(row.save_data);
+  sessionStorage.setItem('arena-sync-reload',id);
+  window.location.reload();
+  return;
  }
+ saveState.textContent=row?'Cloud synced':'Saved locally';
+ clearInterval(leaseTimer);
+ leaseTimer=setInterval(async()=>{
+  if(cloudAccount!==id)return;
+  try{
+   if(await claimArenaSession(client))return;
+   clearInterval(leaseTimer);
+   clearTimeout(saveTimer);
+   cloudAccount=null;
+   await client.auth.signOut({scope:'local'}).catch(()=>{});
+   clearCloudAccountMarker();
+   window.location.reload();
+  }catch{}
+ },30000);
  proceed();
 }
 window.addEventListener('online',()=>flushArenaSave().catch(()=>{}));
@@ -275,10 +295,12 @@ function installAccountGate() {
   if(arenaCloudClient) {
    try {
     const client=await arenaCloudClient;
+    if(cloudAccount)await client.rpc('arena_release_session');
     const {error}=await client.auth.signOut({scope:'local'});
     if(error) throw error;
    } catch(error) {status.textContent=error.message;return;}
   }
+  clearInterval(leaseTimer);
   clearCloudAccountMarker();
   if(onlineSaveId) {window.location.reload();return;}
   proceed();
@@ -299,7 +321,7 @@ function installAccountGate() {
    if(data.session) {
     rememberedLoginEmail(remember?.checked?credentials.email:'');
     status.textContent='Loading your save…';
-    await enterCloudAccount(client,data.session.user,proceed,true);
+    await enterCloudAccount(client,data.session.user,proceed);
    }
    else status.textContent='Confirm your email, then log in with your password.';
   } catch(error) {status.textContent=error.message || 'Could not sign in.';}
@@ -320,11 +342,13 @@ function installAccountGate() {
    await flushArenaSave();
    if(arenaCloudClient) {
     const client=await arenaCloudClient;
-    const {error}=await client.auth.signOut();
+    await client.rpc('arena_release_session');
+    const {error}=await client.auth.signOut({scope:'local'});
     if(error) throw error;
    }
+   clearInterval(leaseTimer);
    clearCloudAccountMarker();
-  if(onlineSaveId) {window.location.reload();return;}
+   if(onlineSaveId) {window.location.reload();return;}
    returnToAccountGate();
   } catch(error) {
    openHomeDialog('Log out',element('p',error.message || 'Could not sign out.'));
