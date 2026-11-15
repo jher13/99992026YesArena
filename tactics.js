@@ -116,8 +116,18 @@
    name:names[i%names.length],star:run.round>=18?2:1,position:cells[28+i]
   }))};
  }
+ function goldInterest(gold){return Math.min(5,Math.floor(gold/10));}
+ function streakGold(streak){
+  const count=Math.abs(streak);
+  return count>=6?3:count===5?2:count>=2?1:0;
+ }
+ function payRound(trainer,base,win){
+  const interest=goldInterest(trainer.gold), streak=streakGold(trainer.streak);
+  trainer.income={base,interest,streak,win};
+  trainer.gold+=base+interest+streak+win;
+ }
  function completeNeutral(trainer,won){
-  trainer.gold+=run.round<=3?run.round+1:5+Math.min(5,Math.floor(trainer.gold/10))+(won?1:0);
+  payRound(trainer,run.round<=3?run.round+1:5,run.round>3 && won?1:0);
   xp(trainer,2);
   if(won || run.round<=3)trainer.items.push(randomComponent());
  }
@@ -192,8 +202,11 @@
   };
  }
  function roll(trainer){
-  releaseShop(trainer);
-  trainer.shop=Array.from({length:5},()=>{
+  const locked=trainer.lockedOffers ?? new Set();
+  const previous=trainer.shop;
+  for(const [index,name] of previous.entries())if(name && !locked.has(index))run.pool.get(name).copies++;
+  trainer.shop=Array.from({length:5},(_,i)=>{
+   if(locked.has(i) && previous[i])return previous[i];
    const chances=odds[trainer.level-1];
    const roll=Math.random()*100;
    const tier=roll<chances[0]?0:roll<chances[0]+chances[1]?1:2;
@@ -208,6 +221,7 @@
  function releaseShop(trainer){
   for(const name of trainer.shop)if(name)run.pool.get(name).copies++;
   trainer.shop=[];
+  trainer.lockedOffers?.clear();
  }
  const field=trainer=>trainer.units.filter(unit=>unit.position!==null);
  function merge(trainer,name){
@@ -232,7 +246,7 @@
   if(!name || trainer.gold<cost(name))return false;
   const full=trainer.units.filter(unit=>unit.position===null).length>=benchLimit;
   if(full && trainer.units.filter(unit=>unit.name===name && unit.star===1).length<2)return false;
-  trainer.gold-=cost(name);trainer.shop[index]=null;
+  trainer.gold-=cost(name);trainer.shop[index]=null;trainer.lockedOffers?.delete(index);
   trainer.units.push({name,star:1,position:null});merge(trainer,name);
   return true;
  }
@@ -381,10 +395,13 @@
    const bonus=amount=>Math.round(100*amount*strength);
    const description=count<2?'Inactive. Deploy 2 '+type+' Pokémon to gain +6% max HP and +10% attack power.':
     type+' Pokémon gain +'+bonus(traitHealthPerAlly)+'% max HP and +'+bonus(traitPowerPerAlly)+'% attack power.';
-   const tip=element('span',description+' Only the strongest active type bonus applies to a Pokémon.','tactics-trait-tooltip');
+   const next=count<2?2:count<maxLevel?count+1:null;
+   const progress=next?count+' / '+next:count+' · Max';
+   const needed=next?' Next tier: '+(next-count)+' more.':' Maximum tier reached.';
+   const tip=element('span',description+needed+' Only the strongest active type bonus applies to a Pokémon.','tactics-trait-tooltip');
    entry.tabIndex=0;
    entry.setAttribute('aria-label',type+' trait. '+tip.textContent);
-   entry.append(badge,element('span',count+' / 2'),tip);
+   entry.append(badge,element('span',progress),tip);
    sidebar.append(entry);
   }
   if(!types.length)sidebar.append(element('small','Deploy Pokémon to activate traits.'));
@@ -400,7 +417,8 @@
    timer.max=100;timer.value=100;timer.setAttribute('aria-label','Combat time remaining');
    banner.append(timer,element('strong','Combat'),element('small','Stage '+stageLabel(run.round)+' · '+rival));
    arena.prepend(banner);
-   middle.append(arena,benchView(player,true));
+   arena.append(benchView(player,true));
+   middle.append(arena);
    const summary=element('div',null,'tactics-combat-wallet');
    summary.append(element('span','Level '+player.level),element('strong',player.gold+' gold'));
    middle.append(summary);
@@ -442,7 +460,7 @@
    return;
   }
   if(run.choice){renderChoice(run.choice);return;}
-  const {layout,middle}=battleLayout(player,player.units);
+  const {layout,middle,arena}=battleLayout(player,player.units);
   const bench=benchView(player);
   const benched=player.units.filter(unit=>unit.position===null);
   const shop=element('section',null,'tactics-shop');
@@ -462,7 +480,12 @@
    label.setAttribute('aria-label',label.title+' '+chance+' percent');
    chances.append(label);
   });
-  bar.append(level,chances,element('strong',player.gold+' gold','tactics-shop-gold'));
+  const gold=element('strong',player.gold+' gold','tactics-shop-gold');
+  gold.title='Interest at current balance: +'+goldInterest(player.gold)+' gold. Earn 1 per 10 saved, up to 5.';
+  const streak=element('span',player.streak?(player.streak>0?'Win':'Loss')+' streak '+Math.abs(player.streak):'No streak','tactics-streak');
+  streak.title='Streak gold: 2–4 wins or losses +1, 5 +2, 6+ +3. Current streak bonus: +'+streakGold(player.streak)+'.';
+  streak.tabIndex=0;
+  bar.append(level,chances,gold,streak);
   shop.append(bar);
   const economy=element('div',null,'tactics-economy');
   economy.append(button('Buy XP · 4 gold',()=>{player.gold-=4;xp(player,4);render();},player.gold<4 || player.level>=maxLevel),
@@ -484,11 +507,25 @@
     tile.append(art,footer);
     tile.setAttribute('aria-label','Buy '+name+' for '+cost(name)+' gold');
    }else tile.append(element('small','Sold'));
-   shop.append(tile);
+   const offer=element('div',null,'tactics-shop-slot');
+   offer.append(tile);
+   if(name){
+    const locked=player.lockedOffers ??= new Set();
+    const lock=button(locked.has(index)?'🔒':'🔓',()=>{
+     if(locked.has(index))locked.delete(index);else locked.add(index);
+     render();
+    });
+    lock.className='tactics-offer-lock';
+    lock.title=locked.has(index)?'Unlock offer':'Keep this offer for next round';
+    lock.setAttribute('aria-label',(locked.has(index)?'Unlock ':'Lock ')+name);
+    lock.setAttribute('aria-pressed',String(locked.has(index)));
+    offer.append(lock);
+   }
+   shop.append(offer);
   }
   const controls=element('div',null,'tactics-unit-actions');
   if(run.scout)controls.append(button('Return to your board',()=>{run.scout=null;render();}));
-  if(!run.scout)middle.append(bench);
+  if(!run.scout)arena.append(bench);
   middle.append(controls);
   const selected=run.selected;
   if(selected){
@@ -506,6 +543,8 @@
    },player.units.filter(unit=>unit.position===null).length>=benchLimit));
   }
   const hint=element('p',run.result || 'Select a Pokémon, then choose a hex on your side.','tactics-hint');
+  const income=player.income;
+  if(income)hint.append(' · Income: '+income.base+' base, +'+income.interest+' interest, +'+income.streak+' streak'+(income.win?', +1 win':''));
   content.replaceChildren(layout,...(run.round>1?[shop]:[]),hint);
  }
  function planAI(trainer){
@@ -601,7 +640,7 @@
   for(const trainer of [a,b]){
    const lost=losers.includes(trainer);
    trainer.streak=lost?Math.min(-1,trainer.streak-1):Math.max(1,trainer.streak+1);
-   trainer.gold+=5+Math.min(5,Math.floor(trainer.gold/10))+Math.min(3,Math.floor(Math.abs(trainer.streak)/2))+(lost?0:1);
+   payRound(trainer,5,lost?0:1);
    xp(trainer,2);
    if(lost)trainer.hp=Math.max(0,trainer.hp-damage);
    if(!trainer.hp){

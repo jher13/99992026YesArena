@@ -649,6 +649,16 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .tactics-offer.tier-3 .tactics-offer-footer{background:#28476c}
 .tactics-offer-cost{white-space:nowrap}
 @media(max-width:480px){.tactics-shop-bar{gap:7px}.tactics-shop-odds{gap:4px}.tactics-offer-footer{flex-wrap:wrap}.tactics-offer-footer strong{font-size:10px}}
+
+.tactics-shop-slot{position:relative;min-width:0}
+#events .tactics-shop-slot .tactics-offer{width:100%;height:100%}
+#events .tactics-shop-slot .tactics-offer-lock{position:absolute;right:3px;top:3px;padding:1px 4px;border-radius:3px;background:#162225dc;border-color:#8e7b52;font-size:12px;line-height:1.4}
+#events .tactics-shop-slot .tactics-offer-lock[aria-pressed=true]{background:#665330;border-color:#f4d990}
+.tactics-streak{color:#f4d990;font-size:11px;white-space:nowrap}
+.tactics-field .tactics-bench{width:calc(100% + 4px);align-self:end;margin:10px -2px -10px;border-radius:0;background:linear-gradient(#b4aa89,#827858);border-top:3px solid #574e36;box-shadow:0 -3px 9px #15211377;gap:0;padding:0}
+#events .tactics-field .tactics-bench-slot,#events .tactics-layout.is-combat .tactics-field .tactics-bench-slot{background:linear-gradient(165deg,#b5aa89,#968a68);border:1px solid #71674d;border-radius:0;box-shadow:inset 0 1px #d3c7a9;color:#fff3bd;text-shadow:0 1px 2px #27221b}
+#events .tactics-field .tactics-bench-slot[aria-pressed=true]{outline:2px solid #f4cb77;outline-offset:-3px}
+@media(max-width:480px){.tactics-shop-bar{flex-wrap:wrap}}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -8945,6 +8955,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.20.4',changes:['Added shop offer locks, trait progress, a stone arena bench, and TFT streak payouts.']},
  {version:'0.20.3',changes:['Redesigned the Poke Fight Tactics shop strip with tier odds, XP progress, and illustrated offers.']},
  {version:'0.20.2',changes:['Animated Poke Fight Tactics planning and bench sprites and added trait bonus tooltips.']},
  {version:'0.20.1',changes:['Animated Poke Fight Tactics battlers using directional Pokémon sprite sheets.']},
@@ -9152,4 +9163,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.20.3"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.20.4"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
