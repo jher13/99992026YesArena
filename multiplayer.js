@@ -3,6 +3,9 @@
  const multiplayerSource=document.currentScript.src;
  const dialog=byId('home-dialog');
  let generation=0, timer, active;
+ let pvpVersionContext=false;
+ window.isPvpVersionContext=()=>pvpVersionContext;
+ window.isCompletedRaid=()=>Boolean(active?.result && isCoop(active.mode));
  let arenaActors=new Map(), rosterRows=new Map(), displayedTurn=-1, recallSlotOnline=null;
  let frameAge=0, playbackClock=null, playbackDelay=0.25, snapshotArrival=0, arrivalGaps=[], visualSnapshots=[], soundsPlayed=new Set(), battleSnapshot=null;
  const commands={Attack:'a',Select:'s',Ranged:'r',Backline:'d',Melee:'m','Mid-Range':'c',Auto:'z',
@@ -450,6 +453,7 @@
   byId('speed').disabled=false;
   byId('reset').onclick=openMenu;
   originalMenu();
+  pvpVersionContext=false;
  };
  let closeBattleChannel=null;
  const stop=()=>{
@@ -461,6 +465,8 @@
  dialog.addEventListener('close',()=>{
   if(phase==='online-battle' && active?.result)openMenu();
   else if(phase!=='online-battle' && phase!=='raid-lobby')stop();
+  if(!pvpVersionContext)void checkGameVersion();
+  if(phase!=='online-battle')pvpVersionContext=false;
  });
  async function rpc(action,args={}) {
   const client=await cloudClient();
@@ -472,6 +478,7 @@
   byId('home-dialog-title').textContent=title;
   byId('home-dialog-content').replaceChildren(...nodes);
   if(!dialog.open) dialog.showModal();
+  void checkGameVersion();
  }
  function button(label,fn) {
   const b=element('button',label);
@@ -854,6 +861,7 @@
  }
  function lobby(coop) {
   stop();
+  pvpVersionContext=!coop;
   const title=coop?'Co-op':'PvP';
   const mode=select('Match type',[['unranked','Unranked'],['ranked','Ranked']]);
   let raidMode=Object.keys(megaRaidTiers)[0];
@@ -928,6 +936,7 @@
  function showMatch(title) {
   if(active.mode==='free_fight')title='Free Fight';
   stop();
+  pvpVersionContext=!isCoop(active.mode);
   const token=generation;
   const view=element('div');
   const leave=async()=>{
@@ -977,6 +986,7 @@
    showBattleSnapshot(packet,send);
    if(packet.result && !active.result) {
     active={...active,result:packet.result};
+    if(isCoop(active.mode))void checkGameVersion();
     clearTimeout(timer);
     closeBattleChannel?.();
     closeBattleChannel=null;
