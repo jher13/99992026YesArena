@@ -500,6 +500,7 @@
   showScreen('raid-lobby');
   if(dialog.open)dialog.close();
   const root=byId('raid-lobby');
+  root.classList.remove('has-room-chat');
   root.dataset.tier=String(tier);
   const top=element('div',null,'raid-room-top');
   const actions=element('div',null,'raid-room-actions');
@@ -507,14 +508,25 @@
   const roomInfo=element('div',null,'raid-room-info');
   roomInfo.append(element('span',visibility));
   if(code)roomInfo.append(element('small',code));
-  top.append(roomInfo,element('h2',title),actions);
+  const heading=element('h2',title);
+  const boss=Object.values(megaRaidTiers).find(entry=>entry.tier===tier && title.startsWith(entry.name));
+  if(boss) {
+   const types=element('span',null,'raid-boss-types');
+   for(const type of [dex[boss.species][1],boss.secondary]) {
+    const badge=element('span',type,'home-type-badge');
+    badge.style.setProperty('--type-color',moveColors[type] ?? '#b7c7dd');
+    types.append(badge);
+   }
+   heading.append(types);
+  }
+  top.append(roomInfo,heading,actions);
   const seats=element('div',null,'raid-room-seats');
   const controls=element('div',null,'raid-room-controls');
   const footer=element('div',null,'raid-room-footer');
   const start=element('div',null,'raid-room-start');
   footer.append(controls,start);
   root.replaceChildren(top,seats,footer);
-  return {root,seats,controls,start};
+  return {root,seats,controls,start,footer};
  }
  async function raidRpc(action,args) {
   const client=await cloudClient();
@@ -557,6 +569,52 @@
   if(tickets)rewards.push('+'+tickets+' Co-op '+(tickets===1?'ticket':'tickets'));
   return rewards;
  }
+ function mountRaidChat(room,id) {
+  room.root.classList.add('has-room-chat');
+  const chat=element('section',null,'raid-chat');
+  const log=element('div',null,'raid-chat-log');
+  log.setAttribute('role','log');
+  log.setAttribute('aria-label','Raid room messages');
+  const form=element('form');
+  const field=input('Message your team');
+  field.maxLength=240;
+  const send=element('button','Send');
+  send.type='submit';
+  const feedback=element('small');
+  feedback.setAttribute('role','status');
+  form.append(field,send);
+  chat.append(element('strong','Room chat'),log,form,feedback);
+  room.footer.append(chat);
+  let latest=0, pending=false;
+  async function sync(message=null) {
+   if(pending || !chat.isConnected)return;
+   pending=true;
+   try {
+    const client=await cloudClient();
+    const {data,error}=await client.rpc('arena_raid_chat',{room_id:id,message});
+    if(error)throw error;
+    if(!chat.isConnected)return;
+    if(message!==null)field.value='';
+    const messages=data ?? [];
+    if(messages.length && messages.at(-1).id>latest) {
+     latest=messages.at(-1).id;
+     log.replaceChildren(...messages.map(row=>element('p',row.sender+': '+row.body)));
+     log.scrollTop=log.scrollHeight;
+    }
+    feedback.textContent='';
+   }catch(error){feedback.textContent=error.message;}
+   finally{pending=false;send.disabled=false;}
+  }
+  form.onsubmit=event=>{
+   event.preventDefault();
+   const message=field.value.trim();
+   if(!message || pending)return;
+   send.disabled=true;
+   void sync(message);
+  };
+  void sync();
+  return sync;
+ }
  function showRaidSeats(initial) {
   stop();
   const token=generation;
@@ -569,6 +627,7 @@
   const status=element('p');
   const actions=element('div',null,'raid-left-actions');
   room.controls.append(status,actions);
+  const syncChat=mountRaidChat(room,match.id);
   const available=Object.keys(wildProgress.owned).filter(isAvailablePokemon).sort((a,b)=>a.localeCompare(b));
   let fighter=match.seats[match.ownSlot]?.pokemon ?? team[0] ?? available[0] ?? '';
   let kickMode=false;
@@ -753,7 +812,7 @@
     if(!busy){
      const next=await raidRpc('poll',{id:match.id});
      if(token!==generation)return;
-     if(!busy){match=next;draw();}
+     if(!busy){match=next;draw();if(!match.started && !match.result)void syncChat();}
     }
    }catch(error){status.textContent=error.message;}
    if(token===generation)timer=setTimeout(pollRaid,900);

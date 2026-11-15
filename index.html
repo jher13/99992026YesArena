@@ -370,6 +370,24 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .raid-pc-dialog::backdrop{background:#090d19bd}.raid-pc-dialog .detail-panel{margin:10px 0}
 @media(max-width:620px){.raid-room-top{grid-template-columns:1fr 1fr}.raid-room-top h2{grid-column:1/-1;grid-row:1}.raid-room-footer{grid-template-columns:1fr}.raid-room-start{justify-self:center}.raid-room-seats{min-height:140px}}
 .raid-room-controls{background:transparent;padding:0}.raid-room-info{display:grid;gap:4px;text-shadow:0 2px #101522}.raid-room-info small{max-width:100%;overflow-wrap:anywhere}
+
+.raid-boss-types{display:flex;justify-content:center;gap:5px;margin-top:5px;text-shadow:none}
+.raid-chat{justify-self:end;width:min(100%,280px);padding:8px;background:#172035ed;border:1px solid #7587ae;border-radius:10px;display:grid;gap:5px}
+.raid-chat-log{height:94px;overflow:auto;overflow-wrap:anywhere;font-size:13px}
+.raid-chat-log p{margin:0 0 4px}
+.raid-chat form{display:flex;gap:4px}
+.raid-chat input{flex:1;min-width:0}
+.raid-chat button,.raid-room-seats button{min-height:0;padding:4px 8px;font-size:12px}
+@media(min-width:701px){
+ .raid-lobby.has-room-chat{--raid-room-inset:clamp(14px,3vw,32px)}
+ .has-room-chat .raid-room-footer{margin-top:auto}
+ .has-room-chat .raid-room-seats{position:absolute;inset:auto var(--raid-room-inset) calc(var(--raid-room-inset) + 52px);height:42px;min-height:0;grid-auto-rows:42px;z-index:1;pointer-events:none}
+ .has-room-chat .raid-seat button{pointer-events:auto}
+ .has-room-chat .raid-seat{gap:2px}
+ .has-room-chat .raid-seat:nth-child(2),.has-room-chat .raid-seat:nth-child(5){transform:translateY(-108px)}
+ .has-room-chat .raid-seat:nth-child(1),.has-room-chat .raid-seat:nth-child(6){transform:translateY(-158px)}
+}
+@media(max-width:700px){.raid-chat{width:100%;justify-self:stretch}}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -8597,6 +8615,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.15.1',changes:['Lowered the raid lobby rings and added room chat and Mega boss type badges.']},
  {version:'0.15.0',changes:['Added Co-op ticket rewards, fixed raid lobby sprite placement, and added Pokédex appearance buttons. Raid bosses no longer exhaust.']},
  {version:'0.14.5',changes:['Fixed raid fighter confirmation, capped Pokédex previews, and reduced Mega Rayquaza to 2× size.']},
  {version:'0.14.4',changes:['Replaced the Co-op raid Pokémon dropdown with the PC grid, filters, and sorting.']},
@@ -8715,4 +8734,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.15.0"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.15.1-types"></script></html>
