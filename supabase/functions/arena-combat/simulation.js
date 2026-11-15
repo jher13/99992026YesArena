@@ -6,12 +6,12 @@ function onlineRandom() {
  onlineRandomState=(Math.imul(1664525,onlineRandomState)+1013904223)>>>0;
  return onlineRandomState/4294967296;
 }
-function onlineActor(name,entries,side,index,bossLevel,levelOverride,raid=null) {
+function onlineActor(name,entries,side,index,bossLevel,levelOverride,raid=null,copy=null) {
  if(!isAvailablePokemon(name)) throw Error('A Pokémon in this team is unavailable.');
  const progress=JSON.parse(entries['pokemon-arena-wild-progress'] ?? '{}') ?? {};
  const starter=JSON.parse(entries['pokemon-arena-starter'] ?? '{}') ?? {};
  const profileData=JSON.parse(entries['pokemon-arena-profiles'] ?? '{}') ?? {};
- let profile=profileData[dex[name][0]];
+ let profile=copy?.profile ?? profileData[dex[name][0]];
  if(raid) {
   const traitOrder=[0,1,2,3,5,4];
   let pid=natureNames.indexOf(raid.nature);
@@ -23,7 +23,7 @@ function onlineActor(name,entries,side,index,bossLevel,levelOverride,raid=null) 
  const fallback={ivs:Array(6).fill(bossLevel?23:0),evs:Array(6).fill(0),pid:0};
  savedMoves=JSON.parse(entries['pokemon-arena-moves'] ?? '{}') ?? {};
  delete loadouts[name];
- const moves=raid?legalLoadout(name,raid.moves,8):bossLevel?wildMoves(name):movesFor(name);
+ const moves=raid?legalLoadout(name,raid.moves,8):bossLevel?wildMoves(name):copy?legalLoadout(name,copy.moves ?? []):movesFor(name);
  const actor=unit(name,0,0,side!=='boss',level,{profile:validProfile(profile)?profile:fallback,moves});
  const held=progress.held?.[name];
  const equipped=Object.entries(progress.held ?? {}).filter(([,item])=>item===held).map(([holder])=>holder);
@@ -53,7 +53,7 @@ function initializeOnline(match) {
  const raidTeam=match.raid_seats?.flatMap((seat,index)=>{
   if(!seat?.pokemon)return [];
   const side=seat.substitute || seat.uid===match.host?'host':'raid:'+seat.uid;
-  return [onlineActor(seat.pokemon,seat.entries,side,index)];
+  return [onlineActor(seat.pokemon,seat.entries,side,index,undefined,undefined,null,seat.copy_data)];
  });
  const fighters=raidTeam ?? [...host,...guest];
  const bossLevel=Math.min(100,Math.ceil(Math.max(...fighters.map(a=>a.level))*1.1)+2);
@@ -145,7 +145,7 @@ function onlineSend(side,incomingId,fieldIndex) {
  placeOnline(slot,incoming);
  if(slot.transition.stage==='recall')onlineRecalls[side]=clock+recallDelay+ballDuration;
 }
-function onlineFrame(dt) {
+function onlineFrame(dt,raid=false) {
  refreshBerriesAfterKnockout();
  for(const slots of trainerFields)for(const slot of slots) {
   const transition=slot.transition;
@@ -176,6 +176,7 @@ function onlineFrame(dt) {
  const a=allies.some(actor=>actor.hp>0);
  const b=enemies.some(actor=>actor.hp>0);
  if(!a || !b)return a?'host':b?'guest':'draw';
+ if(raid)return clock>=raidTimeLimit-1e-8?'guest':null;
  if(clock>=battleTimeLimit-1e-8) {
   const result=compareTeamHP(allies,enemies);
   return result>0?'host':result<0?'guest':'draw';
@@ -201,7 +202,7 @@ export function simulateOnline(match,state,steps,command,side) {
   if(target!==undefined)actor.manualTarget=target;
  } else if(command)onlineSend(side,command.incoming,command.slot);
  let result=null;
- for(let i=0;i<steps && !result;i++)result=onlineFrame(1/60);
+ for(let i=0;i<steps && !result;i++)result=onlineFrame(1/60,isCoopMode(match.mode));
  if(isCoopMode(match.mode) && result && result!=='draw')result=result==='host'?'coop_win':'coop_loss';
  return {state:saveOnlineState(),result};
 }
