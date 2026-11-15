@@ -1,23 +1,48 @@
 (() => {
  const content=byId('event-content');
- const odds=[[100,0,0,0,0],[75,25,0,0,0],[55,35,10,0,0],[40,35,20,5,0],[28,34,25,11,2],[15,25,30,22,8]];
+ const odds=[[100,0,0,0,0],[75,25,0,0,0],[55,35,10,0,0],[40,35,20,5,0],[28,34,25,11,2],[15,25,30,22,8],[10,18,28,30,14],[6,12,22,35,25],[3,7,15,35,40]];
  const roster=[
   ['Bulbasaur','Charmander','Squirtle','Pikachu','Caterpie','Rattata','Pidgey','Zubat','Geodude','Sandshrew','Oddish','Abra','Machop','Gastly','Eevee'],
   ['Ivysaur','Charmeleon','Wartortle','Raichu','Pidgeotto','Golbat','Graveler','Machoke','Kadabra','Haunter','Vulpix','Psyduck','Magnemite','Growlithe'],
-  ['Ninetales','Golduck','Magneton','Arcanine','Clefable','Scyther','Pinsir','Rhydon','Hypno','Lapras','Jolteon','Vaporeon','Flareon'],
-  ['Venusaur','Charizard','Blastoise','Alakazam','Machamp','Golem','Gengar','Snorlax','Dragonite','Tyranitar','Gardevoir','Metagross'],
-  ['Regice','Regirock','Registeel','Articuno','Zapdos','Moltres','Mewtwo','Lugia','Ho-Oh','Rayquaza']
+  ['Ninetales','Golduck','Magneton','Arcanine','Clefable','Scyther','Pinsir','Rhydon','Hypno','Lapras','Jolteon','Vaporeon','Flareon','Leafeon','Glaceon'],
+  ['Venusaur','Charizard','Blastoise','Alakazam','Machamp','Golem','Gengar','Snorlax','Dragonite','Tyranitar','Gardevoir','Metagross','Espeon','Umbreon','Sylveon'],
+  ['Regice','Regirock','Registeel','Articuno','Zapdos','Moltres','Mewtwo','Lugia','Ho-Oh','Rayquaza','Raikou','Entei','Suicune','Kyogre','Groudon']
  ];
- const regis=new Set(['Regice','Regirock','Registeel']);
- const regiBoost={health:.18,power:.18,defense:24,mana:15,regen:2};
+ const roleProfiles={
+  Tank:{range:1,hp:1.22,attack:.85,defense:1.17,speed:.82},
+  Bruiser:{range:1,hp:1.08,attack:1.03,defense:1.02,speed:1},
+  Skirmisher:{range:1,hp:.9,attack:1.18,defense:.91,speed:1.15},
+  Caster:{range:3,hp:.88,attack:1.12,defense:.91,speed:.94},
+  Ranged:{range:4,hp:.91,attack:1.02,defense:.91,speed:1.03},
+  Vanguard:{range:2,hp:1.02,attack:1.02,defense:1.03,speed:.98}
+ };
+ const roleGroups={
+  Tank:['Squirtle','Wartortle','Blastoise','Geodude','Graveler','Golem','Magnemite','Magneton','Clefable','Lapras','Snorlax','Umbreon','Regice','Regirock','Registeel','Lugia','Suicune'],
+  Bruiser:['Charmander','Machop','Machoke','Machamp','Sandshrew','Arcanine','Rhydon','Pinsir','Flareon','Tyranitar','Metagross','Entei','Groudon'],
+  Skirmisher:['Rattata','Zubat','Golbat','Eevee','Pidgey','Pidgeotto','Scyther','Leafeon'],
+  Caster:['Abra','Kadabra','Alakazam','Gastly','Haunter','Gengar','Psyduck','Golduck','Hypno','Ninetales','Gardevoir','Espeon','Sylveon','Mewtwo'],
+  Ranged:['Pikachu','Raichu','Vulpix','Jolteon','Vaporeon','Glaceon','Articuno','Zapdos','Moltres','Raikou','Kyogre'],
+  Vanguard:['Bulbasaur','Ivysaur','Venusaur','Caterpie','Oddish','Growlithe','Charmeleon','Charizard','Dragonite','Ho-Oh','Rayquaza']
+ };
+ const roles=new Map(Object.entries(roleGroups).flatMap(([role,names])=>names.map(name=>[name,role])));
+ const rarities=new Map(roster.flatMap((names,index)=>names.map(name=>[name,index])));
+ const collectionTraits={
+  'ILoveEevee':{color:'#d8a9dd',members:['Eevee','Vaporeon','Jolteon','Flareon','Espeon','Umbreon','Leafeon','Glaceon','Sylveon'],
+   tiers:[[2,{health:.08,power:.08}],[4,{health:.14,power:.16,mana:10}],[6,{health:.22,power:.24,mana:15,regen:1}],[9,{health:.32,power:.36,mana:20,regen:2}]]},
+  'Regi-Trio':{color:'#b2c3cc',members:['Regice','Regirock','Registeel'],tiers:[[3,{health:.18,power:.18,defense:24,mana:15,regen:2}]]},
+  'Kanto Partners':{color:'#91cf81',members:['Venusaur','Charizard','Blastoise'],tiers:[[3,{health:.16,power:.16,defense:12}]]},
+  'Legendary Birds':{color:'#e4c268',members:['Articuno','Zapdos','Moltres'],tiers:[[3,{power:.20,mana:20,regen:1}]]},
+  'Legendary Beasts':{color:'#d69775',members:['Raikou','Entei','Suicune'],tiers:[[3,{health:.18,power:.18,mana:15}]]},
+  'Weather Trio':{color:'#76bcb2',members:['Kyogre','Groudon','Rayquaza'],tiers:[[1,{weather:1}],[2,{weather:2}],[3,{weather:3}]]}
+ };
  const benchLimit=9;
  const combatTicks=240, combatStepMs=115, combatDamageScale=.55;
  const traitHealthPerAlly=.06, traitPowerPerAlly=.10;
- const maxLevel=6;
+ const maxLevel=9;
  const cells=Array.from({length:56},(_,i)=>({x:i%7,y:Math.floor(i/7)}));
- const levels=[0,0,4,8,12,16,Infinity];
+ const levels=[0,0,4,8,12,16,24,32,40,Infinity];
  const makeTrainer=(name)=>({name,hp:100,gold:0,level:2,xp:0,units:[],shop:[],streak:0,items:[],augments:[],mods:{}});
- let run=null, planningTimer=null, dragged=null;
+ let run=null, planningTimer=null, dragged=null, draggedItem=null;
  const components={
   Claw:{power:.10}, Charm:{mana:12}, Berry:{health:.15}, Scale:{defense:16}
  };
@@ -29,23 +54,21 @@
   'Berry+Scale':['Berry Armor',{health:.25,defense:28}], 'Scale+Scale':['Dragon Armor',{defense:55}]
  };
  const augments=[
-  ['Regi Power Core','Regi-Trio members start with 20 extra mana once the trait is active.','regiMana',20],
-  ['Battle Focus','Your team gains 12% attack power.','power',.12],
-  ['Deep Reserves','Your team gains 15% max HP.','health',.15],
-  ['Quick Charge','Your team starts with 15 mana.','mana',15],
-  ['Reinforced Scales','Your team gains 18 defense.','defense',18],
-  ['Gold Rush','Gain 8 gold immediately.','gold',8],
-  ['Field Training','Gain 6 XP immediately.','xp',6]
+  ['Opening Guard','Each ally blocks the first damaging hit it takes.','guard'],
+  ['Echo Cast','Each ally’s first signature move hits again for 35% damage.','echo'],
+  ['Second Wind','Each ally heals 12% max HP the first time it falls below half health and survives.','secondWind'],
+  ['Overcharge','Each ally restores 10 mana after its first signature move.','overcharge'],
+  ['Momentum','Each ally heals 8% max HP whenever it knocks out an opponent.','momentum'],
+  ['Weather Surge','While Weather Trio is active, its storm deals 1 extra damage each second.','weatherSurge']
  ];
  const randomComponent=()=>drawRogueChoices(Object.keys(components),1)[0];
  const neutralRound=round=>round<=3 || round>=10 && (round-10)%7===0;
  const stageLabel=round=>round<=3?'1-'+round:(2+Math.floor((round-4)/7))+'-'+(1+(round-4)%7);
  function grantAugment(trainer,augment){
-  const [label,,stat,value]=augment;
+  const [label,,effect]=augment;
+  if(trainer.augments.includes(label))return;
   trainer.augments.push(label);
-  if(stat==='gold')trainer.gold+=value;
-  else if(stat==='xp')xp(trainer,value);
-  else trainer.mods[stat]=(trainer.mods[stat] ?? 0)+value;
+  trainer.mods[effect]=true;
  }
  function equip(trainer,unit,item){
   const items=unit.items ??= [];
@@ -58,10 +81,43 @@
   }else items.push(item);
   return true;
  }
+ function itemBonuses(item){
+  return components[item] ?? Object.values(recipes).find(entry=>entry[0]===item)?.[1] ?? {};
+ }
+ function describeBonuses(bonuses){
+  return Object.entries(bonuses).map(([stat,value])=>{
+   if(stat==='health')return '+'+Math.round(value*100)+'% max HP';
+   if(stat==='power')return '+'+Math.round(value*100)+'% attack power';
+   if(stat==='regen')return value+' mana per second';
+   if(stat==='weather')return value+' damage per second to all enemies';
+   return '+'+value+(stat==='mana'?' starting mana':' defense');
+  }).join(' · ');
+ }
+ function itemIcon(item){
+  const icon=element('span',null,'tactics-item-slot');
+  const index=itemSprites.indexOf(item);
+  if(index>=0){
+   const sprite=element('span',null,'tactics-item-sprite');
+   sprite.style.setProperty('--item-index',String(index));
+   sprite.setAttribute('aria-hidden','true');
+   icon.append(sprite);
+  }
+  if(item){
+   icon.title=item+' · '+describeBonuses(itemBonuses(item));
+   icon.setAttribute('aria-label',icon.title);
+  }
+  return icon;
+ }
+ function equipFromInventory(player,unit,index){
+  if(run.busy || !player.units.includes(unit) || !player.items[index])return;
+  if(equip(player,unit,player.items[index])){
+   player.items.splice(index,1);render();
+  }
+ }
  function itemMods(unit,trainer){
   const mods={...trainer.mods};
   for(const item of unit.items ?? []){
-   const bonuses=components[item] ?? Object.values(recipes).find(entry=>entry[0]===item)?.[1] ?? {};
+   const bonuses=itemBonuses(item);
    for(const [stat,value] of Object.entries(bonuses))mods[stat]=(mods[stat] ?? 0)+value;
   }
   return mods;
@@ -77,8 +133,8 @@
   const living=run.trainers.filter(t=>t.hp>0);
   if(!player.hp || living.length===1)return;
   if([4,12,19].includes(run.round)){
-   for(const ai of living.slice(1))grantAugment(ai,drawRogueChoices(augments,1)[0]);
-   run.choice={kind:'augment',offers:drawRogueChoices(augments,3)};
+   for(const ai of living.slice(1))grantAugment(ai,drawRogueChoices(augments.filter(([label])=>!ai.augments.includes(label)),1)[0]);
+   run.choice={kind:'augment',offers:drawRogueChoices(augments.filter(([label])=>!player.augments.includes(label)),3)};
   }else if(run.round>=7 && (run.round-7)%7===0){
    const offers=[];
    for(let i=0;i<living.length+2;i++){
@@ -107,6 +163,7 @@
   const grid=element('div',null,'shop-grid');
   for(const [index,offer] of choice.offers.entries()){
    const tile=choice.kind==='carousel'?card(offer,offer.item):element('div',null,'bag-item');
+   if(choice.kind==='carousel')tile.append(itemIcon(offer.item));
    if(choice.kind==='augment'){tile.classList.add('tactics-augment-card');tile.append(element('span',['✦','◆','✹'][index],'tactics-augment-icon'),element('strong',offer[0]),element('small',offer[1]));}
    tile.append(button('Choose',()=>{
     if(choice.kind==='augment')grantAugment(player,offer);
@@ -212,16 +269,14 @@
   const items=element('div',null,'tactics-stat-items');
   for(let i=0;i<3;i++){
    const item=unit.items?.[i];
-   const slot=element('span',item?itemGlyph(item):'','tactics-item-slot');
-   if(item)slot.title=item;
-   items.append(slot);
+   items.append(itemIcon(item));
   }
   const numbers=element('div',null,'tactics-stat-numbers');
-  for(const [label,value] of [['Attack',Math.round(stats.power)],['Defense',stats.defense],['Range',stats.range]]){
+  for(const [label,value] of [['ATK',Math.round(stats.attack)],['S.ATK',Math.round(stats.specialAttack)],['DEF',stats.defense],['S.DEF',stats.specialDefense],['Crit Chance',Math.round(stats.critChance*100)+'%'],['Crit Damage',Math.round(stats.critDamage*100)+'%'],['ATK Speed',stats.attackSpeed.toFixed(2)+'/s']]){
    const cell=element('span');cell.append(element('small',label),element('strong',String(value)));numbers.append(cell);
   }
   details.append(art,title,meter(stats.hp,stats.max,'HP','is-hp'),meter(stats.mana,60,'Mana','is-mana'),
-   element('p',stats.move ?? 'No signature move'),items,numbers);
+   element('p',(stats.move ?? 'No signature move')+' · '+stats.role+' · Range '+stats.range),items,numbers);
   return details;
  }
  function inspectUnit(unit){
@@ -235,7 +290,7 @@
   let hoverCard;
   const hide=()=>{hoverCard?.remove();hoverCard=null;};
   const show=()=>{
-   if(dragged || hoverCard)return;
+   if(dragged || draggedItem!==null || hoverCard)return;
    hoverCard=statCard(unit);
    hoverCard.classList.add('is-hover');
    content.append(hoverCard);
@@ -260,13 +315,14 @@
   visual.append(idlePokemonPortrait(unit.name,null,null,true,direction),element('small','★'.repeat(unit.star)));
   return visual;
  }
- function itemGlyph(item){return ({Claw:'✦',Charm:'✧',Berry:'●',Scale:'◆'})[item] ?? '✹';}
- function dropUnit(tile,callback){
-  tile.ondragover=event=>{if(dragged)event.preventDefault();};
+ const itemSprites=[...Object.keys(components),...Object.values(recipes).map(([name])=>name)];
+ function dropUnit(tile,callback,unit){
+  tile.ondragover=event=>{if(dragged || (unit && draggedItem!==null))event.preventDefault();};
   tile.ondrop=event=>{
    event.preventDefault();
-   if(dragged)callback(dragged);
-   dragged=null;
+   if(unit && draggedItem!==null)equipFromInventory(run.trainers[0],unit,draggedItem);
+   else if(dragged)callback(dragged);
+   dragged=null;draggedItem=null;
   };
  }
  function roll(trainer){
@@ -341,8 +397,9 @@
  }
  function traits(units){
   const counts={};
-  for(const unit of units)for(const type of dex[unit.name].slice(1,3).filter(Boolean))counts[type]=(counts[type] ?? 0)+1;
-  counts['Regi-Trio']=new Set(units.map(unit=>unit.name).filter(name=>regis.has(name))).size;
+  const species=new Set(units.map(unit=>unit.name));
+  for(const name of species)for(const type of dex[name].slice(1,3).filter(Boolean))counts[type]=(counts[type] ?? 0)+1;
+  for(const [label,trait] of Object.entries(collectionTraits))counts[label]=trait.members.filter(name=>species.has(name)).length;
   return counts;
  }
  const battlerCanvases=new WeakMap();
@@ -404,7 +461,7 @@
    tile.setAttribute('aria-label',unit?unit.name+' '+unit.star+' star':'Empty hex '+(x+1)+', '+(y+1));
    const center=combatPosition(position,false);
    placeOnField(tile,center.x,center.y);
-   if(!scouting && y>=4)dropUnit(tile,unit=>moveUnit(player,position,unit));
+   if(!scouting && y>=4)dropUnit(tile,moving=>moveUnit(player,position,moving),unit);
    if(unit){
     const visual=unitVisual(unit,unit.opponent?0:4);
     unitControls(tile,unit,!scouting,visual);
@@ -445,43 +502,59 @@
   header.append(timeline);
   return header;
  }
- function battleLayout(player,units,rival=null){
+ function battleLayout(player,units,rival=null,traitTrainer=null){
+  const inspected=traitTrainer ?? run.scout ?? player;
   const layout=element('div',null,'tactics-layout'+(rival?' is-combat':''));
   const sidebar=element('aside',null,'tactics-sidebar');
   sidebar.classList.add('tactics-loadout');
   const inventory=element('div',null,'tactics-item-rail');
   inventory.setAttribute('aria-label','Item inventory');
-  for(let i=0;i<Math.max(9,player.items.length);i++){
-   const item=player.items[i];
-   const slot=element('span',item?itemGlyph(item):'','tactics-item-slot');
-   if(item){slot.title=item;slot.tabIndex=0;slot.setAttribute('aria-label',item);}
+  for(let i=0;i<Math.max(9,inspected.items.length);i++){
+   const item=inspected.items[i];
+   const slot=itemIcon(item);
+   if(item){
+    slot.tabIndex=0;
+    if(!rival && !run.scout){
+     slot.draggable=true;
+     slot.ondragstart=event=>{
+      draggedItem=i;event.dataTransfer.setData('text/plain',item);
+     };
+     slot.ondragend=()=>{draggedItem=null;};
+    }
+   }
    inventory.append(slot);
   }
   const traitList=element('div',null,'tactics-trait-list');
-  traitList.append(heading('Traits'));
+  traitList.append(heading(inspected===run.trainers[0]?'Traits':inspected.name+' traits'));
   sidebar.append(inventory,traitList);
-  const types=Object.entries(traits(field(player))).filter(([,count])=>count>0).sort((a,b)=>b[1]-a[1]);
+  const types=Object.entries(traits(field(inspected))).filter(([,count])=>count>0).sort((a,b)=>b[1]-a[1]);
   for(const [type,count] of types){
-   const isRegi=type==='Regi-Trio';
-   const active=count>=(isRegi?3:2);
+   const group=collectionTraits[type];
+   const tier=group?.tiers.findLast(([threshold])=>count>=threshold);
+   const active=group?Boolean(tier):count>=2;
    const entry=element('div',null,'tactics-trait'+(active?' is-active':''));
    const badge=element('span',type,'home-type-badge');
-   badge.style.setProperty('--type-color',moveColors[type] ?? '#b7c7dd');
+   badge.style.setProperty('--type-color',group?.color ?? moveColors[type] ?? '#b7c7dd');
    const strength=Math.max(0,count-1);
    const bonus=amount=>Math.round(100*amount*strength);
-   const description=count<2?'Inactive. Deploy 2 '+type+' Pokémon to gain +6% max HP and +10% attack power.':
-    type+' Pokémon gain +'+bonus(traitHealthPerAlly)+'% max HP and +'+bonus(traitPowerPerAlly)+'% attack power.';
-   const next=isRegi?(active?null:3):count<2?2:count<maxLevel?count+1:null;
+   const nextTier=group?.tiers.find(([threshold])=>threshold>count);
+   const next=group?nextTier?.[0]:count<2?2:count<maxLevel?count+1:null;
    const progress=next?count+' / '+next:count+' · Max';
    const needed=next?' Next tier: '+(next-count)+' more.':' Maximum tier reached.';
-   const tip=element('span',(isRegi?'Deploy Regice, Regirock, and Registeel. Active trio: +18% max HP and attack, +24 defense, +15 starting mana, and 2 mana per second.':description+' Only the strongest active type bonus applies to a Pokémon.')+needed,'tactics-trait-tooltip');
+   const description=group?
+    'Members: '+group.members.join(', ')+'. '+(tier?(type==='Weather Trio'?'Field effect: ':'Current member bonus: ')+describeBonuses(tier[1])+'.':'Inactive.')+
+     (nextTier?' At '+nextTier[0]+': '+describeBonuses(nextTier[1])+'.':''):
+    (active?type+' Pokémon gain +'+bonus(traitHealthPerAlly)+'% max HP and +'+bonus(traitPowerPerAlly)+'% attack power.':
+     'Inactive. Deploy 2 '+type+' Pokémon to gain +6% max HP and +10% attack power.')+
+    ' Only the strongest active type bonus applies to a Pokémon.';
+   const tip=element('span',description+needed,'tactics-trait-tooltip');
    entry.tabIndex=0;
    entry.setAttribute('aria-label',type+' trait. '+tip.textContent);
    entry.append(badge,element('span',progress),tip);
    traitList.append(entry);
   }
   if(!types.length)traitList.append(element('small','No active traits.'));
-  if(player.augments.length)traitList.append(heading('Augments'),element('small',player.augments.join(' · ')));
+  if(inspected.augments.length)traitList.append(heading('Augments'),element('small',inspected.augments.join(' · ')));
   const middle=element('div',null,'tactics-center');
   const arena=element('div',null,'tactics-field');
   if(!rival){
@@ -521,7 +594,7 @@
     if(unit)unit.position=draggedUnit.position;
     else if(benched.length>=benchLimit)return;
     draggedUnit.position=null;run.selected=null;render();
-   });
+   },unit);
    tile.setAttribute('aria-label',unit?'Select '+unit.name:'Empty bench slot');
    if(unit){
     const visual=unitVisual(unit,0);
@@ -628,7 +701,7 @@
     player.units=player.units.filter(unit=>unit!==selected);run.selected=null;render();
    }));
    player.items.forEach((item,index)=>controls.append(button('Equip '+item,()=>{
-    if(equip(player,selected,item)){player.items.splice(index,1);render();}
+    equipFromInventory(player,selected,index);
    })));
    if(selected.position!==null)controls.append(button('Move to bench',()=>{
     selected.position=null;run.selected=null;render();
@@ -649,7 +722,7 @@
   }
   trainer.units.sort((a,b)=>b.star-a.star || cost(b.name)-cost(a.name));
   trainer.units.forEach((unit,i)=>{
-   const ranged=(dexStats[dex[unit.name][0]-1][5]>=dexStats[dex[unit.name][0]-1][1]);
+   const ranged=roleProfiles[roles.get(unit.name)]?.range>=3;
    unit.position=i<trainer.level?cells[(ranged?42:28)+i]:null;
   });
  }
@@ -665,21 +738,58 @@
   const special=base[5]>=base[1];
   const bonus=Math.max(0,...dex[unit.name].slice(1,3).map(t=>(types[t] ?? 0)-1));
   const mods=itemMods(unit,trainer);
-  const trio=types['Regi-Trio']===3 && regis.has(unit.name)?regiBoost:{};
-  mods.health=(mods.health ?? 0)+(trio.health ?? 0);
-  mods.power=(mods.power ?? 0)+(trio.power ?? 0);
-  mods.defense=(mods.defense ?? 0)+(trio.defense ?? 0);
-  mods.mana=(mods.mana ?? 0)+(trio.mana ?? 0)+(trio.regen?(mods.regiMana ?? 0):0);
-  const hp=Math.round((base[0]*4+180)*1.65**(unit.star-1)*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
+  for(const [label,group] of Object.entries(collectionTraits)){
+   if(!group.members.includes(unit.name))continue;
+   const tier=group.tiers.findLast(([threshold])=>types[label]>=threshold);
+   if(!tier)continue;
+   for(const [stat,value] of Object.entries(tier[1]))mods[stat]=(mods[stat] ?? 0)+value;
+
+  }
+  const role=roles.get(unit.name) ?? (special?'Caster':'Bruiser');
+  const profile=roleProfiles[role];
+  const rarity=rarities.get(unit.name) ?? 0;
+  const hp=Math.round((base[0]*4+180)*profile.hp*(1+rarity*.045)*1.65**(unit.star-1)*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
   const move=legalMoves(unit.name).filter(m=>moveCatalog[m]?.[1]>0 && !moveCatalog[m][4])
    .sort((a,b)=>Number(moveCatalog[b][0]===dex[unit.name][1])-Number(moveCatalog[a][0]===dex[unit.name][1]) || moveCatalog[b][1]-moveCatalog[a][1])[0];
-  return {...unit,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),range:special?3:1,defense:base[special?4:2]+(mods.defense ?? 0),
-   direction:opponent?0:4, power:(Math.max(base[1],base[5])*.35+12)*1.5**(unit.star-1)*(1+bonus*traitPowerPerAlly+(mods.power ?? 0)),move,wait:0,manaRegen:trio.regen ?? 0,
+  const attackScale=profile.attack*(1+rarity*.055)*1.5**(unit.star-1)*(1+bonus*traitPowerPerAlly+(mods.power ?? 0));
+  const attackSpeed=Math.max(2.3,Math.min(5.4,(2.75+base[3]*.013)*profile.speed+rarity*.055));
+  const defenseScale=profile.defense*(1+rarity*.035)*1.13**(unit.star-1);
+  return {...unit,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),role,range:profile.range,attackSpeed,
+   attack:(base[1]*.35+12)*attackScale,specialAttack:(base[5]*.35+12)*attackScale,
+   defense:Math.round(base[2]*defenseScale+(mods.defense ?? 0)),specialDefense:Math.round(base[4]*defenseScale+(mods.defense ?? 0)),
+   critChance:.10,critDamage:1.5,direction:opponent?0:4,move,wait:0,manaRegen:mods.regen ?? 0,
+   guard:mods.guard,echo:mods.echo,secondWind:mods.secondWind,overcharge:mods.overcharge,momentum:mods.momentum,
    position:combatPosition(unit.position,opponent)};
  }
+ const battleEffects=new WeakMap();
  function battle(a,b){
-  return [...field(a).map(unit=>fighter(unit,false,traits(field(a)),a)),
-   ...field(b).map(unit=>fighter(unit,true,traits(field(b)),b))];
+  const first=field(a),second=field(b), firstTraits=traits(first),secondTraits=traits(second);
+  const units=[...first.map(unit=>fighter(unit,false,firstTraits,a)),...second.map(unit=>fighter(unit,true,secondTraits,b))];
+  const storm=(trainer,counts)=>(counts['Weather Trio'] ?? 0)+(counts['Weather Trio'] && trainer.mods.weatherSurge?1:0);
+  battleEffects.set(units,{elapsed:0,weather:[storm(a,firstTraits),storm(b,secondTraits)]});
+  return units;
+ }
+ function tickWeather(units){
+  const effects=battleEffects.get(units);
+  if(!effects)return;
+  effects.elapsed+=combatStepMs;
+  if(effects.elapsed<1000)return;
+  effects.elapsed-=1000;
+  const alive=[units.some(unit=>unit.hp>0 && !unit.opponent),units.some(unit=>unit.hp>0 && unit.opponent)];
+  for(const unit of units){
+   const source=unit.opponent?0:1;
+   if(unit.hp>0 && alive[source])unit.hp=Math.max(0,unit.hp-effects.weather[source]);
+  }
+ }
+ function receiveDamage(target,damage){
+  if(damage<=0 || target.hp<=0)return;
+  if(target.guard){target.guard=false;return;}
+  target.hp=Math.max(0,target.hp-damage);
+  if(target.secondWind && target.hp>0 && target.hp<target.max/2){
+   target.secondWind=false;
+   target.hp=Math.min(target.max,target.hp+Math.max(1,Math.round(target.max*.12)));
+  }
+  target.mana=Math.min(60,target.mana+5);
  }
  function nextStep(unit,target,units){
   const {x,y}=unit.position;
@@ -694,7 +804,15 @@
   }
   return null;
  }
+ function elementalMultiplier(type,types){
+  const row=typeChart[type] ?? {};
+  return types.reduce((multiplier,defense)=>{
+   const factor=row[defense] ?? 1;
+   return multiplier*(factor>1?1.5:factor);
+  },1);
+ }
  function tick(units,now=null){
+  tickWeather(units);
   for(const unit of units){
    if(unit.hp<=0)continue;
    unit.mana=Math.min(60,unit.mana+unit.manaRegen*combatStepMs/1000);
@@ -702,7 +820,8 @@
     .sort((a,b)=>distance(unit.position,a.position)-distance(unit.position,b.position) || a.hp-b.hp);
    const target=targets[0];
    if(!target)continue;
-   if(unit.wait>0){unit.wait--;continue;}
+   unit.wait=Math.max(-combatStepMs,unit.wait-combatStepMs);
+   if(unit.wait>0)continue;
    const gap=distance(unit.position,target.position);
    if(gap>unit.range){
     const step=nextStep(unit,target,units);
@@ -715,18 +834,28 @@
    }
    const cast=unit.mana>=60 && unit.move;
    const type=cast?moveCatalog[unit.move][0]:dex[unit.name][1];
-   const row=typeChart[type] ?? {};
-   const match=dex[target.name].slice(1,3).reduce((scale,t)=>scale*(row[t] ?? 1),1);
-   const damage=Math.max(1,Math.round(combatDamageScale*unit.power*(cast?1.8+moveCatalog[unit.move][1]/120:1)*Math.max(.35,match)*100/(100+target.defense)));
+   const match=elementalMultiplier(type,dex[target.name].slice(1,3));
+   const special=cast && moveReferences[unit.move]?.[2]==='Special';
+   const offense=special?unit.specialAttack:unit.attack;
+   const defense=special?target.specialDefense:target.defense;
+   const critical=Math.random()<unit.critChance?unit.critDamage:1;
+   const damage=match===0?0:Math.max(1,Math.round(combatDamageScale*offense*(cast?1.8+moveCatalog[unit.move][1]/120:1)*match*critical*100/(100+defense)));
    if(now!==null){
     setBattlerMotion(unit,target.position,cast || unit.range>1?'attack':'lunge',now);
     if(!target.animation || now-target.animation.started>=target.animation.duration || target.animation.motion==='walk')
      setBattlerMotion(target,unit.position,'hit',now);
    }
-   target.hp=Math.max(0,target.hp-damage);
-   target.mana=Math.min(60,target.mana+5);
-   unit.mana=cast?0:Math.min(60,unit.mana+15);
-   unit.wait=1;
+   receiveDamage(target,damage);
+   if(cast && unit.echo){
+    unit.echo=false;
+    if(damage)receiveDamage(target,Math.max(1,Math.round(damage*.35)));
+   }
+   if(target.hp<=0 && unit.momentum)unit.hp=Math.min(unit.max,unit.hp+Math.max(1,Math.round(unit.max*.08)));
+   if(cast){
+    unit.mana=unit.overcharge?10:0;
+    unit.overcharge=false;
+   }else unit.mana=Math.min(60,unit.mana+15);
+   unit.wait+=1000/unit.attackSpeed;
   }
  }
  function outcome(units){
@@ -765,6 +894,10 @@
    hp.setAttribute('aria-label',unit.name+' health');
    mana.setAttribute('aria-label',unit.name+' mana');
    bars.append(hp,mana);
+   if(unit.items?.length){
+    const equipped=element('div',null,'tactics-live-items');
+    equipped.append(...unit.items.map(itemIcon));node.append(equipped);
+   }
    node.append(bars,battlerSprite(unit),element('span','★'.repeat(unit.star),'tactics-combat-stars'));
    unitControls(node,unit,false);
    layer.append(node);
@@ -809,13 +942,13 @@
    for(let i=0;i+1<opponents.length;i+=2)addMatch(opponents[i],opponents[i+1]);
    if(opponents.length%2)addMatch(opponents.at(-1),ghost,true);
   }
-  let watched, view, timer, frame=0;
+  let watched, watchedTrainer, view, timer, frame=0;
   run.spectate=trainer=>{
    const match=matches.find(entry=>entry.a===trainer || entry.b===trainer);
-   if(!match || match===watched)return;
-   watched=match;
+   if(!match || match===watched && trainer===watchedTrainer)return;
+   watched=match;watchedTrainer=trainer;
    const opponent=match.b.name ?? 'Mirror team';
-   const battleView=battleLayout(match.a,match.units,match.a.name+' vs '+opponent);
+   const battleView=battleLayout(match.a,match.units,match.a.name+' vs '+opponent,trainer);
    timer=battleView.timer;
    view=combatLayer(match.units);
    battleView.arena.insertBefore(view.layer,battleView.arena.querySelector('.tactics-bench'));
