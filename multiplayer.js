@@ -522,6 +522,23 @@
   if(error)throw error;
   return data;
  }
+ let ticketAccount=null, ticketBalance=null;
+ window.refreshCoopTickets=async()=>{
+  const account=cloudAccount;
+  const display=byId('toolbar-tickets');
+  if(ticketAccount!==account){ticketAccount=account;ticketBalance=null;}
+  if(!account){display.textContent='0';return 0;}
+  const client=await cloudClient();
+  const {data,error}=await client.rpc('arena_coop_ticket_balance');
+  if(error)throw error;
+  if(cloudAccount!==account)return 0;
+  const total=Number(data) || 0;
+  const earned=ticketBalance===null?0:Math.max(0,total-ticketBalance);
+  ticketBalance=total;
+  display.textContent=total.toLocaleString();
+  display.setAttribute('aria-label',total.toLocaleString()+' Co-op tickets');
+  return earned;
+ };
  async function collectMegaRaidRewards() {
   const client=await cloudClient();
   const {data,error}=await client.rpc('arena_mega_raid_clears');
@@ -536,6 +553,8 @@
    rewards.push('Tier '+tier.tier+' first clear · '+tier.masterBalls+' Master Balls · '+tier.coins.toLocaleString()+' coins');
   }
   if(rewards.length)saveWildProgress();
+  const tickets=await window.refreshCoopTickets();
+  if(tickets)rewards.push('+'+tickets+' Co-op '+(tickets===1?'ticket':'tickets'));
   return rewards;
  }
  function showRaidSeats(initial) {
@@ -679,7 +698,7 @@
     const tile=element('div',null,'raid-seat');
     const pad=element('div',null,'raid-seat-pad');
     const shown=index===match.ownSlot?fighter:seat?.pokemon;
-    if(shown)pad.append(idlePokemonPortrait(shown));
+    if(shown)pad.append(idlePokemonPortrait(shown,null,(index===match.ownSlot || seat?.substitute) && profileFor(shown).shiny?spriteVariants(shown).shiny:null,true));
     tile.append(pad,element('strong',seat?.name ?? 'Open seat'),
      element('small',shown ? shown+(seat?.ready?' · Ready':' · Not ready') : seat?'Not ready':''));
     if(kickMode && match.side==='host' && seat?.uid && index!==match.ownSlot)
@@ -926,12 +945,12 @@
       stats.push(chart);
      }
      if(tier && m.result==='coop_win') {
-      const reward=element('p','Checking first-clear rewards…');
+      const reward=element('p','Checking raid rewards…');
       stats.unshift(reward);
       const check=()=>collectMegaRaidRewards().then(rewards=>{
-       reward.textContent=rewards.join(' • ') || 'First-clear rewards already collected.';
+       reward.textContent=rewards.join(' • ') || 'No new raid rewards.';
       }).catch(()=>{
-       reward.replaceChildren(button('Retry first-clear reward',check));
+       reward.replaceChildren(button('Retry raid rewards',check));
       });
       check();
      }

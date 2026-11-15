@@ -2,6 +2,7 @@
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pokemon Arena</title>
 <style>
+.currency-pixel{width:16px;height:16px;vertical-align:-3px;margin-right:6px;shape-rendering:crispEdges}
 .dex-art canvas.dex-preview{width:auto;height:auto;max-width:min(100%,120px);max-height:120px;object-fit:contain;transform:none}
 *{box-sizing:border-box}body{margin:0;background:#101b18;color:#eff6e9;font:16px system-ui}main{max-width:1060px;margin:auto;padding:24px}header,.toolbar,.choices{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}h1{font-size:clamp(32px,6vw,62px);letter-spacing:-.06em;margin:0}p{color:#c1d5c7}canvas{width:100%;display:block;background:#1c372d;border:1px solid #547869;border-radius:16px;touch-action:manipulation}button{font:inherit;background:#244438;color:inherit;border:1px solid #547869;border-radius:9px;padding:10px 15px;cursor:pointer}button:hover,button[aria-pressed=true]{border-color:#d5ed95;background:#35594a}button:disabled{opacity:.55;cursor:default}#start{background:#d5ed95;color:#142617;font-weight:750}section{margin:14px 0}.choices{justify-content:flex-start}.choices button{text-align:left}.choices small{display:block;color:#c1d5c7;margin-top:4px}#status{min-height:1.5em}#wave{color:#d5ed95;font-weight:700}
 
@@ -350,12 +351,12 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .raid-room-controls p{margin:0}.raid-room-controls input{max-width:100%}
 #raid-boss-hud{display:grid;gap:4px;text-align:center;margin:0 auto 8px;width:min(100%,960px);color:#ffe3da}
 #raid-boss-hp{width:100%;height:20px;accent-color:#ee4d57}
-.raid-room-seats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:end}
+.raid-room-seats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:start;align-content:center;grid-auto-rows:175px}
 .raid-seat{min-width:0;display:grid;justify-items:center;gap:5px}.raid-seat::before{display:none}
 .raid-seat:nth-child(1),.raid-seat:nth-child(6){transform:translateY(-88px)}
 .raid-seat:nth-child(2),.raid-seat:nth-child(5){transform:translateY(-38px)}
 .raid-seat-pad{width:min(78px,100%);height:42px;display:grid;place-items:center;border:2px solid #d9c6f5;border-radius:50%;background:#28253fc9;box-shadow:0 0 18px #bf8cea77}
-.raid-seat-pad canvas{border:0;background:transparent}.raid-seat select{width:100%;min-width:0}
+.raid-seat-pad{position:relative}.raid-seat-pad canvas{position:absolute;bottom:50%;width:100%;height:auto;max-height:112px;object-fit:contain;object-position:bottom;image-rendering:pixelated;border:0;background:transparent}.raid-seat select{width:100%;min-width:0}
 @media(max-width:700px){.raid-room-seats{grid-template-columns:repeat(3,minmax(0,1fr))}.raid-room-seats .raid-seat{transform:none}}
 .raid-lobby[data-tier="1"]{background-image:url('./assets/raid-tier-1.webp')}
 .raid-lobby[data-tier="2"]{background-image:url('./assets/raid-tier-2.webp')}
@@ -421,7 +422,8 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 <div id="knockout-notice" role="alert" hidden>All your pokemons have been knocked out!</div>
 <div class="home-title"><h1>Pokemon Arena</h1><p data-game-subtitle>AUTO BATTLER</p></div>
 <div class="home-toolbar" aria-label="Player controls">
-<span class="home-pill" id="toolbar-coins"></span>
+<span class="home-pill" title="Coins"><svg class="currency-pixel" viewBox="0 0 12 12" aria-hidden="true"><path fill="#694020" d="M3 0h6v1h2v2h1v6h-1v2H9v1H3v-1H1V9H0V3h1V1h2z"/><path fill="#efad3c" d="M3 1h6v1h2v7H9v2H3V9H1V3h2z"/><path fill="#ffe476" d="M4 2h4v1h2v5H8v2H4V8H2V4h2z"/><path fill="#ca7b28" d="M5 4h2v4H5z"/></svg><span id="toolbar-coins"></span></span>
+<span class="home-pill" title="Co-op tickets"><svg class="currency-pixel" viewBox="0 0 12 12" aria-hidden="true"><path fill="#2f2550" d="M0 2h12v3h-1v2h1v3H0V7h1V5H0z"/><path fill="#b387f5" d="M1 3h10v1h-1v4h1v1H1V8h1V4H1z"/><path fill="#f1dafa" d="M3 4h4v4H3zM8 4h1v1H8zM8 7h1v1H8z"/></svg><span id="toolbar-tickets">0</span></span>
 <button id="toolbar-profile"></button>
 <button id="home-bag" type="button" aria-label="Open Item Bag" title="Item Bag">
  <span class="pixel-bag" aria-hidden="true"></span>
@@ -3864,21 +3866,26 @@ function renderCatalogDetail(name) {
   if(shiny) options.set(label+' · Shiny',shiny);
  }
  if(options.size>1) {
-  const picker=element('select');
+  const picker=element('div',null,'menu-actions');
   picker.setAttribute('aria-label','Pokémon appearance');
-  for(const label of options.keys()) picker.append(element('option',label));
   const credit=element('a','Sprite credits');
   credit.target='_blank';
   credit.rel='noopener';
-  const preview=()=>{
-   const variant=options.get(picker.value);
+  const preview=label=>{
+   const variant=options.get(label);
+   for(const button of picker.children)button.setAttribute('aria-pressed',String(button.textContent===label));
    art.replaceChildren(idlePokemonPortrait(name,'dex-preview',variant,true));
    credit.hidden=!variant;
-   if(variant) credit.href='./assets/variant-atlases/credits.txt';
+   if(variant)credit.href='./assets/variant-atlases/credits.txt';
   };
-  picker.onchange=preview;
+  for(const label of options.keys()) {
+   const button=element('button',label);
+   button.type='button';
+   button.onclick=()=>preview(label);
+   picker.append(button);
+  }
   status.append(picker,credit);
-  preview();
+  preview('Standard');
  }
  const stats=element('dl',null,'dex-base-stats');
  dexStats[dex[name][0]-1].forEach((value,index)=>{
@@ -4368,7 +4375,9 @@ function openMenu() {
  if(starterSave) profileSelect.selectedOptions[0].textContent=starterSave.ign;
  byId('home-badge-count').textContent=progressText();
  byId('home-coins').textContent=wildProgress.coins.toLocaleString()+' coins';
- byId('toolbar-coins').textContent=byId('home-coins').textContent;
+ byId('toolbar-coins').textContent=wildProgress.coins.toLocaleString();
+ byId('toolbar-coins').setAttribute('aria-label',wildProgress.coins.toLocaleString()+' coins');
+ window.refreshCoopTickets?.().catch(()=>{});
  byId('toolbar-profile').textContent='Lv. '+trainerProfileLevel()+' · '+(starterSave?.ign ?? currentPlayer.name);
  const lead=team[0];
 
@@ -7200,7 +7209,7 @@ function tickVortex(area,field,dt) {
  area.remaining-=step;
  return area.remaining>1e-8;
 }
-function isExhausted(actor) {return (actor?.exhaustedUntil ?? 0)>clock;}
+function isExhausted(actor) {return actor?.side!=='boss' && (actor?.exhaustedUntil ?? 0)>clock;}
 function blocksExhaustionRecall(actor) {
  return isExhausted(actor) || (actor?.exhaustion ?? 0)>=100;
 }
@@ -7217,6 +7226,7 @@ function updateExhaustionBar(bar,actor) {
  if(bar.title!==label){bar.title=label;bar.setAttribute('aria-label',label);}
 }
 function addMoveExhaustion(actor,slot,animation,overrideCost) {
+ if(actor.side==='boss')return;
  const move=actor.moves[slot] ?? 'Struggle';
  const power=moveCatalog[move][1];
  const cooldown=actor.moveCooldowns[slot] ?? 2;
@@ -7226,6 +7236,7 @@ function addMoveExhaustion(actor,slot,animation,overrideCost) {
  actor.exhaustionAnimationUntil=Math.max(actor.exhaustionAnimationUntil ?? 0,clock+animation);
 }
 function tickExhaustion(actor,dt) {
+ if(actor.side==='boss'){actor.exhaustion=actor.exhaustedUntil=0;return;}
  if(actor.exhaustedUntil) {
   if(isExhausted(actor))return;
   actor.exhaustion=0;
@@ -8586,6 +8597,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.15.0',changes:['Added Co-op ticket rewards, fixed raid lobby sprite placement, and added Pokédex appearance buttons. Raid bosses no longer exhaust.']},
  {version:'0.14.5',changes:['Fixed raid fighter confirmation, capped Pokédex previews, and reduced Mega Rayquaza to 2× size.']},
  {version:'0.14.4',changes:['Replaced the Co-op raid Pokémon dropdown with the PC grid, filters, and sorting.']},
  {version:'0.14.3',changes:['Reduced Mega raid bosses to 3× sprite size and tuned their builds and moves.']},
@@ -8703,4 +8715,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.14.5"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.15.0"></script></html>
