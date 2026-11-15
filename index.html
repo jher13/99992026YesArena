@@ -703,6 +703,15 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 #events .tactics-augment-screen .shop-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(6px,2vw,20px);padding:8px}
 #events .tactics-augment-card{min-height:clamp(220px,44dvh,390px);background:radial-gradient(ellipse at top,#4169a0,#342776 42%,#18143f 88%);border:2px solid #838be7;border-radius:24px 24px 15px 15px;padding:clamp(5px,2vw,22px);justify-content:space-around;box-shadow:inset 0 0 22px #8275e955}
 .tactics-augment-icon{display:grid;place-items:center;width:clamp(40px,12vw,112px);aspect-ratio:1;border-radius:50%;color:#ffd475;background:#171934;border:2px solid #8d81cf;font-size:clamp(22px,5vw,56px)}
+
+.tactics-layout .tactics-field{position:relative;padding-top:54px;min-height:clamp(280px,55dvh,520px)}
+.tactics-planning-space{padding:0;max-width:none}
+#events .tactics-planning-space button.tactics-hex{position:absolute;transform:translate(-50%,-50%);width:11.4%;height:11%;clip-path:none;background:transparent;isolation:isolate}
+#events .tactics-planning-space button.tactics-hex::before{content:'';position:absolute;inset:1px;z-index:-1;clip-path:polygon(12% 0,88% 0,100% 50%,88% 100%,12% 100%,0 50%);background:#273e36a3}
+#events .tactics-planning-space button.tactics-hex:disabled::before{background:#182a2466}
+#events .tactics-planning-space button.tactics-hex[aria-pressed=true]::before{background:#6e7c3c}
+#events .tactics-planning-space .tactics-unit-visual small{position:static;line-height:1.1}
+.tactics-combat-stars{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);font-size:11px;line-height:1;color:#ffe8a0;text-shadow:0 1px 2px #000;white-space:nowrap}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -8999,6 +9008,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.20.8',changes:['Aligned TFT planning hexes with combat positions and displayed stars in combat.']},
  {version:'0.20.7',changes:['Restyled TFT items, traits, unit stat cards, and augment selection.']},
  {version:'0.20.6',changes:['Added free movement and clearer combat bars, lowered TFT damage, and added income tooltips.']},
  {version:'0.20.5',changes:['Preserved Pokémon sprite proportions on the Poke Fight Tactics bench.']},
@@ -9210,4 +9220,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.20.7"></script><script src="./multiplayer.js?v=0.15.19"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./tactics.js?v=0.20.8"></script><script src="./multiplayer.js?v=0.15.19"></script></html>

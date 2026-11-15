@@ -382,38 +382,31 @@
   const clip=pmdMotion(unit,motion);
   unit.animation={motion,started:now,duration:motion==='walk'?170:Math.min(380,(clip?.duration ?? 16)/.06)};
  }
- function board(units,player,combat=false,scouting=false){
-  const grid=element('div',null,'tactics-board'+(combat?' is-combat':''));
-  for(let y=0;y<8;y++){
-   const row=element('div',null,'tactics-hex-row');
-   for(let x=0;x<7;x++){
-    const position=cells[y*7+x];
-    const unit=units.find(unit=>unit.position?.x===x && unit.position?.y===y);
-    const tile=combat?element('div'):button('',()=>{
-     if(run.selected && run.selected!==unit)moveUnit(player,position);
-     else if(unit){run.selected=unit;render();}
-    },scouting || y<4);
-    tile.className='tactics-hex'+(unit?.opponent?' is-opponent':'')+(unit?' is-occupied':'');
-    if(unit || !combat)tile.setAttribute('aria-label',unit?unit.name+' '+unit.star+' star':'Empty hex '+(x+1)+', '+(y+1));
-    if(!combat && !scouting && y>=4)dropUnit(tile,unit=>moveUnit(player,position,unit));
-    if(unit){
-     const visual=unitVisual(unit,4);
-     unitControls(tile,unit,!combat && !scouting,visual);
-     if(combat){
-      const bars=element('span',null,'tactics-unit-bars');
-      const hp=element('progress');
-      hp.max=unit.max;hp.value=unit.hp;hp.setAttribute('aria-label',unit.name+' HP');
-      const mana=element('progress');
-      mana.max=60;mana.value=unit.mana;mana.setAttribute('aria-label',unit.name+' mana');
-      bars.append(hp,mana);
-      tile.append(bars);
-     }
-     tile.append(visual);
-     if(!combat)tile.setAttribute('aria-pressed',String(run.selected===unit));
-    }
-    row.append(tile);
+ function placeOnField(node,x,y){
+  node.style.left=(12+x/6.5*76)+'%';
+  node.style.top=(9+y/5.95*82)+'%';
+ }
+ function board(units,player,scouting=false){
+  const grid=element('div',null,'tactics-board tactics-planning-space tactics-combat-space');
+  for(const position of cells){
+   const {x,y}=position;
+   const unit=units.find(unit=>unit.position?.x===x && unit.position?.y===y);
+   const tile=button('',()=>{
+    if(run.selected && run.selected!==unit)moveUnit(player,position);
+    else if(unit){run.selected=unit;render();}
+   },scouting || y<4);
+   tile.className='tactics-hex'+(unit?' is-occupied':'');
+   tile.setAttribute('aria-label',unit?unit.name+' '+unit.star+' star':'Empty hex '+(x+1)+', '+(y+1));
+   const center=combatPosition(position,false);
+   placeOnField(tile,center.x,center.y);
+   if(!scouting && y>=4)dropUnit(tile,unit=>moveUnit(player,position,unit));
+   if(unit){
+    const visual=unitVisual(unit,4);
+    unitControls(tile,unit,!scouting,visual);
+    tile.append(visual);
+    tile.setAttribute('aria-pressed',String(run.selected===unit));
    }
-   grid.append(row);
+   grid.append(tile);
   }
   return grid;
  }
@@ -484,7 +477,7 @@
   if(player.augments.length)traitList.append(heading('Augments'),element('small',player.augments.join(' · ')));
   const middle=element('div',null,'tactics-center');
   const arena=element('div',null,'tactics-field');
-  if(!rival)arena.append(board(run.scout?run.scout.units:units,player,false,Boolean(run.scout)));
+  if(!rival)arena.append(board(run.scout?run.scout.units:units,player,Boolean(run.scout)));
   let timer=null;
   if(rival){
    const banner=element('header',null,'tactics-combat-banner');
@@ -754,7 +747,7 @@
    hp.setAttribute('aria-label',unit.name+' health');
    mana.setAttribute('aria-label',unit.name+' mana');
    bars.append(hp,mana);
-   node.append(bars,battlerSprite(unit));
+   node.append(bars,battlerSprite(unit),element('span','★'.repeat(unit.star),'tactics-combat-stars'));
    unitControls(node,unit,false);
    layer.append(node);
    return {unit,node,hp,mana};
@@ -765,8 +758,7 @@
     const at=unit.position,from=unit.moveFrom ?? at;
     const progress=Math.min(1,Math.max(0,(now-(unit.moveStarted ?? now))/combatStepMs));
     const x=from.x+(at.x-from.x)*progress,y=from.y+(at.y-from.y)*progress;
-    node.style.left=(12+x/6.5*76)+'%';
-    node.style.top=(9+y/5.95*82)+'%';
+    placeOnField(node,x,y);
     node.style.zIndex=String(1+Math.floor(y*10));
     hp.value=unit.hp;mana.value=unit.mana;
     paintBattler(unit,now);
