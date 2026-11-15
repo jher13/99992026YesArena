@@ -264,10 +264,10 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
  #battle-settings-button{padding:4px 7px}
  .battle-settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-:is(#item-bag,#shop,#skill-shop,#friendlist,#gym-collection){max-width:680px;margin:12px auto;padding:16px clamp(10px,4vw,32px);background:#f4faef;color:#253d36;border-radius:14px}
-:is(#item-bag,#shop,#skill-shop,#friendlist,#gym-collection) .menu-heading h2{color:#253d36}
-:is(#item-bag,#shop,#skill-shop,#friendlist,#gym-collection) button{color:#fff;background:#142d23}
-:is(#item-bag,#shop,#skill-shop,#friendlist,#gym-collection) button:disabled{opacity:1;background:#596961;color:#fff;cursor:default}
+:is(#item-bag,#shop,#skill-shop,#friendlist,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page){max-width:680px;margin:12px auto;padding:16px clamp(10px,4vw,32px);background:#f4faef;color:#253d36;border-radius:14px}
+:is(#item-bag,#shop,#skill-shop,#friendlist,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .menu-heading h2{color:#253d36}
+:is(#item-bag,#shop,#skill-shop,#friendlist,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) button{color:#fff;background:#142d23}
+:is(#item-bag,#shop,#skill-shop,#friendlist,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) button:disabled{opacity:1;background:#596961;color:#fff;cursor:default}
 .bag-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
 .bag-section-title{display:flex;align-items:center;gap:10px;margin:20px 0 12px;color:#49635a;font:700 11px system-ui;letter-spacing:.16em;text-transform:uppercase}
 .bag-section-title::before,.bag-section-title::after{content:"";height:1px;background:#cddbcf;flex:1}
@@ -276,7 +276,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .bag-item strong{font-size:13px;overflow-wrap:anywhere}.bag-item small{color:#49635a;font-size:11px}
 .bag-item button{font-size:11px;padding:4px 7px;margin-top:auto}
 .bag-art{position:relative;width:64px;max-width:100%;height:58px;display:grid;place-items:center}
-:is(#item-bag,#shop,#skill-shop,#friendlist,#gym-collection) .bag-art canvas{width:48px;height:48px;max-width:100%;border:0;background:none;image-rendering:pixelated}
+:is(#item-bag,#shop,#skill-shop,#friendlist,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .bag-art canvas{width:48px;height:48px;max-width:100%;border:0;background:none;image-rendering:pixelated}
 .bag-item .bag-count{position:absolute;bottom:0;left:0;background:#e1eee0;padding:2px 5px;border-radius:8px;font-weight:700}
 #bag-status:empty{display:none}
 #home-bag{display:inline-grid;place-items:center;min-width:36px;min-height:34px;padding:5px;vertical-align:middle}
@@ -320,11 +320,11 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 #feature-type{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
 .home-type-badge{display:inline-block;padding:3px 9px;border:1px solid var(--type-color);border-radius:5px;background:color-mix(in srgb,var(--type-color) 22%,#171e30);color:#fff;font-size:12px;font-weight:700}
 #shop,#skill-shop{max-width:1120px}
-:is(#shop,#skill-shop,#friendlist,#gym-collection) .shop-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:18px 8px}
-:is(#shop,#skill-shop,#friendlist,#gym-collection) .shop-wallet{color:#36584a}
-:is(#shop,#skill-shop,#friendlist,#gym-collection) .bag-item button{margin-top:auto}
-@media(max-width:850px){:is(#shop,#skill-shop,#friendlist,#gym-collection) .shop-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(max-width:560px){:is(#shop,#skill-shop,#friendlist,#gym-collection) .shop-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+:is(#shop,#skill-shop,#friendlist,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .shop-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:18px 8px}
+:is(#shop,#skill-shop,#friendlist,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .shop-wallet{color:#36584a}
+:is(#shop,#skill-shop,#friendlist,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .bag-item button{margin-top:auto}
+@media(max-width:850px){:is(#shop,#skill-shop,#friendlist,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .shop-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:560px){:is(#shop,#skill-shop,#friendlist,#gym-collection,#trainer-regions,#gyms,#guild-directory,#leaderboard-page) .shop-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 #bag-craft-results{margin:auto;width:min(390px,calc(100vw - 32px));max-height:85dvh;padding:20px;border:1px solid #879f91;border-radius:12px;background:#f4faef;color:#253d36}
 #bag-craft-results::backdrop{background:#101725aa}
 #bag-craft-results h3{margin:0 0 12px}
@@ -419,6 +419,19 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 #friendlist .friend-presence{margin-right:4px}
 #friendlist-status:empty{display:none}
 #gym-collection .campaign-progress{color:#49635a}
+@media(min-width:700px){#trainer-regions,#gyms,#guild-directory,#leaderboard-page{max-width:960px}}
+:is(#trainer-regions,#gyms) .campaign-progress{color:#49635a}
+#trainer-regions select,#guild-directory input{background:#fff;color:#253d36;border:1px solid #a2b6a9;border-radius:6px;padding:7px}
+#trainer-regions .trainer-options,#guild-directory .guild-actions{display:flex;gap:8px 14px;align-items:center;flex-wrap:wrap}
+#trainer-regions .wild-difficulty,#trainer-regions .wild-toggles{color:inherit;margin:0}
+#trainer-regions .trainer-options+.trainer-options{margin-top:12px}
+#gyms .gym-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:12px}
+#gyms .gym-entry{padding:12px;border:1px solid #cddbcf;border-radius:10px;background:#e9f2e7}
+#gyms .gym-entry.is-next{border-color:#a58543}
+#gyms .gym-entry button{margin-top:auto}
+#gyms .gym-icons{justify-content:center}
+#gyms .gym-icons canvas{border:0;background:transparent;image-rendering:pixelated}
+#guild-action-status:empty{display:none}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -586,18 +599,30 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 </section>
 <section id="trainer-regions" class="gym-screen" hidden>
 <div class="menu-heading"><h2>Trainer Battles</h2><button id="trainer-back">Main menu</button></div>
+<h3 class="bag-section-title">Match setup</h3>
+<div class="trainer-options">
 <label class="wild-difficulty">Difficulty <select id="trainer-difficulty"></select></label>
 <label class="wild-difficulty">Format <select id="trainer-format"><option value="1">1v1</option><option value="2">2v2</option><option value="3">3v3</option></select></label>
+</div>
 <p class="campaign-progress">The format sets how many Pokémon fight on each side at once. Trainers bring at least that many Pokémon and up to six. Smaller teams have stronger opponents.</p>
 <p class="campaign-progress">Each trainer uses Pokémon from one randomly selected region.</p>
-<div class="wild-toggles"><label><input id="trainer-auto-reserve" type="checkbox"> Auto send-out after knockouts</label><label><input id="trainer-auto-repeat" type="checkbox"> Auto repeat</label></div>
+<h3 class="bag-section-title">Automation</h3>
+<div class="trainer-options"><label class="wild-toggles"><input id="trainer-auto-reserve" type="checkbox"> Auto send-out after knockouts</label><label class="wild-toggles"><input id="trainer-auto-repeat" type="checkbox"> Auto repeat</label>
 <label class="wild-toggles"><input id="trainer-auto-start" type="checkbox"> Auto Start</label>
-<button id="find-trainer">Find a trainer</button>
+<button id="find-trainer">Find a trainer</button></div>
 </section>
 <section id="wild-result" class="wild-victory" aria-label="Wild battle result" hidden></section>
 <section id="gyms" class="gym-screen" hidden>
 <div class="menu-heading"><h2>Gym Battles</h2><button id="gym-back">Main menu</button></div>
 <p id="gym-progress" class="campaign-progress"></p><div id="gym-grid"></div>
+</section>
+<section id="guild-directory" hidden>
+<div class="menu-heading"><h2>Guilds</h2><button id="guilds-back" type="button">Main menu</button></div>
+<div id="guild-directory-content"></div>
+</section>
+<section id="leaderboard-page" hidden>
+<div class="menu-heading"><h2>Leaderboards</h2><button id="leaderboards-back" type="button">Main menu</button></div>
+<div id="leaderboard-content"></div>
 </section>
 <section id="friendlist" hidden>
 <div class="menu-heading"><h2>Friendlist</h2><button id="friends-back" type="button">Main menu</button></div>
@@ -4364,7 +4389,7 @@ function showScreen(screen) {
  if(screen!=='battle' && byId('battle-settings').open)byId('battle-settings').close();
  if(screen!=='home')stopHomeSprite();
  stopBattleMusic();
- for(const id of ['home','login','raid-lobby','friendlist','roguelit','starter-setup','wild-regions','wild-result','trainer-regions','gyms','gym-collection','pokedex','item-bag','shop','skill-shop','skillset','abilities','menu','battle']) byId(id).hidden=id!==screen;
+ for(const id of ['home','login','raid-lobby','friendlist','guild-directory','leaderboard-page','roguelit','starter-setup','wild-regions','wild-result','trainer-regions','gyms','gym-collection','pokedex','item-bag','shop','skill-shop','skillset','abilities','menu','battle']) byId(id).hidden=id!==screen;
  byId('arena-header').hidden=screen==='home' || screen==='login' || screen==='starter-setup';
  byId('score').hidden=screen!=='battle';
  if(screen!=='battle')void checkGameVersion();
@@ -4495,7 +4520,7 @@ function renderCampaign(collection) {
  }
  for(const [region,generation] of gymRegions) {
   if(!collection && !gymTeams.slice(0,clearedGyms.length+1).some(gym=>gym.region===region)) continue;
-  list.append(element('h3',region+' · Generation '+generation,collection?'bag-section-title':'campaign-region'));
+  list.append(element('h3',region+' · Generation '+generation,'bag-section-title'));
   const grid=element('div',null,collection?'shop-grid':'gym-grid');
   for(const gym of gymTeams.filter(entry=>entry.region===region)) {
    const index=gymTeams.indexOf(gym);
@@ -4510,7 +4535,7 @@ function renderCampaign(collection) {
      element('small',earned?'Collected':'Uncollected'));
     grid.append(card);
    } else {
-    const card=element('button',null,'gym-card'+(available?' is-next':''));
+    const card=element('div',null,'bag-item gym-entry'+(available?' is-next':''));
     const roster=element('div',null,'gym-icons');
     roster.append(...gym.roster.map(name=>pokemonPortrait(name)));
     card.append(element('strong',String(index+1)+'. '+gym.name),
@@ -4519,8 +4544,10 @@ function renderCampaign(collection) {
      element('small',masterGymMode?'Lv. 100 · '+(masterGymClears.has(gym.id)?'Master cleared':'Master challenge'):
       'Lv. '+gymDifficulty(gym).level+'–'+gymDifficulty(gym).aceLevel),roster,
      element('small',masterGymMode?gym.plan.brief+' Defeat all six to clear Master.':gymBrief(gym)));
-    card.disabled=!earned && !available;
-    card.onclick=()=>openBattle(gym,null,null,null,masterGymMode);
+    const fight=element('button',earned?'Rematch':'Challenge');
+    fight.type='button';
+    fight.onclick=()=>openBattle(gym,null,null,null,masterGymMode);
+    card.append(fight);
     grid.append(card);
    }
   }
@@ -8685,6 +8712,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.15.14',changes:['Restyled Trainer Battles, Gym Battles, Guilds, and Leaderboards to match the shops.']},
  {version:'0.15.13',changes:['Restyled Friendlist and Gym Collection and returned departing raid players to Co-op.']},
  {version:'0.15.12',changes:['Added a shared 10-second recovery window after sleep or freeze and made raid bosses immune to sleep.']},
  {version:'0.15.11',changes:['Restored standard arena dimensions and expanded automatic update checks outside PvP.']},
@@ -8874,4 +8902,4 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.15.13"></script></html>
+</script><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.1.7"></script><script src="./multiplayer.js?v=0.15.14"></script></html>

@@ -1186,21 +1186,65 @@
   byId('friendlist-content').replaceChildren(form,feedback,...sections);
  }
  byId('friends-back').onclick=()=>openMenu();
+ function directorySection(title,rows,describe,icon,ranked=false) {
+  const grid=element('div',null,'shop-grid');
+  for(const [index,row] of rows.entries()) {
+   const card=element('div',null,'bag-item');
+   const art=element('div',null,'bag-art');
+   art.append(icon());
+   if(ranked)art.append(element('small','#'+(index+1),'bag-count'));
+   card.append(art,element('strong',row.name),element('small',describe(row)));
+   grid.append(card);
+  }
+  return [element('h3',title,'bag-section-title'),rows.length?grid:element('p','No entries yet.')];
+ }
+ const guildIcon=()=>collectionPixelArt(['..oooooooo..','..occlccgo..','..occwccgo..','..olwwwcgo..','..occwccgo..','..occcccgo..','...occcgo...','....ocgo....','.....oo.....'],'#6d98cd');
  async function guilds() {
-  const data=await rpc('guilds'),name=input('Guild name');
-  show('Guilds',element('p',data.membership?'Your guild: '+data.membership:'You have no guild.'),
-   ...(data.membership?[button('Leave guild',async()=>{await rpc('guild_leave');await guilds();})]:
-    [name,button('Create guild',async()=>{await rpc('guild_create',{name:name.value});await guilds();}),
-     button('Join guild',async()=>{await rpc('guild_join',{name:name.value});await guilds();})]),
-   ...data.guilds.map(g=>element('p',g.name+' · '+g.members+' members · '+g.xp+' XP')));
+  const data=await rpc('guilds');
+  if(phase!=='guild-directory' && !dialog.open)return;
+  phase='guild-directory';
+  if(dialog.open)dialog.close();
+  showScreen(phase);
+  const name=input('Guild name');
+  const actions=element('div',null,'guild-actions');
+  const feedback=element('p');
+  feedback.id='guild-action-status';
+  feedback.setAttribute('role','status');
+  const action=(label,method,requiresName=false)=>{
+   const control=element('button',label);
+   control.onclick=async()=>{
+    const guildName=name.value.trim();
+    if(requiresName && !guildName){name.focus();return;}
+    for(const button of actions.querySelectorAll('button'))button.disabled=true;
+    feedback.textContent='';
+    try {
+     await rpc(method,requiresName?{name:guildName}:{});
+     if(phase==='guild-directory')await guilds();
+    } catch(error) {feedback.textContent=error.message;}
+    finally {for(const button of actions.querySelectorAll('button'))button.disabled=false;}
+   };
+   return control;
+  };
+  if(data.membership)actions.append(action('Leave guild','guild_leave'));
+  else actions.append(name,action('Create guild','guild_create',true),action('Join guild','guild_join',true));
+  byId('guild-directory-content').replaceChildren(
+   element('p',data.membership?'Your guild · '+data.membership:'You have no guild.'),
+   actions,feedback,...directorySection('Guild directory',data.guilds,g=>g.members+' members · '+g.xp+' XP',guildIcon));
  }
  async function boards() {
   const data=await rpc('leaderboards');
-  const sections=[['Ranked PvP',data.ranked,p=>p.rating+' rating · '+p.wins+' wins · '+p.losses+' losses'],
-   ['Co-op',data.coop,p=>p.coop+' clears'],['Guilds',data.guilds,p=>p.xp+' XP']];
-  show('Leaderboards',...sections.flatMap(([title,rows,describe])=>[element('h3',title),
-   ...(rows.length?rows.map((row,i)=>element('p',(i+1)+'. '+row.name+' · '+describe(row))):[element('p','No results yet.')])]));
+  if(!dialog.open)return;
+  phase='leaderboard-page';
+  dialog.close();
+  showScreen(phase);
+  const medal=color=>()=>collectionPixelArt(bagPixelShapes.stone,color);
+  byId('leaderboard-content').replaceChildren(
+   ...directorySection('Ranked PvP',data.ranked,p=>p.rating+' rating · '+p.wins+' wins · '+p.losses+' losses',medal('#d7a348'),true),
+   ...directorySection('Co-op',data.coop,p=>p.coop+' clears',medal('#9565c5'),true),
+   ...directorySection('Guilds',data.guilds,p=>p.xp+' XP',guildIcon,true));
  }
+ byId('guilds-back').onclick=()=>openMenu();
+ byId('leaderboards-back').onclick=()=>openMenu();
  const notificationReadKey='pokemon-arena-read-notifications';
  const notificationKeys=data=>[
   ...data.friends.map(name=>'friend:'+name),
