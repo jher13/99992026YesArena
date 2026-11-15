@@ -1069,7 +1069,7 @@
      }
      if(tier && m.result==='coop_win') {
       const passNote=recordBattlePass({battles:1,wins:1,raidWins:1},String(m.id));
-      if(passNote)stats.unshift(element('p',passNote));
+      if(passNote)stats.unshift(element('p',passNote+' · '+battlePassProgressText()));
       const reward=element('p','Checking raid rewards…');
       stats.unshift(reward);
       const check=()=>collectMegaRaidRewards().then(rewards=>{
@@ -1115,32 +1115,50 @@
    if(dialog.open)dialog.close();
   }
   render();
+  let retryCount=0, retryButton=null;
   async function poll() {
    if(token!==generation || active.result)return;
+   if(retryButton)retryButton.disabled=true;
    const began=performance.now();
    try {
     if(active.started && !active.result) {
      void joinBattleChannel();
-     if(active.side==='guest' && live && began-lastPush<550){
+     if(!retryCount && active.side==='guest' && live && began-lastPush<550){
       timer=setTimeout(poll,120);
       return;
      }
      const packet=await combat(active.id);
      if(token!==generation)return;
+     const previousTurn=displayedTurn;
      acceptBattle(packet);
+     if(retryCount && packet.battle && !packet.result && displayedTurn===previousTurn)
+      byId('status').textContent='Connected. Waiting for the next battle update…';
+     retryCount=0;
     } else {
      const next=await (active.seats?raidRpc:rpc)('poll',{id:active.id});
      if(token!==generation || (!dialog.open && phase!=='online-battle' && phase!=='raid-lobby'))return;
      if(!submitting && (!active.locked || next.locked || next.result) && !active.started &&
-       JSON.stringify(next)!==JSON.stringify(active)){active=next;render();}
+       (retryCount || JSON.stringify(next)!==JSON.stringify(active))){active=next;render();}
+     else if(retryCount)render();
+     retryCount=0;
     }
     if(!active.result)timer=setTimeout(poll,active.started?Math.max(0,100-(performance.now()-began)):850);
    } catch(error){
     if(token!==generation)return;
+    retryCount++;
     const message=onlineRetryMessage(error,navigator.onLine);
-    if(phase==='online-battle')byId('status').textContent=message;
-    else view.replaceChildren(element('p',message));
-    timer=setTimeout(poll,active.started?400:2000);
+    const target=phase==='online-battle'?byId('status'):view;
+    target.replaceChildren(element('span',message+' Waiting for a fresh match snapshot.'));
+    const delay=Math.min(8000,(active.started?400:2000)*2**Math.min(4,retryCount-1));
+    timer=setTimeout(poll,delay);
+    if(retryCount>=3){
+     retryButton=button('Request fresh snapshot',()=>{
+      retryButton.disabled=true;
+      clearTimeout(timer);
+      poll();
+     });
+     target.append(retryButton);
+    }
    }
   }
   if(!active.result)timer=setTimeout(poll,850);

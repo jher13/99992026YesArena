@@ -1093,7 +1093,11 @@ function playerSaveKey(key) {
 }
 const playerStorage={
  getItem:key=>localStorage.getItem(playerSaveKey(key)),
- setItem:(key,value)=>{localStorage.setItem(playerSaveKey(key),value);window.queueArenaSave?.();}
+ setItem:(key,value)=>{
+  try {localStorage.setItem(playerSaveKey(key),value);}
+  catch(error){window.reportLocalSaveError?.(error);throw error;}
+  window.queueArenaSave?.();
+ }
 };
 const profileSelect=byId('profile-select');
 const profileName=byId('profile-name');
@@ -2438,7 +2442,7 @@ try {
 
 } catch {}
 function saveWildProgress() {
- try {playerStorage.setItem(progressKey,JSON.stringify(wildProgress));} catch {}
+ try {playerStorage.setItem(progressKey,JSON.stringify(wildProgress));} catch(error) {window.reportLocalSaveError?.(error);}
 }
 const passTierXP=200;
 const passRewards=[
@@ -2483,6 +2487,16 @@ function showPassBattleNotice(message){
  notice.hidden=false;
  clearTimeout(passNoticeTimer);
  passNoticeTimer=setTimeout(()=>{notice.hidden=true;},8000);
+}
+function battlePassProgressText() {
+ const pass=battlePassState();
+ const pending=Object.entries(passQuests).flatMap(([period,quests])=>{
+  const quest=quests.find(([id,,goal])=>(pass[period][id] ?? 0)<goal);
+  if(!quest)return [];
+  const [id,label,goal]=quest;
+  return [label+' '+(pass[period][id] ?? 0)+'/'+goal];
+ });
+ return pending.length?'Next quests · '+pending.join(' · '):'All daily and weekly quests complete.';
 }
 function recordBattlePass(events,raidId=null) {
  const pass=battlePassState();
@@ -3738,7 +3752,7 @@ function renderWildResult() {
  const xpList=element('ul');
  for(const award of wildResult.awards) xpList.append(element('li',award.name+' · +'+award.xp+' XP ('+award.share+'%)'));
  experience.append(element('summary','Team XP'),xpList);
- panel.append(experience);
+ panel.append(experience,element('p',battlePassProgressText()));
  const toggles=element('div',null,'wild-toggles');
  renderAutoOptions(toggles,runWildResultOptions);
  panel.append(toggles);
@@ -5052,10 +5066,20 @@ function openBattle(gym=null,wild=null,trainer=null,run=null,master=false) {
   startBattle();
  }
 }
+function continueCampaign(){
+ const next=gymTeams[clearedGyms.length];
+ if(next)openBattle(next,null,null,null,false);
+}
 function renderCampaign(collection) {
  const list=byId(collection?'badge-grid':'gym-grid');
  byId(collection?'collection-progress':'gym-progress').textContent=progressText();
  list.replaceChildren();
+ if(!collection && clearedGyms.length<gymTeams.length){
+  const next=element('button','Continue Campaign · '+gymTeams[clearedGyms.length].name);
+  next.type='button';
+  next.onclick=continueCampaign;
+  list.append(next);
+ }
  if(!collection) {
   if(!masterGymsUnlocked())masterGymMode=false;
   const mode=element('button',masterGymMode?'Mode: Master':'Mode: Standard');
@@ -5083,6 +5107,13 @@ function renderCampaign(collection) {
     medal.append(sprite);
     card.append(medal,element('strong',gym.badge),element('small',gym.name),
      element('small',earned?'Collected':'Uncollected'));
+    if(!earned){
+     const link=element('button',available?'Challenge '+gym.name:'View Campaign');
+     link.type='button';
+     link.onclick=available?continueCampaign:openGyms;
+     if(!available)card.append(element('small','Unlock by clearing earlier gyms.'));
+     card.append(link);
+    }
     grid.append(card);
    } else {
     const card=element('div',null,'bag-item gym-entry'+(available?' is-next':''));
@@ -5982,6 +6013,7 @@ function renderControls() {
  byId('speed').textContent = speed + '× speed';
  byId('speed').setAttribute('aria-pressed',String(speed>1));
  byId('choices').replaceChildren();
+ if(selectedGym && phase==='win' && gymTeams[clearedGyms.length])button('Continue Campaign',continueCampaign);
  if(selectedTrainer && ['win','loss','draw'].includes(phase)) {
   button('Next trainer',()=>startTrainerEncounter(selectedTrainer.tier,selectedTrainer.format));
   button('Trainer settings',openTrainerSetup);
@@ -8174,7 +8206,7 @@ function advance(dt,realDt=dt) {
   phase=result>0?'win':result<0?'loss':'draw';
   const passNote=rogueRun || selectedWild || selectedTrainer || selectedGym
    ?recordBattlePass({battles:1,wins:result>0?1:0,trainerWins:selectedTrainer && result>0?1:0}):'';
-  if(passNote)showPassBattleNotice(passNote);
+  if(passNote)showPassBattleNotice(passNote+' · '+battlePassProgressText());
   if(rogueRun) {finishRogueRound(phase==='win');return;}
   if(phase==='loss') {
    const detail=applyDefeatRewards();
@@ -9267,6 +9299,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.16',changes:['Fixed Tactics bench overflow and status stacking, added backup restore and raid recovery, and improved Campaign navigation.']},
  {version:'0.22.15',changes:['Moved cloud status above the title and stacked multiplayer button labels.']},
  {version:'0.22.14',changes:['Improved combat reports, Battle Pass quests, save recovery, and mode guidance. Renamed Campaign and Badge Collection.']},
  {version:'0.22.13',changes:['Gave every Fight Tactics signature a distinct effect and displayed shields on HP bars.']},
@@ -9474,7 +9507,7 @@ byId('toolbar-settings').onclick=()=>{
  const sfx=element('button',sfxButton.textContent);
  music.onclick=()=>{musicButton.onclick();music.textContent=musicButton.textContent;};
  sfx.onclick=()=>{sfxButton.onclick();sfx.textContent=sfxButton.textContent;};
- openHomeDialog('Settings',music,sfx,...audioVolumeControls());
+ openHomeDialog('Settings',music,sfx,...audioVolumeControls(),...(window.arenaBackupControls?.() ?? []));
 };
 function audioVolumeControls() {
  const volumeSlider=(label,kind,value,apply)=>{
@@ -9505,8 +9538,8 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="pass-battle-notice" role="status" hidden></p><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.22.15"></script><script>
+</script><p id="pass-battle-notice" role="status" hidden></p><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.22.16"></script><script>
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.14"></script><script src="./multiplayer.js?v=0.22.14"></script></html>
+<script src="./tactics.js?v=0.22.16"></script><script src="./multiplayer.js?v=0.22.16"></script></html>

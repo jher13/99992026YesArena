@@ -30,14 +30,24 @@ function cloudClient() {
 function readArenaSave() {
  return {version:1,entries:Object.fromEntries(arenaSaveKeys.map(key=>[key,playerStorage.getItem(key)]))};
 }
-function restoreArenaSave(save,writeKey=playerSaveKey) {
+function validateArenaSave(save){
  if(save?.version!==1 || !save.entries || !arenaSaveKeys.every(key=>
   Object.hasOwn(save.entries,key) && (save.entries[key]===null || typeof save.entries[key]==='string')))
   throw new Error('This is not a supported Pokemon Arena save.');
- for(const key of arenaSaveKeys) {
+ const decoded={};
+ for(const key of arenaSaveKeys){
   const value=save.entries[key];
-  if(value!==null && !['pokemon-arena-music','pokemon-arena-sfx'].includes(key)) JSON.parse(value);
+  if(value===null || ['pokemon-arena-music','pokemon-arena-sfx'].includes(key))continue;
+  const parsed=JSON.parse(value);
+  const expectsArray=key==='pokemon-arena-team' || key==='pokemon-arena-gym-badges';
+  if(!parsed || typeof parsed!=='object' || Array.isArray(parsed)!==expectsArray)
+   throw new Error('The backup contains invalid '+key.replace('pokemon-arena-','')+' data.');
+  decoded[key]=parsed;
  }
+ return decoded;
+}
+function restoreArenaSave(save,writeKey=playerSaveKey) {
+ validateArenaSave(save);
  const previous=Object.fromEntries(arenaSaveKeys.map(key=>[key,localStorage.getItem(writeKey(key))]));
  function write(entries) {
   for(const key of arenaSaveKeys) {
@@ -54,6 +64,7 @@ let cloudRevision=null;
 let saveTimer;
 let saving=false;
 let dirty=false;
+let restoreConflict=false;
 const syncError=byId('arena-sync-error');
 const saveState=element('span','Saved on this browser');
 saveState.id='toolbar-save-state';
@@ -66,6 +77,59 @@ const placeSyncError=()=>{
 };
 new MutationObserver(placeSyncError).observe(homeScreen,{attributes:true,attributeFilter:['hidden']});
 placeSyncError();
+let localSaveFailed=false;
+window.reportLocalSaveError=error=>{
+ localSaveFailed=true;
+ saveState.textContent='Local save failed';
+ syncError.textContent='This browser could not save your latest progress. '+error.message;
+ syncError.hidden=false;
+};
+const restoredBackupKey='arena-restore-backup';
+window.arenaBackupControls=()=>{
+ const download=element('button','Download local save');
+ download.onclick=downloadLocalSave;
+ const file=element('input');
+ file.type='file';
+ file.accept='.json,application/json';
+ file.setAttribute('aria-label','Select a Pokémon Arena backup');
+ const preview=element('p');
+ preview.setAttribute('role','status');
+ const apply=element('button','Restore backup');
+ apply.disabled=true;
+ let backup=null;
+ file.onchange=async()=>{
+  const selected=file.files[0];
+  backup=null;apply.disabled=true;preview.textContent='';
+  if(!selected)return;
+  try{
+   const candidate=JSON.parse(await selected.text());
+   const data=validateArenaSave(candidate);
+   if(file.files[0]!==selected)return;
+   const trainer=data['pokemon-arena-starter']?.ign ?? 'Unnamed trainer';
+   const badges=data['pokemon-arena-gym-badges']?.length ?? 0;
+   const caught=Object.keys(data['pokemon-arena-wild-progress']?.owned ?? {}).length;
+   preview.textContent=trainer+' · '+badges+' badges · '+caught+' Pokémon registered in storage';
+   backup=candidate;apply.disabled=false;
+  }catch(error){if(file.files[0]===selected)preview.textContent=error.message;}
+ };
+ apply.onclick=()=>{
+  if(!backup || saving)return;
+  const destination=cloudAccount?'this browser and sync it to your account':'this browser';
+  if(!window.confirm('Restore this backup to '+destination+'? Download your current save first if you want to keep a copy.'))return;
+  try{
+   if(cloudAccount)sessionStorage.setItem(restoredBackupKey,JSON.stringify({account:cloudAccount,revision:cloudRevision}));
+   restoreArenaSave(backup);
+   clearTimeout(saveTimer);
+   dirty=false;
+   window.location.reload();
+  }catch(error){
+   sessionStorage.removeItem(restoredBackupKey);
+   window.reportLocalSaveError(error);
+   preview.textContent=error.message;
+  }
+ };
+ return [element('h3','Save backup'),download,file,preview,apply];
+};
 function downloadLocalSave(){
  const url=URL.createObjectURL(new Blob([JSON.stringify(readArenaSave())],{type:'application/json'}));
  const link=element('a');
@@ -80,7 +144,7 @@ async function fetchArenaSave(client,id) {
  return data;
 }
 async function flushArenaSave() {
- if(!cloudAccount || !team.length || saving || !dirty) return;
+ if(!cloudAccount || restoreConflict || !team.length || saving || !dirty) return;
  saving=true;
  saveState.textContent='Syncing…';
  dirty=false;
@@ -98,8 +162,8 @@ async function flushArenaSave() {
    throw conflict;
   }
   cloudRevision=data[0].updated_at;
-  syncError.hidden=true;
-  saveState.textContent=dirty?'Saved locally · sync pending':'Cloud synced';
+  if(!localSaveFailed)syncError.hidden=true;
+  saveState.textContent=localSaveFailed?'Local save failed':dirty?'Saved locally · sync pending':'Cloud synced';
   if(dirty) window.queueArenaSave();
  } catch(error) {
   dirty=true;
@@ -127,9 +191,9 @@ async function flushArenaSave() {
  } finally {saving=false;}
 }
 window.queueArenaSave=()=>{
- if(!cloudAccount) return;
+ if(!cloudAccount || restoreConflict) return;
  dirty=true;
- saveState.textContent='Saved locally · sync pending';
+ if(!localSaveFailed)saveState.textContent='Saved locally · sync pending';
  clearTimeout(saveTimer);
  saveTimer=setTimeout(()=>flushArenaSave().catch(()=>{}),350);
 };
@@ -151,6 +215,24 @@ async function enterCloudAccount(client,user,proceed,allowGuestImport=false) {
  cloudAccount=id;
  cloudRevision=row?.updated_at ?? null;
  saveState.textContent=row?'Cloud synced':'Saved locally';
+ const restored=JSON.parse(sessionStorage.getItem(restoredBackupKey) ?? 'null');
+ if(restored?.account===id){
+  if(restored.revision===cloudRevision){sessionStorage.removeItem(restoredBackupKey);window.queueArenaSave();}
+  else {
+   restoreConflict=true;
+   saveState.textContent='Backup restored locally · cloud changed';
+   syncError.textContent='The cloud save changed while restoring the backup. The restored copy is on this browser.';
+   const keep=element('button','Keep restored backup');
+   keep.onclick=()=>{if(window.confirm('Sync the restored backup over the current cloud save?')){sessionStorage.removeItem(restoredBackupKey);restoreConflict=false;window.queueArenaSave();}};
+   const load=element('button','Load cloud save');
+   load.onclick=()=>{
+    if(!row || !window.confirm('Replace this browser’s restored copy with the cloud save?'))return;
+    try{restoreArenaSave(row.save_data);sessionStorage.removeItem(restoredBackupKey);window.location.reload();}catch(error){window.reportLocalSaveError(error);}
+   };
+   syncError.append(keep,load);
+   syncError.hidden=false;
+  }
+ }
  proceed();
 }
 window.addEventListener('online',()=>flushArenaSave().catch(()=>{}));

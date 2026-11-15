@@ -717,14 +717,22 @@
   trainer.units.push({name,star:1,position:null});merge(trainer,name);
   return true;
  }
+ function salePlan(trainer,unit){
+  const lostSlots=(unit.items ?? []).reduce((sum,item)=>sum+(itemBonuses(item).teamSize ?? 0),0);
+  const remaining=trainer.units.filter(other=>other!==unit);
+  const displaced=remaining.filter(other=>other.position!==null).slice(teamSize(trainer)-lostSlots);
+  const benchCount=remaining.filter(other=>other.position===null).length;
+  return {displaced,overflow:Math.max(0,benchCount+displaced.length-benchLimit)};
+ }
  function sell(trainer,unit){
   if(!trainer.units.includes(unit))return false;
+  const plan=salePlan(trainer,unit);
+  if(plan.overflow)return false;
   trainer.gold+=cost(unit.name)*unit.star;
   run.pool.get(unit.name).copies+=3**(unit.star-1);
   trainer.items.push(...(unit.items ?? []));
   trainer.units.splice(trainer.units.indexOf(unit),1);
-  const deployed=field(trainer);
-  for(const extra of deployed.slice(teamSize(trainer)))extra.position=null;
+  for(const extra of plan.displaced)extra.position=null;
   if(run.selected===unit)run.selected=null;
   return true;
  }
@@ -1103,9 +1111,15 @@
   middle.append(controls);
   const selected=run.selected;
   if(selected){
+   const plan=salePlan(player,selected);
+   if(plan.displaced.length){
+    const detail=plan.overflow?'Free '+plan.overflow+' bench '+(plan.overflow===1?'slot':'slots')+' before selling. Select a benched Pokémon to sell or deploy it.':
+     'Selling moves '+plan.displaced.map(unit=>unit.name).join(', ')+' to the bench.';
+    controls.append(element('p',detail,'tactics-hint'));
+   }
    controls.append(button('Sell '+selected.name,()=>{
     if(!run.busy && sell(player,selected))render();
-   }));
+   },Boolean(plan.overflow)));
    player.items.forEach((item,index)=>controls.append(button('Equip '+item,()=>{
     equipFromInventory(player,selected,index);
    })));
@@ -1270,7 +1284,9 @@
  }
  function ignite(target,seconds,source){
   if(target.hp<=0)return;
-  target.burnUntil=target.woundUntil=Math.max(target.burnUntil ?? 0,target.elapsed+seconds*1000);
+  const expires=target.elapsed+seconds*1000;
+  target.burnUntil=Math.max(target.burnUntil ?? 0,expires);
+  target.woundUntil=Math.max(target.woundUntil ?? 0,expires);
   target.nextBurn ??= target.elapsed+1000;
   target.burnSource=source;
  }
@@ -1721,7 +1737,7 @@
   }
   if(!player.hp || run.trainers.filter(t=>t.hp>0).length<=1){
    const note=recordBattlePass({battles:1,wins:player.hp>0?1:0,tacticsMatches:1});
-   if(note)showPassBattleNotice(note);
+   if(note)showPassBattleNotice(note+' · '+battlePassProgressText());
   }
   run.round++;
   for(const trainer of run.trainers)if(trainer.hp)roll(trainer);
