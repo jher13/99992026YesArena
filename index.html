@@ -541,6 +541,9 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 #home-dialog .pvp-join-room{display:flex;align-items:center;gap:6px;max-width:100%;flex-wrap:nowrap}
 #home-dialog .pvp-join-room input{flex:1;min-width:0;width:12ch}
 #home-dialog .pvp-join-room button{white-space:nowrap}
+:is(#menu,.raid-pc-dialog) .held-item-field{color:#354f44}
+#gym-collection .gym-badge-sprite{width:48px;height:48px;background:url('./assets/gym-badges.png') var(--badge-x) var(--badge-y)/480px 336px no-repeat;image-rendering:pixelated}
+#gym-collection .gym-badge-sprite.is-uncollected{filter:grayscale(1);opacity:.62}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -4645,7 +4648,11 @@ function renderCampaign(collection) {
    if(collection) {
     const card=element('div',null,'bag-item');
     const medal=element('div',null,'bag-art');
-    medal.append(collectionPixelArt(bagPixelShapes.stone,earned?moveColors[gym.types.split(',')[0].trim()] ?? '#c3a4ee':'#a5b0ac'));
+    const sprite=element('span',null,'gym-badge-sprite'+(earned?'':' is-uncollected'));
+    sprite.setAttribute('aria-hidden','true');
+    sprite.style.setProperty('--badge-x',-(index%10)*48+'px');
+    sprite.style.setProperty('--badge-y',-Math.floor(index/10)*48+'px');
+    medal.append(sprite);
     card.append(medal,element('strong',gym.badge),element('small',gym.name),
      element('small',earned?'Collected':'Uncollected'));
     grid.append(card);
@@ -8828,6 +8835,8 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.15.21',changes:['Added 68 individual pixel-art Gym Badge sprites to Gym Collection.']},
+ {version:'0.15.20',changes:['Improved Held item label contrast in the PC and raid editor.']},
  {version:'0.15.19',changes:['Fixed PC move, guild, gym, and ability text contrast, unified dialogs, and grouped PvP room joining.']},
  {version:'0.15.18',changes:['Improved text contrast across the light theme, including PC stats, Pokédex states, and result screens.']},
  {version:'0.15.17',changes:['Restyled Gambits, Abilities, and the main menu to match the shops.']},
