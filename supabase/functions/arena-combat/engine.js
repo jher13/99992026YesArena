@@ -4986,7 +4986,7 @@ function arenaBonus(actor,type) {
 function pillarCollisionBodies() {
  return (arenaMap?.rocks ?? []).flatMap(rock=>{
   if(rock.hp>0 || rock.hp===undefined)return [rock];
-  if(!rock.fall?.resolved)return [];
+  if(!rock.fall?.resolved || masterPressure>=2)return [];
   const {x,y,dx,dy,length,radius}=rock.fall;
   const segments=Math.ceil(length/(radius*0.5));
   return Array.from({length:segments+1},(_,index)=>({
@@ -5103,7 +5103,13 @@ function terrainMovement(actor,dx,dy,step,navigationTarget,escape=false) {
  return best;
 }
 let happyHourBonus=false;
+let masterStallSince=0;
+let masterLivingCount=0;
+let masterPressure=0;
 function prepare() {
+ masterStallSince=0;
+ masterLivingCount=0;
+ masterPressure=0;
  happyHourBonus=false;
  entryHazards=[{},{}];
  fieldMoveExpiry={};
@@ -5424,8 +5430,13 @@ function tickStatus(actor,dt) {
  }
  if(actor.ailmentTime<=1e-8)clearArenaAilment(actor);
 }
+function masterRecoveryScale() {
+ return masterPressure>=2?0:masterPressure===1?0.5:1;
+}
 function healActor(actor,amount) {
- if(actor.healBlockUntil>clock)return;
+ const recoveryScale=masterRecoveryScale();
+ if(actor.healBlockUntil>clock || recoveryScale===0)return;
+ amount*=recoveryScale;
  if(actor.hp>0) actor.hp=Math.min(actor.max,actor.hp+Math.max(1,Math.floor(amount)));
 }
 function useHeldBerry(actor,force=false) {
@@ -6715,7 +6726,7 @@ function act(actor, opponents, dt) {
   return;
  }
  actor.charge=Math.max(0,actor.charge-dt);
- if(actor.attack<=0 && dodgeSkill(actor,dt) || escapeCrowding(actor,opponents,dt))return;
+ if(actor.attack<=0 && dodgeSkill(actor,dt) || masterPressure===0 && escapeCrowding(actor,opponents,dt))return;
  if(actor.ailment===6)opponents=[...opponents,...activeTeammates(actor).filter(member=>member!==actor)];
  let target = null;
  let gap = Infinity;
@@ -6770,7 +6781,7 @@ function act(actor, opponents, dt) {
  const preferredGap=position==='Backline'?115:formation?null:battlePositions[position];
  const close=preferredGap!==null && preferredGap<=28;
  const stalled=!preparing && clock-lastDamageClock>=3.5;
- const press=stalled || isExhausted(target);
+ const press=stalled || masterPressure>0 || isExhausted(target);
  if(!preparing && !gambit && !actor.manualTarget && !press &&
   (anticipateAttack(actor,target,gap,dt) || seekPillarCover(actor,opponents,dt)))return;
  const cooling=!gambit && !press && actor.exhaustion>=70;
@@ -6795,6 +6806,7 @@ function act(actor, opponents, dt) {
    nextRangedReach=range;
   }
   if(actor.moveTimers[slot]>0 || score<=0) continue;
+  if(masterPressure>=2 && (guardMoves.has(move) || skillHealingPercent(move,rules)>0))continue;
   const style=actor.ai?.style;
   const bias=style==='Aggressive'?(moveCatalog[move][4]?0.65:1.3):
    style==='Defensive'?(rules.scope==='ally'?1.5:range>=90?1.25:0.85):1;
@@ -7223,7 +7235,7 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
   const boosted=attacker==='Flash Fire' && actor.flashFire && element==='Fire' ? multiplier*1.5 : multiplier;
   const baseDamage=battleDamage(actor,victim,power,boosted,rules.category!==3,element,move,critical)*(cast?.quakeRing===2?0.25:cast?.quakeRing===1?0.5:1);
   const backHit=actor.friendly!==victim.friendly && isBackHit(cast?.line ?? (cast?.roaming?center:actor),victim);
-  const damage=Math.round(baseDamage*(backHit?1.5:1)*(move==='Hyper Beam'?2:1)*(sacrificeProfiles.get(move)?.damage ?? 1)*(wasAsleep?1.25:1)*(helped?1.5:1));
+  const damage=Math.round(baseDamage*(backHit?1.5:1)*(masterPressure>=2?1.35:1)*(move==='Hyper Beam'?2:1)*(sacrificeProfiles.get(move)?.damage ?? 1)*(wasAsleep?1.25:1)*(helped?1.5:1));
   const mitigated=actor.friendly!==victim.friendly?defendDamage(victim,damage,clock):damage;
   const dealt=Math.min(victim.hp===victim.max && defender==='Sturdy' && victim.hp>1?victim.hp-1:victim.hp,mitigated);
   victim.hp-=dealt;
@@ -7245,7 +7257,7 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
   const impactDistance=Math.hypot(dx,dy);
   victim.hitX=impactDistance ? dx/impactDistance : actor.facing;
   victim.hitY=impactDistance ? dy/impactDistance : 0;
-  const drainChange=Math.round(dealt*drain)*(defender==='Liquid Ooze'?-1:1);
+  const drainChange=Math.round(dealt*drain*(defender==='Liquid Ooze'?1:masterRecoveryScale()))*(defender==='Liquid Ooze'?-1:1);
   if(actor.hp>0) actor.hp=Math.max(0,Math.min(actor.max,actor.hp+(actor.healBlockUntil>clock?Math.min(0,drainChange):drainChange)-
    (attacker==='Magic Guard'?0:Math.round(dealt*recoil))));
   if(dealt>0 && pivotMoves.has(move))pivot=true;
@@ -7451,6 +7463,21 @@ const reserveBuffTimers=['safeguardUntil','mistUntil','luckyChantUntil','craftyS
 function advanceCombat(dt,realDt,sides) {
  const onField=new Set(sides.flat());
  clock+=dt;
+ if(selectedMasterGym && selectedGym){
+  const count=allies.filter(actor=>actor.hp>0).length+enemies.filter(actor=>actor.hp>0).length;
+  if(count!==masterLivingCount){
+   masterLivingCount=count;
+   masterStallSince=clock;
+  }
+  const elapsed=clock-masterStallSince;
+  masterPressure=elapsed>=65 || clock>=300?2:elapsed>=32?1:0;
+  if(masterPressure>=2 && clock-lastDamageClock>=8 && activePlayer?.hp>0 && activeEnemy?.hp>0){
+   const obstruction=firstPillar(activePlayer.x,activePlayer.y,activeEnemy.x,activeEnemy.y);
+   if(obstruction?.rock.hp>0){
+    obstruction.rock.hp=0;
+   }
+  }
+ }
  tickPillars(dt);
  weatherTime=Math.max(0,weatherTime-dt);
  if(!weatherTime) battleWeather=null;
@@ -7959,7 +7986,9 @@ function paintArenaWeather() {
   const time=screenTime({friendly},move);
   return time>0?[(friendly?'Your ':'Enemy ')+move+' '+Math.ceil(time)+'s']:[];
  }));
- const label=[arenaLabel,...screenLabels].filter(Boolean).join(' · ');
+ const pressureLabel=phase==='battle' && selectedMasterGym && masterPressure>0 ?
+  (masterPressure===1?'Master pressure: healing halved':'Master pressure: healing blocked, +35% attack damage, debris passable'):'';
+ const label=[arenaLabel,pressureLabel,...screenLabels].filter(Boolean).join(' · ');
  const weatherLabel=weather?weather+': '+Math.ceil(weatherTime)+'s'+(effective?'':' (suppressed)'):'';
  const display=byId('arena-weather');
  if(display.textContent!==weatherLabel)display.textContent=weatherLabel;
@@ -8026,10 +8055,11 @@ function paint() {
   if(rock.fall) {
    const f=rock.fall;
    ctx.save();ctx.translate(f.x,f.y);ctx.rotate(Math.atan2(f.dy,f.dx));
-   ctx.fillStyle=f.resolved?'#51515a':'#f3916366';
+   ctx.fillStyle=f.resolved?(masterPressure>=2 && phase!=='online-battle'?'#51515a55':'#51515a'):'#f3916366';
    ctx.fillRect(0,-f.radius,f.length,f.radius*2);
    ctx.restore();continue;
   }
+  if(rock.hp===0)continue;
   ctx.fillStyle='#20232a';ctx.beginPath();ctx.arc(rock.x+4,rock.y+6,rock.r,0,2*Math.PI);ctx.fill();
   ctx.fillStyle='#687385';ctx.strokeStyle='#303744';ctx.lineWidth=3;
   ctx.beginPath();ctx.arc(rock.x,rock.y,rock.r,0,2*Math.PI);ctx.fill();ctx.stroke();
@@ -8717,6 +8747,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.50',changes:['Master Campaign battles now escalate pressure to break recovery loops and open blocked combat lanes.']},
  {version:'0.22.49',changes:['Master Gym opponents have half-length attack cooldowns and gain half as much exhaustion.']},
  {version:'0.22.48',changes:['Displayed Master Collection progress and increased Master Gym Leader damage by 50%.']},
  {version:'0.22.47',changes:['Master Campaign uses your regular battle team.']},
