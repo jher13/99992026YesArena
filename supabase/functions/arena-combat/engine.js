@@ -4656,7 +4656,16 @@ function updateActivePanels(onlineFields) {
     list.append(row);
     return {timer,bar};
    });
-   node.replaceChildren(header,list);
+   const charges=element('div',null,'battle-charge-row');
+   panel.charges=['dash','defend'].map(kind=>{
+    const counter=element('span',null,'battle-charge-counter '+kind);
+    const pips=Array.from({length:3},()=>element('i',null,'battle-charge-pip'));
+    for(const pip of pips)pip.setAttribute('aria-hidden','true');
+    counter.append(...pips);
+    charges.append(counter);
+    return {counter,pips,kind,count:null};
+   });
+   node.replaceChildren(header,charges,list);
   }
   const status=battleStatusBadges[actor.ailment];
   const badge=panel.statusBadge;
@@ -4666,6 +4675,17 @@ function updateActivePanels(onlineFields) {
    badge.style.backgroundColor=status[2];
    badge.title=status[1];
    badge.setAttribute('aria-label',status[1]);
+  }
+  const battleTime=onlineFields?onlineMatchDuration:clock;
+  const remaining=[dashChargesLeft(actor,battleTime),actor.defendCharges ?? 3];
+  for(const [i,charge] of panel.charges.entries()){
+   const count=remaining[i];
+   if(charge.count===count)continue;
+   charge.count=count;
+   const label=charge.kind==='dash'?'Dashes':'Defends';
+   charge.counter.title=label+' '+count+' / 3';
+   charge.counter.setAttribute('aria-label',charge.counter.title);
+   charge.pips.forEach((pip,index)=>pip.classList.toggle('spent',index>=count));
   }
   const health=actor.hp+'/'+actor.max+' HP';
   if(panel.hp.textContent!==health) panel.hp.textContent=health;
@@ -6248,10 +6268,17 @@ function retreatRoute(actor,target,opponents) {
  }
  return best;
 }
+function dashChargesLeft(actor,time) {
+ return 3-(actor.dashRecharge ?? []).filter(ready=>ready>time).length;
+}
+function defendDamage(actor,damage) {
+ if(isExhausted(actor) || actor.ailment===2 || actor.ailment===3 || actor.flinch>0 ||
+  (actor.defendCharges ?? 3)<=0 || damage<=0 || (damage<actor.hp && damage<actor.max*.15))return damage;
+ actor.defendCharges=(actor.defendCharges ?? 3)-1;
+ return Math.max(1,Math.floor(damage/2));
+}
 function tryDashDodge(actor,hazard,angle) {
- if(actor.charge>0)return false;
- const slot=actor.moves.findIndex((move,i)=>dashSkills.has(move) && !moveRestricted(actor,move) && actor.moveTimers[i]<=0);
- if(slot<0)return false;
+ if(actor.ingrainAt || dashChargesLeft(actor,clock)<=0)return false;
  const id=actor.onlineId ?? (actor.friendly?'ally:':'enemy:')+(actor.friendly?allies:enemies).indexOf(actor);
  const attempts=hazard.dashDodgeAttempts ??= [];
  if(attempts.includes(id))return false;
@@ -6260,24 +6287,21 @@ function tryDashDodge(actor,hazard,angle) {
   const heading=angle+turn*Math.PI/4;
   return {x:clamp(actor.x+Math.cos(heading)*90,28,canvas.width-28),
    y:clamp(actor.y+Math.sin(heading)*90,28,canvas.height-28)};
- }).find(point=>movementClearance(actor,actor.x,actor.y,point.x,point.y)===1 && threats.every(area=>!hazardHits({...actor,...point},area)));
+ }).find(point=>Math.hypot(point.x-actor.x,point.y-actor.y)>=30 && movementClearance(actor,actor.x,actor.y,point.x,point.y)===1 && threats.every(area=>!hazardHits({...actor,...point},area)));
  if(!endpoint)return false;
  attempts.push(id);
- const move=actor.moves[slot];
+ actor.dashRecharge=(actor.dashRecharge ?? []).filter(ready=>ready>clock);
+ actor.dashRecharge.push(clock+3);
  const dx=endpoint.x-actor.x,dy=endpoint.y-actor.y;
- beginMoveCooldown(actor,slot,0.3);
- actor.charge=actor.cooldown;
  actor.direction=pmdDirection(dx,dy);
  if(dx)actor.facing=Math.sign(dx);
  actor.gait='run';
  actor.motionTicks+=Math.hypot(dx,dy)*1.48;
- actor.lastUsedMove=move;
- actor.moveLabel=move;
- actor.labelTime=0.95;
- effects.push({x:actor.x,y:actor.y,tx:endpoint.x,ty:endpoint.y,move,
-  color:moveColors[moveCatalog[move][0]],line:true,shape:'dash',life:0.3,damage:''});
+ actor.moveLabel='Dash';
+ actor.labelTime=0.6;
+ effects.push({x:actor.x,y:actor.y,tx:endpoint.x,ty:endpoint.y,move:'Dash',
+  color:'#80defb',line:true,shape:'dash',life:0.3,damage:''});
  Object.assign(actor,endpoint);
- playSkillSound(move,'release','dash');
  return true;
 }
 function battleActorId(actor) {
@@ -6820,7 +6844,6 @@ function act(actor, opponents, dt) {
  const basic=move==='Normal Attack';
  if(basic) {
   actor.normalAttackAt=clock+0.5;
-  addMoveExhaustion(actor,slot,0.58,1);
  }
  else beginMoveCooldown(actor,slot);
  actor.firstAction=!actor.actedSinceEntry;
@@ -6847,7 +6870,7 @@ function act(actor, opponents, dt) {
  actor.attackSpan=(pmdMotion(actor,actor.attackStyle)?.duration ?? 21.6)/60;
  actor.attack=actor.attackSpan;
  if(slot>=0)actor.moveCooldownStarts[slot]=clock+Math.max(0.58,actor.attackSpan);
- actor.exhaustionAnimationUntil=Math.max(actor.exhaustionAnimationUntil,clock+actor.attackSpan);
+ if(!basic)actor.exhaustionAnimationUntil=Math.max(actor.exhaustionAnimationUntil ?? 0,clock+actor.attackSpan);
  const aim=distance || 1;
  actor.attackX=rules.scope==='ally' ? 0 : (target.x-actor.x)/aim;
  actor.attackY=rules.scope==='ally' ? 0 : (target.y-actor.y)/aim;
@@ -6908,7 +6931,7 @@ function act(actor, opponents, dt) {
   const line=shape && shape!=='landing' && shape!=='vortex' ? skillLane(actor,target,range,shape,halfAngle,move) : null;
   const ground={x:clamp(center.x,28,canvas.width-28),y:clamp(center.y,28,canvas.height-28)};
   playSkillSound(move,'warning',shape);
-  pendingCasts.push({actor,move,rules,shape,line,center:ground,radius,warning,remaining:warning,started:clock,tracksExhaustion:true,cooldownSlot:slot,friendlyFire:actor.ailment===6});
+  pendingCasts.push({actor,move,rules,shape,line,center:ground,radius,warning,remaining:warning,started:clock,tracksExhaustion:!basic,cooldownSlot:slot,friendlyFire:actor.ailment===6});
   return;
  }
  resolveOffensiveMove(actor,move,rules,target,[target]);
@@ -7099,7 +7122,12 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
   const boosted=attacker==='Flash Fire' && actor.flashFire && element==='Fire' ? multiplier*1.5 : multiplier;
   const baseDamage=battleDamage(actor,victim,power,boosted,rules.category!==3,element,move,critical)*(cast?.quakeRing===2?0.25:cast?.quakeRing===1?0.5:1);
   const damage=Math.round(baseDamage*(move==='Hyper Beam'?2:1)*(sacrificeProfiles.get(move)?.damage ?? 1)*(wasAsleep?1.25:1)*(helped?1.5:1));
-  const dealt=Math.min(victim.hp===victim.max && defender==='Sturdy' && victim.hp>1?victim.hp-1:victim.hp,damage);
+  const mitigated=actor.friendly!==victim.friendly?defendDamage(victim,damage):damage;
+  if(mitigated<damage){
+   victim.moveLabel='Defend';
+   victim.labelTime=.6;
+  }
+  const dealt=Math.min(victim.hp===victim.max && defender==='Sturdy' && victim.hp>1?victim.hp-1:victim.hp,mitigated);
   victim.hp-=dealt;
   if(victim.hp<=0 && dealt>0) {
    if(victim.destinyUntil>clock)actor.hp=0;
@@ -8560,6 +8588,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.40',changes:['Added battle dash and defend charges and removed exhaustion from automatic normal attacks.']},
  {version:'0.22.39',changes:['Preferred Position no longer pulls Pokémon inward before their attacks are in range.']},
  {version:'0.22.38',changes:['Reduced circling around pillars and added threat anticipation, exhaustion-aware play, and team move coordination.']},
  {version:'0.22.37',changes:['Improved Arena AI cover, hazard dodging, cooldown use, positioning, and team targeting.']},
@@ -9049,10 +9078,10 @@ export function onlineView(state,side,mode) {
  const visible=[...state.allies,...state.enemies].filter(allowed).map(actor=>{
   const {name,side,onlineId,hp,max,level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,raidForm,raidSecondary}=actor;
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendCharges,raidForm,raidSecondary}=actor;
   return {name,side,onlineId,hp,max,level:mode==='free_fight'?100:level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,raidForm,raidSecondary};
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendCharges,raidForm,raidSecondary};
  });
  const ids=new Set(visible.map(actor=>actor.onlineId));
  const fields=state.fields.map(slots=>slots.map(slot=>{

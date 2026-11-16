@@ -6,6 +6,18 @@ const read=file=>fs.readFileSync(path.join(__dirname,'..',file),'utf8');
 const html=read('index.html');
 const manifest=JSON.parse(read('version.json'));
 assert.match(manifest.version,/^\d+\.\d+\.\d+$/);
+const chargeCode=html.slice(html.indexOf('function dashChargesLeft('),html.indexOf('function tryDashDodge('));
+const {dashChargesLeft,defendDamage}=new Function('isExhausted',chargeCode+
+ 'return {dashChargesLeft,defendDamage};')(()=>false);
+assert.equal(dashChargesLeft({},0),3);
+assert.equal(dashChargesLeft({dashRecharge:[3,4,5]},2),0);
+assert.equal(dashChargesLeft({dashRecharge:[3,4,5]},3),1);
+assert.equal(dashChargesLeft({dashRecharge:[3,4,5]},5),3);
+const defender={hp:100,max:100};
+assert.equal(defendDamage(defender,10),10);
+for(let i=0;i<3;i++)assert.equal(defendDamage(defender,40),20);
+assert.equal(defender.defendCharges,0);
+assert.equal(defendDamage(defender,40),40);
 const hazardCode=html.slice(html.indexOf('function roamingCenter('),html.indexOf('function dodgeSkill('));
 const {hazardHits,warrantsDash}=new Function('canvas','clamp','inSkill','bodyRadius',
  'moveCatalog','battleDamage','effectiveness','moveRules',hazardCode+'return {hazardHits,warrantsDash};')(
