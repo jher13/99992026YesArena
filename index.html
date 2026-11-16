@@ -7836,7 +7836,9 @@ function act(actor, opponents, dt) {
   const value=score*bias*rangedBias*positionBias*gymPriority*weatherAttackWeight(actor,move,target)*stagger*fatigue*commit*
    pivotMoveWeight(actor,target,move)*coordinatedMoveWeight(actor,target,move,rules)*[0.4,1,2.5][preference]/
    ((1+(remaining+coverCost)/48)*(1+escapeRisk));
-  if(!choice || value>choice.value) choice={slot,move,rules,shape,range,selfCentered,remaining,value,stagger:stagger<1 && target.hp>target.max*.3};
+  // Prefer actionable moves before using position to choose among them.
+  if(!choice || (remaining===0 && choice.remaining>0) ||
+   ((remaining===0)===(choice.remaining===0) && value>choice.value)) choice={slot,move,rules,shape,range,selfCentered,remaining,value,stagger:stagger<1 && target.hp>target.max*.3};
  }
  const basicAllowed=!preparing && (actor.normalAttacksEnabled ?? (!actor.friendly || normalAttacksEnabled));
  const basicRange=24;
@@ -7855,7 +7857,7 @@ function act(actor, opponents, dt) {
   const rules=moveRules(move);
   choice={slot:-1,move,rules,range:rules.range,remaining:Math.max(0,gap-rules.range)};
  }
- if(!press && formation && choice?.rules.scope!=='ally' && (!choice || choice.remaining>0 || actor.charge>0)) {
+ if(!press && !gambit && formation && choice?.rules.scope!=='ally' && (!choice || actor.charge>0) && gap<=attackReach) {
   const team=activeTeammates(actor).filter(member=>member!==actor);
   if(team.length) {
    const x=team.reduce((sum,member)=>sum+member.x,0)/team.length;
@@ -7875,13 +7877,7 @@ function act(actor, opponents, dt) {
  if(preferredGap!==null && attackReach>0 && distance>1 && choice?.rules.scope!=='ally') {
   const goal=Math.min(preferredGap,Math.max(0,attackReach-5));
   const ready=choice && choice.remaining===0 && actor.charge<=0;
-  const dx=(target.x-actor.x)/distance;
-  const dy=(target.y-actor.y)/distance;
-  if(!press && gap>goal+10 && !ready && (choice || gap>attackReach)) {
-   moveActor(actor,dx,dy,gap-goal,dt,gap-goal>100,target);
-   return;
-  }
-  if(!press && !close && !gambit && !ready && gap<goal-12) {
+  if(!press && !close && !gambit && (!choice || actor.charge>0) && !ready && gap<goal-18) {
    const route=retreatRoute(actor,target,opponents);
    if(route) {
     moveActor(actor,route.dx,route.dy,goal-gap,dt,true);
@@ -9670,6 +9666,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.39',changes:['Preferred Position no longer pulls Pokémon inward before their attacks are in range.']},
  {version:'0.22.38',changes:['Reduced circling around pillars and added threat anticipation, exhaustion-aware play, and team move coordination.']},
  {version:'0.22.37',changes:['Improved Arena AI cover, hazard dodging, cooldown use, positioning, and team targeting.']},
  {version:'0.22.36',changes:['Removed battle movement labels and consolidated Campaign victory navigation into Next gym.']},
