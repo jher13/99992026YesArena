@@ -5324,7 +5324,8 @@ function continueCampaign(){
 }
 function renderCampaign(collection) {
  const list=byId(collection?'badge-grid':'gym-grid');
- byId(collection?'collection-progress':'gym-progress').textContent=progressText();
+ byId(collection?'collection-progress':'gym-progress').textContent=progressText()+
+  ' · Master Collection '+masterGymClears.size+' / '+gymTeams.length;
  list.replaceChildren();
  if(!collection && clearedGyms.length<gymTeams.length){
   const next=element('button','Continue Campaign · '+gymTeams[clearedGyms.length].name);
@@ -6016,7 +6017,7 @@ function unit(name,x,y,friendly,level=friendly?(ownedPokemon(name)?.level ?? 5):
  }
  const hp=stats[0];
  const speedFactor=clamp(0.65+stats[3]/200,0.65,1.7);
- return {name,gymRole:!friendly?selectedGym?.plan?.team[gymSlot]?.[1]:null,type:primary,level,hp,max:hp,ai:master?master.ai:friendly && !runMember?normalizeBattleAI(wildProgress.ai[name]):
+ return {name,masterGymCombatant:Boolean(master),gymRole:!friendly?selectedGym?.plan?.team[gymSlot]?.[1]:null,type:primary,level,hp,max:hp,ai:master?master.ai:friendly && !runMember?normalizeBattleAI(wildProgress.ai[name]):
   !friendly && selectedGym?normalizeBattleAI({style:gymRole(name).tank?'Defensive':'Balanced',target:'Type weakness',position:selectedGym.plan?.team[gymSlot]?.[2]}):null,
   heldItem:master?master.heldItem:friendly && !rogueRun?wildProgress.held[name]:!friendly && selectedGym?(selectedGym.plan.team[gymSlot][4] ?? gymHeldItem(name)):null,itemUsed:false,itemTimer:4,ability:abilityFor(name,profile),abilityTimer:0,entryPending:false,entryUsed:false,flashFire:false,pace:pace*speedFactor,cooldown:cooldown/speedFactor,moves,profile,stats,
   moveCooldowns:moves.map(skill=>moveRules(skill).cooldown),moveTimers:moves.map(()=>0),
@@ -6526,7 +6527,7 @@ function tickStatus(actor,dt) {
    const amount=actor.ailment===5?actor.max*0.01:(actor.burnPower ?? 0)*(ability==='Heatproof'?0.5:1);
    if(actor.ailment===5 && ability==='Poison Heal')healActor(actor,actor.max/8);
    else if(ability!=='Magic Guard') {
-    const dealt=Math.min(actor.hp,Math.max(1,Math.round(amount)));
+    const dealt=Math.min(actor.hp,Math.max(1,Math.round(amount*masterGymDamageMultiplier(actor.ailmentSource))));
     actor.hp-=dealt;
     recordOpponentDamage(actor.ailmentSource,actor,dealt);
    }
@@ -6577,14 +6578,16 @@ function movePower(move,power,actor,victim) {
  }
  return power || 55;
 }
+function masterGymDamageMultiplier(source) {return source?.masterGymCombatant?1.5:1;}
 function scaledBattleDamage(damage) {
  return damage>0 ? Math.max(1,Math.round(damage*battleDamageScale)) : 0;
 }
 function battleDamage(actor,victim,power,multiplier,physical,element,move,critical=false) {
  if(multiplier===0) return 0;
- if(move==='Seismic Toss' || move==='Night Shade') return scaledBattleDamage(actor.level);
- if(move==='Dragon Rage') return scaledBattleDamage(40);
- if(move==='Sonic Boom') return scaledBattleDamage(20);
+ const masterBonus=actor.friendly!==victim.friendly?masterGymDamageMultiplier(actor):1;
+ if(move==='Seismic Toss' || move==='Night Shade') return scaledBattleDamage(actor.level*masterBonus);
+ if(move==='Dragon Rage') return scaledBattleDamage(40*masterBonus);
+ if(move==='Sonic Boom') return scaledBattleDamage(20*masterBonus);
  const superEffective=multiplier>1;
  const ability=activeAbility(actor);
  const defender=targetAbility(actor,victim);
@@ -6641,7 +6644,7 @@ function battleDamage(actor,victim,power,multiplier,physical,element,move,critic
     screenTime(victim,physical?'Reflect':'Light Screen')>0)multiplier*=0.5;
  if(critical) multiplier*=ability==='Sniper'?2.25:1.5;
  const raw=Math.floor((Math.floor(2*actor.level/5)+2)*movePower(move,power,actor,victim)*attack/defense/50)+2;
- return scaledBattleDamage(Math.max(1,Math.round(raw*multiplier*(victim.guard>0 && !critical ? 0.5 : 1))));
+ return scaledBattleDamage(Math.max(1,Math.round(raw*multiplier*masterBonus*(victim.guard>0 && !critical ? 0.5 : 1))));
 }
 function respondToHit(actor,victim,move,element,physical,dealt) {
  const ability=activeAbility(actor);
@@ -9826,6 +9829,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.48',changes:['Displayed Master Collection progress and increased Master Gym Leader damage by 50%.']},
  {version:'0.22.47',changes:['Master Campaign uses your regular battle team.']},
  {version:'0.22.46',changes:['Added separate Master challenger teams, hidden leader rosters, and Master badge marks.']},
  {version:'0.22.45',changes:['Added 1.5× back-hit damage and flanking dashes.']},
