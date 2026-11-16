@@ -1331,9 +1331,16 @@ const trainingItems=Object.fromEntries([
  ['IV Booster',{field:'ivs',delta:1,price:7500,category:'IV adjustments'}],
  ['IV Reducer',{field:'ivs',delta:-1,price:1500,category:'IV adjustments'}],
 ]);
-const wildProgress={autoCaptureBall:0,autoCaptureFallback:'standard',reservePremiumBalls:true,battlePass:{xp:0,claimed:[]},capsules:0,vitamins:{},copies:{},ai:{},owned:{},registered:[],coins:0,megaRaidRewards:[],items:{},held:{},skills:{},balls:[12,1,3,1,1,0,1,0],wins:0,autoCapture:false,autoRepeat:false,autoReserve:false,speed:1};
+const pvpLoanerItems=['Leftovers','Muscle Band','Wise Glasses'];
+function pvpLoanerFor(name,roster,choices){
+ const item=choices?.[name];
+ return pvpLoanerItems.includes(item) && roster.find(member=>choices?.[member]===item)===name?item:null;
+}
+const wildProgress={pvpLoaners:{},autoCaptureBall:0,autoCaptureFallback:'standard',reservePremiumBalls:true,battlePass:{xp:0,claimed:[]},capsules:0,vitamins:{},copies:{},ai:{},owned:{},registered:[],coins:0,megaRaidRewards:[],items:{},held:{},skills:{},balls:[12,1,3,1,1,0,1,0],wins:0,autoCapture:false,autoRepeat:false,autoReserve:false,speed:1};
 try {
  const saved=JSON.parse(playerStorage.getItem(progressKey));
+ for(const [name,item] of Object.entries(saved?.pvpLoaners ?? {}))
+  if(isAvailablePokemon(name) && pvpLoanerItems.includes(item))wildProgress.pvpLoaners[name]=item;
  if(Number.isSafeInteger(saved?.battlePass?.xp) && saved.battlePass.xp>=0 && Array.isArray(saved.battlePass.claimed)){
   wildProgress.battlePass=saved.battlePass;
  }
@@ -2708,7 +2715,7 @@ function repeatWildBattle() {
 function runWildResultOptions() {
  cancelWildRepeat();
  if(phase!=='wild-result' || !wildResult || wildResult.capture?.pending) return;
- if(wildProgress.autoCapture && canCatchResult(wildResult) && !difficultyMenu) {
+ if(wildProgress.autoCapture && canCatchResult(wildResult) && !difficultyMenu && !captureMenu) {
   const ball=autoCaptureChoice(wildResult);
   if(ball>=0){tryCatch(ball);return;}
   if(wildProgress.balls.some(count=>count>0)){renderWildResult();return;}
@@ -8295,6 +8302,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.19',changes:['Added equal PvP loaner gear, pending-save recovery, fusion-aware drafts, and manual Capture protection.']},
  {version:'0.22.18',changes:['Added Auto Capture preferences, safe fusion capacity, fuller Campaign backups, session recovery, and server-recorded raid rewards.']},
  {version:'0.22.17',changes:['Added server-side save validation, private integrity flags, and one active game session per account.']},
  {version:'0.22.16',changes:['Fixed Tactics bench overflow and status stacking, added backup restore and raid recovery, and improved Campaign navigation.']},
@@ -8544,7 +8552,7 @@ function onlineRandom() {
  onlineRandomState=(Math.imul(1664525,onlineRandomState)+1013904223)>>>0;
  return onlineRandomState/4294967296;
 }
-function onlineActor(name,entries,side,index,bossLevel,levelOverride,raid=null,copy=null,pvpItems=null) {
+function onlineActor(name,entries,side,index,bossLevel,levelOverride,raid=null,copy=null,pvpRoster=null) {
  if(!isAvailablePokemon(name)) throw Error('A Pokémon in this team is unavailable.');
  const progress=JSON.parse(entries['pokemon-arena-wild-progress'] ?? '{}') ?? {};
  const starter=JSON.parse(entries['pokemon-arena-starter'] ?? '{}') ?? {};
@@ -8565,8 +8573,8 @@ function onlineActor(name,entries,side,index,bossLevel,levelOverride,raid=null,c
  const actor=unit(name,0,0,side!=='boss',level,{profile:validProfile(profile)?profile:fallback,moves});
  const held=progress.held?.[name];
  const equipped=Object.entries(progress.held ?? {}).filter(([,item])=>item===held).map(([holder])=>holder);
- const eligible=pvpItems===null?(progress.items?.[held] ?? 0):Math.min(progress.items?.[held] ?? 0,pvpItems[held] ?? 0);
- actor.heldItem=Object.hasOwn(heldItems,held) && equipped.indexOf(name)>=0 && equipped.indexOf(name)<eligible?held:null;
+ actor.heldItem=pvpRoster?pvpLoanerFor(name,pvpRoster,progress.pvpLoaners):
+  Object.hasOwn(heldItems,held) && equipped.indexOf(name)>=0 && equipped.indexOf(name)<(progress.items?.[held] ?? 0)?held:null;
  if(!bossLevel)actor.ai=normalizeBattleAI(progress.ai?.[name]);
  actor.normalAttacksEnabled=true;
  actor.onlineId=side+':'+index;
@@ -8587,8 +8595,8 @@ const raidFormRoster={
 function initializeOnline(match) {
  const levelOverride=match.mode==='free_fight'?100:undefined;
  const pvp=['ranked','unranked','free_fight'].includes(match.mode);
- const host=(match.host_pick ?? []).map((name,i)=>onlineActor(name,match.host_entries,'host',i,undefined,levelOverride,null,null,pvp?(match.host_pvp_items ?? {}):null));
- const guest=(match.guest_pick ?? []).map((name,i)=>onlineActor(name,match.guest_entries,'guest',i,undefined,levelOverride,null,null,pvp?(match.guest_pvp_items ?? {}):null));
+ const host=(match.host_pick ?? []).map((name,i)=>onlineActor(name,match.host_entries,'host',i,undefined,levelOverride,null,null,pvp?match.host_pick:null));
+ const guest=(match.guest_pick ?? []).map((name,i)=>onlineActor(name,match.guest_entries,'guest',i,undefined,levelOverride,null,null,pvp?match.guest_pick:null));
  const coop=isCoopMode(match.mode);
  const raidTeam=match.raid_seats?.flatMap((seat,index)=>{
   if(!seat?.pokemon)return [];

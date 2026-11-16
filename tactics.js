@@ -439,13 +439,15 @@
     offers.push({name,item:randomComponent()});
    }
    const order=[...living].sort((a,b)=>a.hp-b.hp);
+   const fits=(trainer,offer)=>!fusionPlan(trainer,{name:offer.name,star:1,position:null}).overflow;
    const aiPick=trainer=>{
-    if(!offers.length || trainer.units.filter(unit=>unit.position===null).length>=benchLimit)return;
-   const index=Math.floor(Math.random()*offers.length);
-   if(draftCarousel(trainer,offers[index]))offers.splice(index,1);
+    const eligible=offers.filter(offer=>fits(trainer,offer));
+    if(!eligible.length)return;
+    const offer=eligible[Math.floor(Math.random()*eligible.length)];
+    if(draftCarousel(trainer,offer))offers.splice(offers.indexOf(offer),1);
    };
    while(order.length && order[0]!==player)aiPick(order.shift());
-   if(!offers.length || player.units.filter(u=>u.position===null).length>=benchLimit){
+   if(!offers.some(offer=>fits(player,offer))){
     for(const ai of order.slice(1))aiPick(ai);
     for(const offer of offers)run.pool.get(offer.name).copies++;
    }else run.choice={kind:'carousel',offers,complete:()=>{
@@ -459,14 +461,20 @@
   const grid=element('div',null,'shop-grid');
   for(const [index,offer] of choice.offers.entries()){
    const tile=choice.kind==='carousel'?card(offer,offer.item):element('div',null,'bag-item');
-   if(choice.kind==='carousel')tile.append(itemIcon(offer.item));
+   const plan=choice.kind==='carousel'?fusionPlan(player,{name:offer.name,star:1,position:null}):null;
+   if(plan){
+    tile.append(itemIcon(offer.item));
+    if(plan.overflow)tile.append(element('small','Needs '+plan.overflow+' more bench slot(s).'));
+    else if(plan.displaced.length)tile.append(element('small','Moves to bench: '+plan.displaced.map(unit=>unit.name).join(', ')));
+    else if(plan.upgrades.length)tile.append(element('small','Fuses immediately.'));
+   }
    if(choice.kind==='augment'){tile.classList.add('tactics-augment-card');tile.append(element('span',['✦','◆','✹'][index],'tactics-augment-icon'),element('strong',offer[0]),element('small',offer[1]));}
    tile.append(button('Choose',()=>{
     if(choice.kind==='augment')grantAugment(player,offer);
     else {if(!draftCarousel(player,offer))return;choice.offers.splice(index,1);choice.complete();}
     run.choice=null;
     startPlanning();
-   }));
+   },Boolean(plan?.overflow)));
    grid.append(tile);
   }
   const panel=element('section',null,'tactics-choice'+(choice.kind==='augment'?' tactics-augment-screen':''));

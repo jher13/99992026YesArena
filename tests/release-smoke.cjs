@@ -260,3 +260,66 @@ async function verifyRaidRetry(){
  console.log('Simulated raid reconnect passed during ready-up, combat and result.');
 }
 verifyRaidRetry().catch(error=>{console.error(error);process.exitCode=1;});
+
+const manualCapture=html.slice(html.indexOf('function runWildResultOptions()'),html.indexOf('function renderWildResult()'));
+const throws=[];
+let rendered=0;
+new Function('wildProgress','wildResult','phase','difficultyMenu','captureMenu','cancelWildRepeat','canCatchResult',
+ 'autoCaptureChoice','tryCatch','renderWildResult',manualCapture+'runWildResultOptions()')(
+ {autoCapture:true,autoRepeat:true,balls:[1]}, {name:'Pikachu'}, 'wild-result', false, true,()=>{},()=>true,
+ ()=>0,index=>throws.push(index),()=>rendered++);
+assert.deepEqual(throws,[]);
+assert.equal(rendered,1);
+
+const draftTrainer=a.makeTrainer('Full bench');
+draftTrainer.units=[
+ {name:'Pikachu',star:1,position:null},{name:'Pikachu',star:1,position:null},
+ ...Array.from({length:7},()=>({name:'Squirtle',star:1,position:null}))
+];
+assert.equal(a.fusionPlan(draftTrainer,{name:'Pikachu',star:1,position:null}).overflow,0);
+assert.equal(a.fusionPlan(draftTrainer,{name:'Charmander',star:1,position:null}).overflow,1);
+
+async function verifyPendingRecovery(){
+ const from=cloud.indexOf('const pendingSaveKey=');
+ const markerCode=cloud.slice(from,cloud.indexOf('async function flushArenaSave(',from));
+ const enter=cloud.slice(cloud.indexOf('async function enterCloudAccount('),cloud.indexOf("window.addEventListener('online'"));
+ const actions=[];
+ const browser={queueArenaSave:()=>actions.push('retry')};
+ let serverRevision='original';
+ const logic=new Function('localStorage','sessionStorage','window','claimArenaSession','fetchArenaSave',
+  'restoreArenaSave','checkArenaLease','setInterval','clearInterval','saveState',
+  'let cloudAccount="user",cloudRevision="original",dirty=true,onlineSaveId="user",leaseTimer;'+
+  markerCode+enter+'return {updatePendingSave,enterCloudAccount,revision:()=>cloudRevision};')(
+  localStorage,{getItem:()=>null,setItem(){}},browser,async()=>true,
+  async()=>({updated_at:serverRevision,save_data:{}}),()=>actions.push('restore'),
+  ()=>{},()=>{},()=>{},{});
+ logic.updatePendingSave();
+ for(const revision of ['original','newer']){
+  serverRevision=revision;
+  await logic.enterCloudAccount({}, {id:'user'},()=>{});
+  assert.equal(logic.revision(),'original');
+ }
+ assert.deepEqual(actions,['retry','retry']);
+}
+async function verifyLoanerGear(){
+ const {simulateOnline}=await import('../supabase/functions/arena-combat/engine.js');
+ const playerEntries=choices=>({
+  'pokemon-arena-wild-progress':JSON.stringify({
+   owned:{Pikachu:{level:5},Squirtle:{level:5}},
+   held:{Pikachu:'Leftovers'},items:{Leftovers:1},pvpLoaners:choices
+  })
+ });
+ const match={
+  id:'b2450000-0000-0000-0000-000000000000',mode:'ranked',format:1,host:'a',guest:'b',
+  host_pick:['Pikachu','Squirtle'],guest_pick:['Pikachu'],
+  host_entries:playerEntries({Pikachu:'Muscle Band',Squirtle:'Muscle Band'}),
+  guest_entries:playerEntries({Pikachu:'Wise Glasses'})
+ };
+ const serialized=JSON.stringify(simulateOnline(match,null,0,null,'host'));
+ assert.equal((serialized.match(/"heldItem":"Muscle Band"/g) ?? []).length,1);
+ assert.equal((serialized.match(/"heldItem":"Wise Glasses"/g) ?? []).length,1);
+ assert(!serialized.includes('"heldItem":"Leftovers"'));
+}
+Promise.all([verifyPendingRecovery(),verifyLoanerGear()]).then(()=>{
+ console.log('Manual Capture, full-bench fusion, pending-save recovery, and server loaner gear checks passed.');
+}).catch(error=>{console.error(error);process.exitCode=1;});

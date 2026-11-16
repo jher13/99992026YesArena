@@ -200,6 +200,33 @@
   menuSettings();
   byId('home-dialog-content').append(button('Hotkey Settings',editPvpKeys));
  };
+ function pvpLoanerPanel(locked=false){
+  const panel=element('details',null,'pvp-loaners');
+  panel.open=true;
+  panel.append(element('summary','PvP loaner gear'),element('p','Both players can borrow one of each item. Your regular held items are excluded in PvP.'));
+  for(const name of team){
+   const label=element('label',name+' ');
+   const choices=wildProgress.pvpLoaners;
+   const equipped=pvpLoanerFor(name,team,choices);
+   const ordinary=wildProgress.held[name];
+   const field=select(name+' PvP held item',[['','None'],...pvpLoanerItems.map(item=>[item,item])]);
+   field.value=equipped ?? '';
+   field.disabled=locked;
+   for(const option of field.options)
+    option.disabled=Boolean(option.value && team.some(other=>other!==name && pvpLoanerFor(other,team,choices)===option.value));
+   const result=element('small',(equipped?'Loaner: '+equipped:'No PvP held item')+
+    (ordinary?' · '+ordinary+' from your bag is excluded':''));
+   field.onchange=()=>{
+    if(field.value)choices[name]=field.value;
+    else delete choices[name];
+    saveWildProgress();
+    panel.replaceWith(pvpLoanerPanel());
+   };
+   label.append(field,result);
+   panel.append(label);
+  }
+  return panel;
+ }
  function arenaView(match, picks, togglePick, ready, leave) {
   if(phase!=='online-battle') {
    lastDpsRender=-1;renderBattleDps(0,[]);
@@ -240,6 +267,7 @@
   const confirmReady=button(match.locked?'Ready ✓':'Ready',ready);
   confirmReady.disabled=match.locked || (match.format===6?team.length!==6:picks.length!==match.format);
   byId('choices').replaceChildren(confirmReady);
+  if(!isCoop(match.mode))byId('choices').append(pvpLoanerPanel(match.locked));
  }
  async function combat(id,command) {
   const client=await cloudClient();
@@ -582,7 +610,7 @@
  };
  async function collectMegaRaidRewards() {
   const awarded=await window.collectServerRaidRewards();
-  const rewards=awarded.map(reward=>'Tier '+megaRaidTiers[reward.mode].tier+' first clear · '+reward.master_balls+' Master Balls · '+reward.coins.toLocaleString()+' coins · '+reward.pvp_item+' (PvP-verified)');
+  const rewards=awarded.map(reward=>'Tier '+megaRaidTiers[reward.mode].tier+' first clear · '+reward.master_balls+' Master Balls · '+reward.coins.toLocaleString()+' coins · '+reward.pvp_item);
   const tickets=await window.refreshCoopTickets();
   if(tickets)rewards.push('+'+tickets+' Co-op '+(tickets===1?'ticket':'tickets'));
   return rewards;
@@ -932,7 +960,7 @@
   joinControls.append(code,join);
   matchmaking.append(find,create,joinControls);
   show(title,element('h3','Match setup','bag-section-title'),setup,
-   element('p','PvP held items must be earned through verified Mega Raid first clears.'),
+   pvpLoanerPanel(),
    element('h3','Matchmaking','bag-section-title'),matchmaking);
  }
  function showMatch(title) {
