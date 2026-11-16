@@ -49,12 +49,13 @@ const context=vm.createContext({
 });
 context.button=(label,onclick,disabled)=>Object.assign(element('button',label),{onclick,disabled});
 const source=read('tactics.js');
-const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,evolutionFamilies,traits,familyOf,stageLabel,openingRound,wildRound,megaRound,augmentRound,carouselRound,megaRewardTier,finalRound,neutralTrainer,completeNeutral,receiveDamage,heal,equip,sell,ignite,fusionPlan,applyFusion,setRound:round=>{run.round=round;},getRun:()=>run};';
+const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,combatRole,evolutionFamilies,signatures,expandedSignatures,signatureEffects,signatureEffectText,extraSignatureText,traits,familyOf,stageLabel,openingRound,wildRound,megaRound,augmentRound,carouselRound,megaRewardTier,finalRound,neutralTrainer,completeNeutral,grantTowerWard,receiveDamage,heal,equip,sell,ignite,fusionPlan,applyFusion,setRound:round=>{run.round=round;},getRun:()=>run};';
 new vm.Script(data+'\n'+source.replace(/\}\)\(\);\s*$/,auditExports+'})();'),{filename:'tactics.js'}).runInContext(context);
 const a=context.audit;
 byId('home-tactics').onclick();
 byId('tactics-content').children.find(node=>node.textContent==='Start match').onclick();
 assert.equal(a.getRun().trainers.length,8);
+assert(a.getRun().trainers.every(trainer=>trainer.gold===2));
 assert.equal(byId('tactics-content').children[0].className,'tactics-layout');
 assert(context.window.hasActiveTacticsRun());
 const trainer=a.getRun().trainers[0];
@@ -91,6 +92,19 @@ assert.deepEqual(Array.from(fusion.returned),['Captain’s Crown']);
 assert.equal(fusionTrainer.units.filter(unit=>unit.position!==null).length,3);
 a.applyFusion(fusionTrainer,fusion);
 assert.equal(fusionTrainer.units.filter(unit=>unit.position!==null).length,2);
+const roleCounts=new Map();
+for(const tier of a.roster){
+ const counts=new Map();
+ for(const name of tier){
+  const role=a.combatRole(name);
+  counts.set(role,(counts.get(role) ?? 0)+1);
+  roleCounts.set(role,(roleCounts.get(role) ?? 0)+1);
+ }
+ assert.equal(counts.size,6);
+ assert(Math.max(...counts.values())-Math.min(...counts.values())<=1);
+}
+assert.deepEqual([...roleCounts.values()].sort((a,b)=>a-b),[20,21,21,21,21,21]);
+assert.equal(a.combatRole('Squirtle'),a.combatRole('Blastoise'));
 assert.equal(a.roster.flat().length,125);
 assert.equal(Object.keys(a.evolutionFamilies).length,110);
 const fuseFamily=(root,star,branch)=>{
@@ -148,6 +162,40 @@ for(const [round,tier] of [[11,2],[18,3],[25,4],[32,5],[123,5]]){
  assert.equal(loser.items.length,0);
 }
 a.setRound(1);
+
+for(const [region,...forms] of [
+ ['Johto','Chikorita','Quilava','Feraligatr'],['Hoenn','Sceptile','Torchic','Swampert'],
+ ['Sinnoh','Torterra','Chimchar','Prinplup'],['Unova','Servine','Emboar','Oshawott'],
+ ['Kalos','Chespin','Delphox','Greninja'],['Alola','Dartrix','Incineroar','Primarina'],
+ ['Galar','Rillaboom','Scorbunny','Inteleon'],['Paldea','Meowscarada','Crocalor','Quaxly']
+]){
+ assert.equal(a.traits(forms.map(name=>({name})))[region+' Partners'],3);
+}
+assert.equal(a.traits([{name:'Rowlet'},{name:'Dartrix'}])['Alola Partners'],1);
+const towerParty=a.makeTrainer('Tower test');
+towerParty.units=['Lugia','Ho-Oh','Pikachu'].map((name,x)=>({name,star:1,position:{x,y:4}}));
+const towerUnits=a.battle(towerParty,a.makeTrainer('Opponent'));
+assert.equal(towerUnits[0].gear.towerWard,.12);
+a.grantTowerWard(towerUnits[0],towerUnits);
+assert.equal(towerUnits[2].signatureShield,Math.round(towerUnits[2].max*.12));
+towerUnits[2].signatureShield=0;
+a.grantTowerWard(towerUnits[1],towerUnits);
+assert.equal(towerUnits[2].signatureShield,0);
+
+const rosterForms=new Set([...a.roster.flat(),...Object.values(a.evolutionFamilies).flat(2),'Rattata','Zubat','Geodude']);
+const moveNames=new Set(), effectSets=new Set();
+for(const name of rosterForms){
+ const move=a.signatures[name]?.[0] ?? a.expandedSignatures[name]?.[0];
+ const effects=(a.signatureEffects[name] ?? a.expandedSignatures[name]?.[1] ?? '').split(' ');
+ assert(move && move!=='Signature Skill' && !moveNames.has(move),name);
+ moveNames.add(move);
+ const key=[...effects].sort().join(' ');
+ assert(!effectSets.has(key),name+' shares '+key);
+ effectSets.add(key);
+ for(const effect of effects)assert(a.signatureEffectText[effect] || a.extraSignatureText[effect],effect);
+}
+assert.equal(a.expandedSignatures.Tinkaton[0],'Gigaton Hammer');
+assert.equal(a.expandedSignatures.Decidueye[0],'Spirit Quill Snare');
 
 const afflicted={hp:100,elapsed:500,woundUntil:9000};
 a.ignite(afflicted,5,{});
@@ -244,9 +292,10 @@ for(const [index,name] of roster.entries()){
  for(const star of [1,2,3]){
   const player=a.makeTrainer('Player');
   const enemy=a.makeTrainer('Enemy');
-  player.units=[{name,star,position:{x:2,y:4}},{name:'Squirtle',star:1,position:{x:3,y:4}}];
+  const atStar=root=>star===1?root:a.evolutionFamilies[root]?.[0]?.[star-2] ?? root;
+  player.units=[{name:atStar(name),star,position:{x:2,y:4}},{name:'Squirtle',star:1,position:{x:3,y:4}}];
   const rival=roster[(index+19)%roster.length];
-  enemy.units=[{name:rival,star,position:{x:3,y:4}},{name:'Charmander',star:1,position:{x:2,y:4}}];
+  enemy.units=[{name:atStar(rival),star,position:{x:3,y:4}},{name:'Charmander',star:1,position:{x:2,y:4}}];
   const units=a.battle(player,enemy);
   let ticks=0, firstCast=null;
   for(;ticks<a.combatTicks && a.outcome(units)===null;ticks++){

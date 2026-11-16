@@ -203,6 +203,302 @@
   'Rhyhorn':['Ridge Charge','Ground',false],
   'Boldore':['Crystal Volley','Rock',false],
  };
+ const expandedSignatures={
+  "Metapod":["Shell Brace","brace thorn"],
+  "Butterfree":["Dream Dust","spread snare rush"],
+  "Weedle":["Barbed Puncture","wound rush"],
+  "Kakuna":["Venom Husk","shield wound"],
+  "Beedrill":["Twin Stinger","execute wound"],
+  "Pidgeot":["Skyline Cyclone","gale spread"],
+  "Pichu":["Static Sneeze","spark recoil"],
+  "Nidoran♀":["Bristle Guard","shield weaken"],
+  "Nidorina":["Brood Defense","cover veil"],
+  "Nidoqueen":["Royal Rampart","fortify thorn"],
+  "Nidoran♂":["Horn Jab","sunder rush wound"],
+  "Nidorino":["Venom Tusk","sunder wound"],
+  "Nidoking":["Royal Quake","quake spread"],
+  "Cleffa":["Stardust Wish","heal spark"],
+  "Clefairy":["Moonbeam Waltz","heal veil tide"],
+  "Igglybuff":["Hushed Hum","snare veil"],
+  "Jigglypuff":["Drowsy Refrain","snare spread rally"],
+  "Wigglytuff":["Grand Lullaby","quake weaken"],
+  "Gloom":["Noxious Pollen","spread weaken bloom"],
+  "Vileplume":["Petal Miasma","spread wound bloom"],
+  "Bellossom":["Sun Petal Dance","heal cleanse tide"],
+  "Poliwag":["Spiral Hypnosis","snare sap gale"],
+  "Poliwhirl":["Eddy Lock","snare gale"],
+  "Poliwrath":["Riptide Throw","gale sunder"],
+  "Politoed":["Raincall Chorus","heal tide spark"],
+  "Bellsprout":["Vine Hook","snare leech"],
+  "Weepinbell":["Pitcher Acid","shred leech"],
+  "Victreebel":["Snap Trap","execute snare bloom"],
+  "Dratini":["Coiling Tail","snare rush gale"],
+  "Dragonair":["Orb of Calm","heal veil spark"],
+  "Chikorita":["Soothing Leaf","heal"],
+  "Bayleef":["Spiceleaf Rally","heal rally tide"],
+  "Meganium":["Spring Bloom","heal tide cleanse veil"],
+  "Cyndaquil":["Backfire Burst","burn blink"],
+  "Quilava":["Cinder Roll","burn rush rally"],
+  "Typhlosion":["Caldera Eruption","burn spread"],
+  "Totodile":["Snapjaw","sunder leech"],
+  "Croconaw":["Serrated Bite","wound sunder gale"],
+  "Feraligatr":["Undertow Jaws","execute gale volley"],
+  "Crobat":["Four-Wing Ambush","execute blink wound"],
+  "Mareep":["Fleece Static","spark weaken"],
+  "Flaaffy":["Wool Coil","spark snare rush"],
+  "Ampharos":["Beacon Discharge","spread spark rush"],
+  "Azurill":["Tail Bounce","shield blink"],
+  "Marill":["Buoyant Bubble","shield gale"],
+  "Azumarill":["Bubble Breaker","shield sunder gale"],
+  "Hoppip":["Cotton Drift","blink veil"],
+  "Skiploom":["Sunlift Spores","heal bloom"],
+  "Jumpluff":["Floatseed Squall","gale spread cleanse"],
+  "Horsea":["Ink Jet","weaken blink gale"],
+  "Seadra":["Spine Spray","wound volley"],
+  "Kingdra":["Deepwater Vortex","gale shred"],
+  "Happiny":["Pocket Stone Gift","cover spark"],
+  "Chansey":["Soft-Boiled Share","heal cleanse veil"],
+  "Blissey":["Blissful Egg Basket","heal tide veil spark"],
+  "Larvitar":["Ore Crunch","sunder thorn"],
+  "Pupitar":["Pressurized Shell","shield quake thorn"],
+  "Treecko":["Branch Skitter","rush blink"],
+  "Grovyle":["Canopy Slash","execute rally"],
+  "Sceptile":["Forest Blade Rush","execute rush"],
+  "Torchic":["Chick Ember","burn spark"],
+  "Combusken":["Double Kick Flare","burn sunder rally"],
+  "Blaziken":["Blazing Heel","burn execute"],
+  "Mudkip":["Mudfin Push","gale weaken"],
+  "Marshtomp":["Marsh Stomp","quake sunder gale"],
+  "Swampert":["Delta Breaker","shield quake sunder"],
+  "Wurmple":["Silk Trail","snare blink"],
+  "Silcoon":["Silken Cocoon","shield veil"],
+  "Beautifly":["Sunwing Nectar","leech bloom"],
+  "Cascoon":["Bristled Cocoon","shield thorn wound"],
+  "Dustox":["Moonmoth Powder","spread weaken wound"],
+  "Lotad":["Lilypad Canopy","cover cleanse"],
+  "Lombre":["Pondside Prank","sap rush"],
+  "Ludicolo":["Rain Rhythm","heal tide spark bloom"],
+  "Seedot":["Acorn Drop","quake blink"],
+  "Nuzleaf":["Leaf Whistle","snare weaken"],
+  "Shiftry":["Tengu Fanstorm","gale spread shred"],
+  "Ralts":["Empathic Pulse","heal spark bloom"],
+  "Kirlia":["Mirror Pirouette","blink spark"],
+  "Gallade":["Twin Elbow Blades","execute sunder"],
+  "Slakoth":["Lazy Yawn","snare bloom"],
+  "Vigoroth":["Restless Rake","rush rally"],
+  "Slaking":["Lazy King's Slam","quake execute"],
+  "Whismur":["Startled Squeak","gale snare rally"],
+  "Loudred":["Speaker Stomp","quake spread rally"],
+  "Exploud":["Overdrive Roar","gale spread weaken"],
+  "Aron":["Iron Ore Headbutt","thorn sunder shield"],
+  "Lairon":["Ironback Brace","shield thorn rally"],
+  "Aggron":["Mountain Bastion","fortify thorn tide"],
+  "Trapinch":["Sand Pit","snare sunder quake"],
+  "Vibrava":["Wing Resonance","spread sap"],
+  "Flygon":["Desert Mirage","gale blink"],
+  "Spheal":["Snowball Roll","shield frost gale"],
+  "Sealeo":["Ice Juggle","volley frost"],
+  "Walrein":["Tusk Glacier","shield frost gale weaken"],
+  "Bagon":["Cliffbound Headbutt","rush sunder gale"],
+  "Shelgon":["Dreaming Carapace","shield bloom gale"],
+  "Salamence":["First Flight Assault","gale execute rally"],
+  "Beldum":["Magnetic Ram","rush thorn shield"],
+  "Metang":["Twin-Core Grip","snare thorn"],
+  "Turtwig":["Sapling Guard","shield bloom leech"],
+  "Grotle":["Grove Shelter","cover thorn"],
+  "Torterra":["Continental Bulwark","fortify bloom"],
+  "Chimchar":["Ember Feint","burn blink rally"],
+  "Monferno":["Flare Knuckle","burn rally weaken"],
+  "Infernape":["Crownflame Combo","burn rush rally spread"],
+  "Piplup":["Proud Bubble","volley shield"],
+  "Prinplup":["Crested Wing Strike","sunder gale volley"],
+  "Empoleon":["Trident Tide","volley thorn gale"],
+  "Starly":["Flock Peck","rush volley rally"],
+  "Staravia":["Aerial Feint","gale rush"],
+  "Staraptor":["Brave Dive","execute recoil"],
+  "Shinx":["Flash Pounce","spark rush volley"],
+  "Luxio":["Spark Fang","snare sunder spark"],
+  "Luxray":["X-Ray Pursuit","execute shred spark"],
+  "Budew":["Dewdrop Remedy","heal cleanse spark"],
+  "Roselia":["Rose Thorn Hex","wound shred"],
+  "Roserade":["Bouquet Masquerade","spread wound shred"],
+  "Gible":["Sandfin Bite","rush wound gale"],
+  "Gabite":["Cavern Rake","sunder rush rally"],
+  "Garchomp":["Sandjet Dive","gale execute sunder"],
+  "Magnezone":["Tri-Magnet Lock","snare shred spark"],
+  "Rhyperior":["Rock Wrecker","sunder quake spread"],
+  "Elekid":["Dynamo Spin","spark rush sap"],
+  "Electabuzz":["Thunder Knuckle","snare rally"],
+  "Electivire":["Livewire Twin Tail","volley spark execute"],
+  "Magby":["Cinder Sneeze","burn"],
+  "Magmar":["Kiln Breath","burn weaken rush"],
+  "Magmortar":["Twin Furnace Cannon","burn volley"],
+  "Togepi":["Shell of Good Luck","cover spark veil"],
+  "Togetic":["Joy Dust","heal tide bloom"],
+  "Togekiss":["Blessing of Peace","fortify cleanse"],
+  "Swinub":["Snow Snout","frost rush"],
+  "Piloswine":["Permafrost Tusk","frost sunder"],
+  "Mamoswine":["Mammoth Avalanche","frost quake spread"],
+  "Porygon":["Polygon Probe","sap shred rally"],
+  "Porygon2":["Round-Trip Restore","bloom cleanse"],
+  "Porygon-Z":["Glitch Protocol","spread spark sap"],
+  "Duskull":["One-Eyed Hex","sap weaken leech"],
+  "Dusclops":["Hollow Draw","leech snare sap"],
+  "Dusknoir":["Spirit Gate","sap leech spread"],
+  "Snivy":["Vine Rebuke","rush shred"],
+  "Servine":["Serpent Feint","blink snare bloom"],
+  "Serperior":["Royal Coil","snare sap shred"],
+  "Tepig":["Coal Snort","burn rush spread"],
+  "Pignite":["Furnace Shoulder","burn sunder rush"],
+  "Emboar":["Infernal Suplex","burn gale execute"],
+  "Oshawott":["Scalchop Parry","shield rush"],
+  "Dewott":["Dual Scalchop","volley sunder"],
+  "Samurott":["Shellblade Draw","execute sunder rush"],
+  "Lillipup":["Scrappy Sniff","rush rally thorn"],
+  "Herdier":["Loyal Stand","shield veil rally"],
+  "Stoutland":["Rescue Trail","heal cleanse rally"],
+  "Roggenrola":["Cavern Echo","quake thorn"],
+  "Gigalith":["Crystal Solar Burst","spread shred thorn"],
+  "Timburr":["Timber Swing","gale sunder rally"],
+  "Gurdurr":["Girder Brace","shield rally sunder"],
+  "Conkeldurr":["Concrete Pillar Crash","quake sunder rally"],
+  "Tympole":["Ripple Hum","snare spark gale"],
+  "Palpitoad":["Mudwave Bass","quake weaken gale"],
+  "Seismitoad":["Faultline Chorus","quake spread frost gale"],
+  "Sewaddle":["Leaf-Stitch Mend","heal bloom veil"],
+  "Swadloon":["Leaf Quilt","cover veil cleanse"],
+  "Leavanny":["Silken Tailor","fortify cleanse thorn"],
+  "Venipede":["Toxic Roll","wound rush snare"],
+  "Whirlipede":["Venom Wheel","shield wound snare"],
+  "Scolipede":["Centipede Stampede","wound volley rush"],
+  "Sandile":["Dune Snap","execute blink quake"],
+  "Krokorok":["Sand Sentinel","sunder veil"],
+  "Krookodile":["Crocodile Lockdown","execute snare sunder"],
+  "Gothita":["Starry Stare","sap snare veil"],
+  "Gothorita":["Starlight Marionette","sap gale"],
+  "Gothitelle":["Fate Threads","snare sap spread"],
+  "Solosis":["Cell Membrane","shield bloom sap"],
+  "Duosion":["Split Thought","volley sap shred"],
+  "Reuniclus":["Psychic Gel Crush","spread shred bloom"],
+  "Vanillite":["Snowcone Puff","frost"],
+  "Vanillish":["Soft-Serve Squall","frost gale weaken"],
+  "Vanilluxe":["Double Blizzard","frost volley spread"],
+  "Klink":["Gear Mesh","rally thorn"],
+  "Klang":["Double Gear Grind","volley sunder thorn"],
+  "Klinklang":["Overclocked Gearwheel","rally spark sunder"],
+  "Tynamo":["Shoal Spark","spark rush veil"],
+  "Eelektrik":["Coil Current","snare leech spark"],
+  "Eelektross":["Lamprey Discharge","volley leech spark"],
+  "Litwick":["Wick Siphon","leech burn"],
+  "Lampent":["Lantern Toll","sap burn leech"],
+  "Chandelure":["Soulfire Chandelier","burn leech spread"],
+  "Axew":["Growing Tusk","sunder rush spread"],
+  "Fraxure":["Tusk Shear","sunder wound rally"],
+  "Haxorus":["Axe-Tusk Cleave","execute sunder spread"],
+  "Deino":["Blind Chomp","execute rush sap"],
+  "Zweilous":["Duelling Jaws","volley wound sap"],
+  "Hydreigon":["Triple Maw Barrage","volley spread weaken"],
+  "Chespin":["Chestnut Guard","shield thorn bloom"],
+  "Quilladin":["Quill Ball","gale thorn"],
+  "Chesnaught":["Spiked Bastion","fortify thorn allyHaste"],
+  "Fennekin":["Earflame Flash","burn blink rush"],
+  "Braixen":["Twig Torch","burn spark rally"],
+  "Delphox":["Oracle Flame","burn sap shred"],
+  "Froakie":["Foam Decoy","blink snare gale"],
+  "Frogadier":["Foam Pellet Ambush","volley blink"],
+  "Greninja":["Water Shuriken Barrage","volley rush execute"],
+  "Fletchling":["Robin Dash","rush gale rally"],
+  "Fletchinder":["Ember Glide","burn gale rally"],
+  "Talonflame":["Gale Flame Dive","burn execute recoil"],
+  "Scatterbug":["Powder Trail","weaken blink snare"],
+  "Spewpa":["Powder Cocoon","shield snare"],
+  "Vivillon":["Patterned Powder","spread snare cleanse"],
+  "Flabébé":["First Flower Gift","heal spark allyHaste"],
+  "Floette":["Flower Wish","heal veil allyHaste"],
+  "Florges":["Garden Sanctuary","fortify tide"],
+  "Honedge":["Haunted Blade","leech sunder thorn"],
+  "Doublade":["Crossed Spectral Blades","volley thorn shield"],
+  "Aegislash":["Royal Shield Stance","shield thorn weaken"],
+  "Goomy":["Slime Bubble","weaken veil gale"],
+  "Sliggoo":["Slime Armor","shield bloom rally"],
+  "Goodra":["Dragon Sap Shelter","cover bloom"],
+  "Rowlet":["Silent Leaf Quill","volley blink bloom"],
+  "Dartrix":["Quill Flourish","volley rally"],
+  "Decidueye":["Spirit Quill Snare","snare execute leech"],
+  "Litten":["Furball Flame","burn rush wound"],
+  "Torracat":["Bellflame Pounce","burn rally wound"],
+  "Incineroar":["Wrestler's Lariat","gale sunder execute burn"],
+  "Popplio":["Balloon Salve","heal veil ward"],
+  "Brionne":["Bubble Step","heal rally veil"],
+  "Primarina":["Sea Aria","heal tide spark cleanse"],
+  "Grubbin":["Pincer Current","sunder spark"],
+  "Charjabug":["Battery Pack","cover spark cleanse"],
+  "Vikavolt":["Railbolt","volley shred spark"],
+  "Bounsweet":["Sweet Scent","weaken bloom"],
+  "Steenee":["Aromatic Heel","rush weaken"],
+  "Tsareena":["Royal Heel","execute rush weaken"],
+  "Jangmo-o":["Clanging Scale","thorn quake gale"],
+  "Hakamo-o":["Scale Dance","thorn rally gale"],
+  "Kommo-o":["Clangorous Chorus","spread rally thorn"],
+  "Cosmog":["Nebula Shelter","cover tide"],
+  "Cosmoem":["Stillpoint Shell","fortify allyHaste"],
+  "Solgaleo":["Solar Mane Charge","rush sunder spread sap"],
+  "Lunala":["Moongeist Sweep","spread shred sap snare"],
+  "Grookey":["Rhythm Stick","spark rally bloom"],
+  "Thwackey":["Twin-Beat Rally","rally spark leech"],
+  "Rillaboom":["Canopy Drumline","quake spread spark"],
+  "Scorbunny":["Scorching Kickoff","burn rush execute"],
+  "Raboot":["Ember Footwork","burn blink rush rally"],
+  "Cinderace":["Pyro Orb Strike","burn volley execute"],
+  "Sobble":["Tearscreen","weaken blink volley"],
+  "Drizzile":["Water Trap","snare blink volley"],
+  "Inteleon":["Hidden Scope","execute shred rush"],
+  "Rookidee":["Scrappy Peck","rush"],
+  "Corvisquire":["Stone Tool Drop","gale sunder blink"],
+  "Corviknight":["Ironwing Escort","cover thorn veil"],
+  "Blipbug":["Antenna Scan","sap weaken snare"],
+  "Dottler":["Radar Shell","shield spark"],
+  "Orbeetle":["Gravity Disc","quake snare spread"],
+  "Hatenna":["Quiet Signal","heal veil tide bloom"],
+  "Hattrem":["Hush Sweep","gale snare shred"],
+  "Hatterene":["Silent Room","quake weaken sap"],
+  "Impidimp":["Prank Swipe","sap rush weaken"],
+  "Morgrem":["False Surrender","blink execute sap"],
+  "Grimmsnarl":["Living Hair Bind","snare sunder weaken"],
+  "Zigzagoon":["Zigzag Rush","blink rush rally"],
+  "Linoone":["Straight-Line Chase","rush execute rally"],
+  "Obstagoon":["Cross-Arm Obstruction","shield thorn sunder sap"],
+  "Dreepy":["Drift Dart","volley blink gale"],
+  "Drakloak":["Guardian Dart","volley veil"],
+  "Dragapult":["Twin Dreepy Darts","volley execute rush gale"],
+  "Teddiursa":["Honey Swipe","leech bloom rally"],
+  "Ursaring":["Crescent Claw","sunder wound rally rush"],
+  "Ursaluna":["Peatland Breaker","quake shield sunder thorn"],
+  "Sprigatito":["Catmint Feint","blink rush bloom"],
+  "Floragato":["Bud Yo-Yo","snare rush bloom"],
+  "Meowscarada":["Flower Trick","execute spread blink"],
+  "Fuecoco":["Pepper Ember","burn bloom"],
+  "Crocalor":["Eggfire Guard","shield burn"],
+  "Skeledirge":["Torch Song Finale","burn spread rally weaken"],
+  "Quaxly":["Dapper Step","rush cleanse"],
+  "Quaxwell":["Torrent Footwork","rally gale"],
+  "Quaquaval":["Carnival Kick","volley rally gale"],
+  "Pawmi":["Palm Static","spark snare volley"],
+  "Pawmo":["Double Palm Shock","volley spark"],
+  "Pawmot":["Revival Pulse","heal spark cleanse veil"],
+  "Smoliv":["Bitter Oil Splash","weaken blink bloom"],
+  "Dolliv":["Olive Gift","heal tide allyHaste"],
+  "Arboliva":["Orchard Haven","heal tide cleanse bloom"],
+  "Nacli":["Salt Rub","bloom thorn sunder"],
+  "Naclstack":["Salt Block Wall","cover thorn spark"],
+  "Garganacl":["Salt Cure","wound weaken thorn"],
+  "Tinkatink":["Scrap Hammer","sunder rush veil"],
+  "Tinkatuff":["Forged Hammer","gale sunder veil"],
+  "Tinkaton":["Gigaton Hammer","quake sunder windup"],
+  "Mankey":["Tantrum Swing","rally rush quake"],
+  "Primeape":["Frenzy Fist","rally execute sunder"],
+  "Annihilape":["Rage Fist","execute leech weaken"],
+ };
  const signaturePowerByTier=[[90,150,245],[105,175,280],[120,200,320],[135,225,365],[150,255,420]];
  const signatureColors={
   Grass:'#8af47b',Fire:'#ff8146',Water:'#6de1ff',Electric:'#ffe15b',Bug:'#d1fa77',
@@ -291,7 +587,7 @@
  const signatureEffectText={
   shield:'Shields itself for 20% / 30% / 45% of max HP for 5 seconds.',
   teamShield:'Shields every living ally for the listed amount for 5 seconds.',
-  rally:'Hits the target and gains 15% / 25% / 40% attack speed for 5 seconds.',
+  rally:'Gains 15% / 25% / 40% attack speed for 5 seconds.',
   execute:'Deals 25% / 40% / 60% more damage against targets below half HP.',
   volley:'Hits the target and the nearest other enemy within 2 tiles of it for 30% / 45% / 60% splash damage.',
   burst:'Deals concentrated damage to one enemy.',
@@ -300,6 +596,11 @@
   weaken:'Hits and reduces the target’s damage by 15% / 25% / 35% for 4 seconds.'
  };
  const extraSignatureText={
+  recoil:'After a damaging hit, loses 8% / 10% / 12% of its own max HP.',
+  brace:'Shields itself for 20% / 30% / 45% of max HP for 5 seconds.',
+  windup:'Takes an extra half-second to recover after swinging.',
+  allyHaste:'Gives the weakest teammate an attack-speed boost for 5 seconds.',
+  ward:'The next hit against the weakest teammate is blocked.',
   sunder:'Reduces the target’s DEF by 30% for 4 seconds.',shred:'Reduces the target’s S.DEF by 30% for 4 seconds.',
   sap:'Drains 8 / 12 / 18 mana from the target.',burn:'Burns for 1% max HP per second and Wounds for 5 seconds.',
   rush:'Shortens the caster’s next attack cooldown by 20% / 30% / 45%.',leech:'Heals the caster for 20% / 30% / 45% of damage dealt.',
@@ -316,14 +617,14 @@
   fortify:'Shields up to 3 allies nearest the caster for the listed amount.',
   aegis:'Shields backline allies and the caster for the listed amount and clears their damage-over-time effects.'
  };
- const utilitySignature=effect=>['teamShield','heal','cover','fortify','aegis'].includes(effect);
+ const utilitySignature=effect=>['teamShield','heal','cover','fortify','aegis','brace'].includes(effect);
  const roleProfiles={
   Tank:{range:1,hp:1.32,attack:.76,defense:1.25,speed:.82,mana:5,regen:0,rule:'5 mana per hit and 5 when damaged. Draws aggro at equal range.'},
   Fighter:{range:1,hp:1.08,attack:1.03,defense:1.02,speed:1,mana:10,regen:0,rule:'10 mana per hit. Gains 5% attack speed per stage, up to 30%.'},
   Reaper:{range:1,hp:.9,attack:1.18,defense:.91,speed:1.15,mana:10,regen:0,rule:'10 mana per hit. Prioritizes backline damage dealers and takes 15% less attack damage from other enemies.'},
   Caster:{range:3,hp:.86,attack:1.06,defense:.87,speed:.90,mana:7,regen:2,rule:'7 mana per hit and 2 mana per second.'},
   Carry:{range:4,hp:.85,attack:1.13,defense:.84,speed:1.14,mana:10,regen:0,rule:'10 mana per hit. Long range for backline positioning.'},
-  Specialist:{range:2,hp:1.02,attack:1.02,defense:1.03,speed:.98,mana:0,regen:0}
+  Specialist:{range:2,hp:1.02,attack:1.02,defense:1.03,speed:.98,mana:6,regen:3,rule:'6 mana per hit and 3 mana per second.'}
  };
  const specialists={
   Caterpie:{hit:8,incoming:4,rule:'Silk Charge: 8 per hit and 4 when damaged.'},
@@ -347,16 +648,25 @@
   if(speed>=100)return spAtk>=atk?'Carry':'Reaper';
   return spAtk>=atk?'Caster':'Fighter';
  })();
- const combatRole=name=>specialists[name]?'Specialist':roleFor(name);
+ // Shop families keep their role through evolution, with every tier offering all six roles.
+ const familyRoleGroups={
+  Tank:["Squirtle","Geodude","Oddish","Azurill","Lotad","Rookidee","Honedge","Nacli","Blipbug","Duskull","Totodile","Aron","Spheal","Chespin","Magnemite","Rhyhorn","Mudkip","Teddiursa","Regice","Regirock","Registeel"],
+  Fighter:["Charmander","Machop","Poliwag","Seedot","Bellsprout","Nidoran♀","Timburr","Bounsweet","Impidimp","Roggenrola","Tepig","Swinub","Litten","Grookey","Larvitar","Bagon","Beldum","Gible","Ho-Oh","Entei","Groudon"],
+  Reaper:["Zubat","Pidgey","Eevee","Weedle","Venipede","Fletchling","Tinkatink","Zigzagoon","Trapinch","Snivy","Treecko","Froakie","Sprigatito","Chimchar","Fennekin","Mankey","Axew","Dreepy","Raikou","Suicune"],
+  Caster:["Bulbasaur","Abra","Gastly","Ralts","Solosis","Grubbin","Mareep","Budew","Tynamo","Litwick","Oshawott","Piplup","Rowlet","Fuecoco","Porygon","Vanillite","Horsea","Magby","Deino","Mewtwo","Kyogre"],
+  Carry:["Pichu","Scatterbug","Hoppip","Starly","Pawmi","Lillipup","Sewaddle","Nidoran♂","Sandile","Klink","Torchic","Scorbunny","Sobble","Cyndaquil","Elekid","Dratini","Jangmo-o","Slakoth","Articuno","Zapdos","Moltres"],
+  Specialist:["Caterpie","Wurmple","Igglybuff","Cleffa","Whismur","Gothita","Tympole","Hatenna","Smoliv","Shinx","Chikorita","Turtwig","Popplio","Quaxly","Happiny","Togepi","Flabébé","Goomy","Cosmog","Lugia","Rayquaza"],
+ };
+ const familyRoles=new Map(Object.entries(familyRoleGroups).flatMap(([role,names])=>names.map(name=>[name,role])));
+ const combatRole=name=>familyRoles.get(familyOf({name})) ?? (specialists[name]?'Specialist':roleFor(name));
  const roleDisplayName=role=>role==='Specialist'?'Support':role;
- const fallbackEffects={Tank:'shield',Fighter:'rally',Reaper:'execute',Caster:'sap',Carry:'volley'};
  const collectionTraits={
-  'Marksmen':{role:'Carry',color:'#f6c779',tiers:[[2,{thirdShot:.25}],[4,{thirdShot:.50}],[6,{thirdShot:.80}]]},
-  'Spellcraft':{role:'Caster',color:'#e3afff',tiers:[[2,{castRefund:8}],[4,{castRefund:15}],[6,{castRefund:24}]]},
-  'Warband':{role:'Fighter',color:'#f39f88',tiers:[[2,{strikeHaste:.035}],[4,{strikeHaste:.06}],[6,{strikeHaste:.09}]]},
-  'Bulwark':{role:'Tank',color:'#9cd1ee',tiers:[[2,{startShield:.15}],[4,{startShield:.27}],[6,{startShield:.40}]]},
-  'Ambush':{role:'Reaper',color:'#cbb4fa',tiers:[[2,{takedownHeal:.15}],[4,{takedownHeal:.26}],[6,{takedownHeal:.38}]]},
-  'Relay':{role:'Specialist',color:'#aee0a0',tiers:[[2,{relayMana:10}],[3,{relayMana:18}],[4,{relayMana:25}]]},
+  'Marksmen':{role:'Carry',color:'#f6c779',tiers:[[2,{thirdShot:.25}],[4,{thirdShot:.50}],[6,{thirdShot:.80,volleyShot:.45}]]},
+  'Spellcraft':{role:'Caster',color:'#e3afff',tiers:[[2,{castRefund:8}],[4,{castRefund:15}],[6,{castRefund:24,echo:1}]]},
+  'Warband':{role:'Fighter',color:'#f39f88',tiers:[[2,{strikeHaste:.035}],[4,{strikeHaste:.06}],[6,{strikeHaste:.09,fullStackAmp:.22}]]},
+  'Bulwark':{role:'Tank',color:'#9cd1ee',tiers:[[2,{startShield:.15}],[4,{startShield:.27}],[6,{startShield:.40,thresholdShield:.30}]]},
+  'Ambush':{role:'Reaper',color:'#cbb4fa',tiers:[[2,{takedownHeal:.15}],[4,{takedownHeal:.26}],[6,{takedownHeal:.38,takedownHaste:5}]]},
+  'Relay':{role:'Specialist',color:'#aee0a0',tiers:[[2,{relayMana:10}],[4,{relayMana:18}],[6,{relayMana:25,relayExtra:1}]]},
   'ILoveEevee':{color:'#d8a9dd',members:['Eevee','Vaporeon','Jolteon','Flareon','Espeon','Umbreon','Leafeon','Glaceon','Sylveon'],
    tiers:[[2,{health:.08,power:.08}],[4,{health:.14,power:.16,mana:10}],[6,{health:.22,power:.24,mana:15,regen:1}],[9,{health:.32,power:.36,mana:20,regen:2}]]},
   'Sun Garden':{color:'#ecd76c',members:['Bellossom','Lilligant','Tsareena'],tiers:[[1,{regen:1}],[2,{health:.16,regen:2}],[3,{health:.24,regen:3}]]},
@@ -389,11 +699,11 @@
   'Paldea Partners':{families:['Sprigatito','Fuecoco','Quaxly'],color:'#efaa89',
    tiers:[[2,{vamp:.06}],[3,{vamp:.14,healthyGuard:.08}]]},
   'Tower Duo':{members:['Lugia','Ho-Oh'],color:'#f1c873',tiers:[[2,{towerWard:.12}]]},
-  'Regi-Trio':{color:'#b2c3cc',members:['Regice','Regirock','Registeel'],tiers:[[3,{health:.18,power:.18,defense:24,mana:15,regen:2}]]},
-  'Kanto Partners':{color:'#91cf81',members:['Venusaur','Charizard','Blastoise'],tiers:[[3,{health:.16,power:.16,defense:12}]]},
-  'Legendary Birds':{color:'#e4c268',members:['Articuno','Zapdos','Moltres'],tiers:[[3,{power:.20,mana:20,regen:1}]]},
-  'Legendary Beasts':{color:'#d69775',members:['Raikou','Entei','Suicune'],tiers:[[3,{health:.18,power:.18,mana:15}]]},
-  'Weather Trio':{color:'#76bcb2',members:['Kyogre','Groudon','Rayquaza'],tiers:[[1,{weather:1}],[2,{weather:2}],[3,{weather:3}]]}
+  'Regi-Trio':{color:'#b2c3cc',members:['Regice','Regirock','Registeel'],tiers:[[3,{health:.18,power:.18,defense:24,mana:15,regen:2,focusArmor:12}]]},
+  'Kanto Partners':{color:'#91cf81',members:['Venusaur','Charizard','Blastoise'],tiers:[[3,{health:.16,power:.16,defense:12,thresholdShield:.20}]]},
+  'Legendary Birds':{color:'#e4c268',members:['Articuno','Zapdos','Moltres'],tiers:[[3,{power:.20,mana:20,regen:1,thirdShot:.30}]]},
+  'Legendary Beasts':{color:'#d69775',members:['Raikou','Entei','Suicune'],tiers:[[3,{health:.18,power:.18,mana:15,takedownHaste:5}]]},
+  'Weather Trio':{color:'#76bcb2',members:['Kyogre','Groudon','Rayquaza'],tiers:[[1,{weather:1}],[2,{weather:2}],[3,{weather:6}]]}
  };
  const playableForms=new Set([...roster.flat(),...Object.values(evolutionFamilies).flat(2)]);
  for(const trait of Object.values(collectionTraits))if(trait.members)trait.members=trait.members.filter(name=>playableForms.has(name));
@@ -407,7 +717,7 @@
  const maxLevel=9;
  const cells=Array.from({length:56},(_,i)=>({x:i%7,y:Math.floor(i/7)}));
  const levels=[0,0,4,8,12,16,24,32,40,Infinity];
- const makeTrainer=(name)=>({name,hp:100,gold:0,level:2,xp:0,units:[],shop:[],streak:0,items:[],augments:[],mods:{}});
+ const makeTrainer=(name)=>({name,hp:100,gold:2,level:2,xp:0,units:[],shop:[],streak:0,items:[],augments:[],mods:{}});
  let run=null, planningTimer=null, dragged=null, draggedItem=null;
  const components={
   Claw:{attackPct:.10}, Wing:{speed:.10}, Orb:{spAttack:10}, Charm:{regen:1},
@@ -548,6 +858,10 @@
    if(stat==='spDefense')return '+'+value+' S.DEF';
    if(stat==='armor')return '+'+value+' DEF';
    if(stat==='defense')return '+'+value+' DEF and S.DEF';
+   if(stat==='volleyShot')return 'Every third basic attack also hits one nearby enemy for '+Math.round(value*100)+'% of the main hit';
+   if(stat==='fullStackAmp')return '+'+Math.round(value*100)+'% damage at full attack-speed stacks';
+   if(stat==='takedownHaste')return 'Knockouts trigger a '+value+'-second attack-speed boost';
+   if(stat==='relayExtra')return 'Mana relay reaches a second ally';
    if(stat==='towerWard')return 'The first Tower Duo signature shields all living allies for '+Math.round(value*100)+'% of their max HP for 5 seconds';
    if(stat==='echo')return 'First damaging signature echoes for 35% damage';
    if(stat==='thirdShot')return '+'+Math.round(value*100)+'% damage every third basic attack';
@@ -778,7 +1092,7 @@
   if(!utility)skill.append(element('span','Deals damage using '+(stats.moveSpecial?'S.ATK':'ATK'),'tactics-signature-damage'));
   if(effect && !(stats.moveEffects.length===1 && stats.moveEffects[0]==='burst'))skill.append(effect);
   if(stats.manaLockMs>1000)skill.append(' Mana lock: '+(stats.manaLockMs/1000)+'s.');
-  if(stats.moveEffect==='heal')return skill;
+  if(['heal','brace'].includes(stats.moveEffect))return skill;
   const powers=element('span',utility?'Shield HP ':'Move Power ','tactics-signature-power');
   stats.movePowers.forEach((power,index)=>{
    if(index)powers.append(' / ');
@@ -1107,6 +1421,7 @@
   const header=element('header',null,'tactics-stage');
   header.append(element('strong','Stage '+stageLabel(run.round)),element('span',mode),
    element('span',field(player).length+' / '+teamSize(player)+' deployed'));
+  if(openingRound(run.round))header.append(element('span',player.gold+' gold'));
   if(!run.busy){
    const timer=element('span',Math.max(0,Math.ceil((run.deadline-Date.now())/1000))+'s','tactics-planning-clock');
    header.append(timer);
@@ -1226,7 +1541,8 @@
    title.append(element('strong','Combat'),countdown);
    banner.append(timer,title,element('small','Stage '+stageLabel(run.round)+' · '+rival));
    arena.append(benchView(player,true));
-   middle.append(banner,arena);
+   arena.prepend(banner);
+   middle.append(arena);
    const summary=element('div',null,'tactics-combat-wallet');
    summary.append(element('span','Level '+player.level),element('strong',player.gold+' gold'));
    middle.append(summary);
@@ -1422,7 +1738,7 @@
   }
   trainer.units.sort((a,b)=>b.star-a.star || cost(familyOf(b))-cost(familyOf(a)));
   trainer.units.forEach((unit,i)=>{
-   const ranged=roleProfiles[roleFor(unit.name)]?.range>=3;
+   const ranged=roleProfiles[combatRole(unit.name)]?.range>=3;
    unit.position=i<teamSize(trainer)?cells[28+(ranged?14:0)+i]:null;
   });
  }
@@ -1441,14 +1757,14 @@
    if(!tier)continue;
    for(const [stat,value] of Object.entries(tier[1]))mods[stat]=(mods[stat] ?? 0)+value;
   }
-  const specialist=specialists[unit.name];
   const role=combatRole(unit.name);
+  const specialist=role==='Specialist'?specialists[unit.name]:null;
   const profile=roleProfiles[role];
   const rarity=rarities.get(familyOf(unit)) ?? 0;
   const hp=unit.bossHp ?? Math.round(((base[0]*4+180)*profile.hp*(1+rarity*.045)*(branchPaths(unit).length?1.36:1.65)**(unit.star-1)+(mods.flatHP ?? 0))*(1+(mods.health ?? 0)));
-  const type=dex[unit.name][1];
-  const [move,moveType,moveSpecial]=signatures[unit.name] ?? ['Signature Skill',type,base[5]>=base[1]];
-  const moveEffects=(signatureEffects[unit.name] ?? fallbackEffects[role] ?? 'heal').split(' ');
+  const custom=expandedSignatures[unit.name];
+  const [move,moveType,moveSpecial]=signatures[unit.name] ?? [custom[0],dex[unit.name][1],base[5]>=base[1]];
+  const moveEffects=(signatureEffects[unit.name] ?? custom[1]).split(' ');
   const moveEffect=moveEffects[0];
   const movePowers=unit.name==='Squirtle'?[150,255,450]:signaturePowerByTier[rarity];
   const attackScale=profile.attack*(1+rarity*.055)*(branchPaths(unit).length?1.26:1.5)**(unit.star-1);
@@ -1655,7 +1971,19 @@
   const power=unit.movePowers[star];
   for(const effect of unit.moveEffects){
    switch(effect){
+    case 'recoil': {
+     if(dealt<=0)break;
+     const amount=Math.min(unit.hp,Math.round(unit.max*[.08,.10,.12][star]));
+     unit.hp-=amount;
+     unit.damageTaken=(unit.damageTaken ?? 0)+amount;
+     if(now!==null && amount)(unit.damageEvents ??= []).push({amount,critical:false,started:now});
+     break;
+    }
     case 'teamShield': for(const ally of allies)barrier(ally,power);break;
+    case 'allyHaste': weakest.rallyUntil=Math.max(weakest.rallyUntil ?? 0,weakest.elapsed+5000);break;
+    case 'ward': weakest.guard=true;break;
+    case 'windup': unit.wait+=500;break;
+    case 'brace':
     case 'shield': barrier(unit,Math.round(unit.max*[.2,.3,.45][star]));break;
     case 'cover': barrier(weakest,power);barrier(unit,Math.round(power/2));break;
     case 'fortify': for(const ally of [...allies].sort(byDistance).slice(0,3))barrier(ally,power);break;
@@ -1751,8 +2079,10 @@
    const weaken=unit.weakenUntil>unit.elapsed?1-unit.weakenAmount:1;
    const overtime=1+Math.max(0,unit.elapsed-overtimeStartMs)/15000;
    if(!cast)unit.basicHits=(unit.basicHits ?? 0)+1;
-   const thirdShot=!cast && unit.basicHits%3===0?1+(gear.thirdShot ?? 0):1;
-   const damage=utility?0:Math.max(1,Math.round(overtime*execute*weaken*combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*thirdShot*critical*amp*100/(100+defense)));
+   const thirdAttack=!cast && unit.basicHits%3===0;
+   const thirdShot=thirdAttack?1+(gear.thirdShot ?? 0):1;
+   const fullStackAmp=unit.basicHits>=5?1+(gear.fullStackAmp ?? 0):1;
+   const damage=utility?0:Math.max(1,Math.round(overtime*execute*weaken*combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*thirdShot*fullStackAmp*critical*amp*100/(100+defense)));
    if(now!==null){
     setBattlerMotion(unit,target.position,cast?'cast':unit.range>1?'attack':'lunge',now);
     if(cast)unit.lastCast={started:now,move:unit.move,from:unit.position,to:utility?unit.position:target.position};
@@ -1760,6 +2090,11 @@
      setBattlerMotion(target,unit.position,'hit',now);
    }
    let dealt=receiveDamage(target,damage,now,critical>1,unit);
+   if(thirdAttack && gear.volleyShot){
+    const extra=units.filter(other=>other!==target && other.hp>0 && other.opponent!==unit.opponent &&
+     distance(target.position,other.position)<=2).sort((a,b)=>distance(target.position,a.position)-distance(target.position,b.position))[0];
+    if(extra)dealt+=receiveDamage(extra,damage*gear.volleyShot,now,false,unit);
+   }
    if(cast && !utility && unit.echo){
     unit.echo=false;
     dealt+=receiveDamage(target,Math.max(1,Math.round(damage*.35)),now,critical>1,unit);
@@ -1771,11 +2106,12 @@
    }
    if(target.hp<=0 && (unit.momentum || gear.takedownHeal))
     heal(unit,(unit.momentum?unit.max*.08:0)+(unit.max-unit.hp)*(gear.takedownHeal ?? 0));
+   if(target.hp<=0 && gear.takedownHaste)unit.rallyUntil=unit.elapsed+gear.takedownHaste*1000;
    if(cast){
     if(gear.relayMana){
-     const ally=units.filter(other=>other!==unit && other.hp>0 && other.opponent===unit.opponent && other.manaLock<=0)
-      .sort((a,b)=>a.mana-b.mana)[0];
-     if(ally)gainMana(ally,gear.relayMana);
+     const allies=units.filter(other=>other!==unit && other.hp>0 && other.opponent===unit.opponent && other.manaLock<=0)
+      .sort((a,b)=>a.mana-b.mana).slice(0,1+(gear.relayExtra ?? 0));
+     for(const ally of allies)gainMana(ally,gear.relayMana);
     }
     unit.mana=Math.min(60,(unit.overcharge?10:0)+(gear.castRefund ?? 0));
     unit.overcharge=false;
@@ -1857,7 +2193,7 @@
  }
  const effectLabels={
   teamShield:'Team shield',shield:'Shield',cover:'Cover shield',fortify:'Nearby shields',aegis:'Backline shield',
-  heal:'Ally heal',tide:'Team heal',bloom:'Self heal',leech:'Lifesteal',sap:'Mana drain',spark:'Mana granted',
+  recoil:'Recoil',brace:'Self shield',windup:'Recovery',allyHaste:'Ally speed up',ward:'Hit blocked',heal:'Ally heal',tide:'Team heal',bloom:'Self heal',leech:'Lifesteal',sap:'Mana drain',spark:'Mana granted',
   sunder:'DEF down',shred:'S.DEF down',burn:'Burn',wound:'Wound',frost:'Attack speed down',snare:'Action delayed',
   weaken:'Damage down',rally:'Attack speed up',rush:'Faster next attack',veil:'Damage reduction',
   thorn:'Defense up',cleanse:'Cleanse',volley:'Splash',spread:'Area damage',gale:'Knockback',blink:'Repositioned',quake:'Area delay'
