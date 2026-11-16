@@ -604,6 +604,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 #tactics .tactics-offer small,.tactics-offer-cost{font-size:10px}
 #tactics .tactics-hint{color:#c8d3c7;text-align:center;font-size:12px;margin:6px 0}
 .tactics-choice{padding:12px}
+.exp-boosts{min-inline-size:0;margin-block:1rem}
 .experience-candy-controls{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .experience-candy-controls canvas{width:24px;height:24px;image-rendering:pixelated}
 .tactics-carousel-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -1924,7 +1925,7 @@ function applyTrainingItem(profile,stat,{field,delta}) {
  values[stat]=next;
  return change;
 }
-function vitaminControls(name,field) {
+function vitaminControls(name,field,selection) {
  const group=element('fieldset',null,'training-items');
  group.append(element('legend',field==='evs'?'EV training':'IV training'));
  const profile=profileFor(name);
@@ -1949,7 +1950,8 @@ function vitaminControls(name,field) {
    option.disabled=!applyTrainingItem(trial,stat,rule);
    select.append(option);
   }
-  const available=[...select.options].find(option=>!option.disabled);
+  const enabled=[...select.options].filter(option=>!option.disabled);
+  const available=enabled.find(option=>selection?.item===item && Number(option.value)===selection.stat) ?? enabled[0];
   if(available)select.value=available.value;
   const button=element('button','Use');
   button.setAttribute('aria-label','Use '+item);
@@ -1961,7 +1963,7 @@ function vitaminControls(name,field) {
    if(!change)return;
    wildProgress.vitamins[item]--;
    playerStorage.setItem(profileStorage,JSON.stringify(profiles));
-   saveWildProgress();renderDetail();
+   saveWildProgress();renderDetail({item,stat});
    const unit=rule.field==='ivs'?' IV':' EV';
    byId('pokemon-detail').append(element('p',name+' · '+statLabels[stat]+' '+(change>0?'+':'')+change+unit));
   };
@@ -2135,7 +2137,10 @@ function pcCollectionControls(name) {
   tile.setAttribute('aria-label',name+' · '+label+' · Lv. '+copy.level);
   tile.append(idlePokemonPortrait(name,null,copy.profile.shiny?spriteVariants(name).shiny:null),
    element('strong',label),element('small','Lv. '+copy.level));
-  tile.onclick=()=>selectCopy(slot-1);
+  tile.onclick=()=>{
+   selectCopy(slot-1);
+   renderPokemonDetail(name,slot===0?null:copy,slot+1);
+  };
   return tile;
  });
  function selectCopy(index){
@@ -2206,12 +2211,17 @@ function pcCollectionControls(name) {
  selectCopy(-1);
  return section;
 }
-function renderDetail() {
+function renderDetail(trainingSelection) {
  const name=inspected ?? team[activeSlot] ?? team[0];
+ renderPokemonDetail(name,null,null,trainingSelection);
+ byId('pc-copies').replaceChildren(...(ownedPokemon(name)?[pcCollectionControls(name)]:[]));
+}
+function renderPokemonDetail(name,copy,copyNumber,trainingSelection) {
  const [,primary,secondary]=dex[name];
  const panel=byId('pokemon-detail');
  const title=element('h3',null,'detail-title');
- title.append(idlePokemonPortrait(name,'portrait',profileFor(name).shiny?spriteVariants(name).shiny:null),element('span',name),element('small',dexNumber(name)));
+ const profile=copy?.profile ?? profileFor(name);
+ title.append(idlePokemonPortrait(name,'portrait',profile.shiny?spriteVariants(name).shiny:null),element('span',name),element('small',dexNumber(name)));
  const body=element('div',null,'detail-body');
  const summary=element('div',null,'detail-summary');
  const info=element('div');
@@ -2222,12 +2232,12 @@ function renderDetail() {
   badges.append(badge);
  }
  const [height,weight]=dimensions(name);
- const profile=profileFor(name);
  const nature=natureOf(profile);
- const owned=ownedPokemon(name);
+ const owned=copy ?? ownedPokemon(name);
  const ability=abilityFor(name,profile);
  const effect=nature.up===nature.down ? ' · Neutral' :
   ' · +'+statLabels[nature.up]+' / −'+statLabels[nature.down];
+ if(copy)info.append(element('p','Copy '+copyNumber+' · Stored'));
  info.append(element('p',owned ? 'Lv. '+owned.level+(owned.level<100?' · '+owned.xp+'/'+experienceNeeded(owned.level)+' XP':' · Max level') : 'Unowned',owned?'team-owned':'team-unowned'),
 badges,element('p',height/10+' m · '+weight/10+' kg'),
   element('p','Nature · '+nature.name+effect),element('p','Personality · '+personalityOf(profile)),
@@ -2242,7 +2252,12 @@ badges,element('p',height/10+' m · '+weight/10+' kg'),
   .map((label,i)=>label+' '+chartValues[i]).join(', '));
  summary.append(info,chart);
  body.append(summary,individualTable(name,profile));
- if(owned) body.append(heldItemPicker(name),capsuleControl(name),vitaminControls(name,'evs'),vitaminControls(name,'ivs'),experienceCandyControls(name),battleAIControls(name));
+ if(copy){
+  panel.replaceChildren(title,body);
+  drawStats(chart,chartValues);
+  return;
+ }
+ if(owned) body.append(heldItemPicker(name),capsuleControl(name),vitaminControls(name,'evs',trainingSelection),vitaminControls(name,'ivs',trainingSelection),experienceCandyControls(name),battleAIControls(name));
  body.append(element('h4','Moves','move-heading'));
  body.append(renderSkillSlots(name),renderLearnableSkills(name));
  const actions=element('div',null,'detail-actions');
@@ -2256,7 +2271,6 @@ badges,element('p',height/10+' m · '+weight/10+' kg'),
  }
  body.append(actions);
  panel.replaceChildren(title,body);
- byId('pc-copies').replaceChildren(...(owned?[pcCollectionControls(name)]:[]));
  drawStats(chart,chartValues);
 }
 function renderMenu() {
@@ -3540,6 +3554,8 @@ function useExperienceCandy(name,item) {
  return gainWildExperience(name,experienceCandies[item] ?? experienceNeeded(entry.level));
 }
 function experienceCandyControls(name) {
+ const section=element('fieldset',null,'exp-boosts');
+ section.append(element('legend','EXP Boosts'));
  const controls=element('div',null,'experience-candy-controls');
  const entry=ownedPokemon(name);
  for(const [item,xp] of Object.entries(experienceCandies)) {
@@ -3558,7 +3574,9 @@ function experienceCandyControls(name) {
   icon.title=xp===null?'Raises the Pokémon by 1 level.':'Adds '+xp+' EXP.';
   controls.append(icon,use);
  }
- return controls;
+ if(!controls.children.length)controls.append(element('small','No EXP boosts available.'));
+ section.append(controls);
+ return section;
 }
 function battleExperience(name,xp) {
  return wildProgress.held[name]==='Lucky Egg'?2*xp:xp;
@@ -9487,6 +9505,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.34',changes:['Separated EXP Boosts, preserved selected training stats, and added stored copy previews.']},
  {version:'0.22.33',changes:['Added a PC-style grid for copies of the selected Pokémon.']},
  {version:'0.22.32',changes:['Organized PC training into EV and IV rows and moved copy management below the PC box.']},
  {version:'0.22.31',changes:['Added EXP Candies, Rare Candy, Event Ball, Lucky Egg and Poke Fight Tactics placement rewards.']},
