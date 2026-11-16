@@ -7268,6 +7268,13 @@ const additionalStatusMoves={
  'Pain Split':{description:'Averages the current HP of the user and target, capped by their maximum HP.',score:(actor,target)=>target.hp>actor.hp+5?55:0,
   apply:(actor,target)=>{const hp=Math.ceil((actor.hp+target.hp)/2);actor.hp=Math.min(actor.max,hp);target.hp=Math.min(target.max,hp);}},
 };
+function isBackHit(origin,target) {
+ if(!Number.isInteger(target.direction))return false;
+ const dx=origin.x-target.x,dy=origin.y-target.y;
+ const distance=Math.hypot(dx,dy);
+ const heading=target.direction*Math.PI/4;
+ return distance>0 && (dx*Math.sin(heading)+dy*Math.cos(heading))/distance<=-Math.SQRT1_2+1e-9;
+}
 function tacticalMoveScore(actor,target,move,rules,gap) {
  const [type,power,accuracy,priority,status,drain,recoil]=moveCatalog[move];
  const defender=targetAbility(actor,target);
@@ -7324,7 +7331,7 @@ function tacticalMoveScore(actor,target,move,rules,gap) {
     (defender==='Wind Rider' && windMoves.has(move)) ||
     (defender==='Soundproof' && flags.includes(9)) || (defender==='Bulletproof' && flags.includes(18)) ||
     (battleTerrain==='Psychic' && priority>0 && isGrounded(target))) return 0;
- const damage=battleDamage(actor,target,power,multiplier,rules.category!==3,type,move)*(sacrificeProfiles.get(move)?.damage ?? 1);
+ const damage=battleDamage(actor,target,power,multiplier,rules.category!==3,type,move)*(isBackHit(actor,target)?1.5:1)*(sacrificeProfiles.get(move)?.damage ?? 1);
  const sacrifice=sacrificeProfiles.has(move);
  if(sacrifice && (fieldActors().some(member=>member?.hp>0 && activeAbility(member)==='Damp') ||
     health>=0.4))return 0;
@@ -7974,6 +7981,25 @@ function act(actor, opponents, dt) {
   return;
  }
  if(!choice || remaining>0.01 || (choice.move==='Normal Attack'?(actor.normalAttackAt ?? 0)>clock:actor.charge>0)) return;
+ if(!gambit && actor.ai?.style!=='Defensive' && target.friendly!==actor.friendly && gap<=55 &&
+  !moveCatalog[choice.move][4] && !sacrificeProfiles.has(choice.move) &&
+  !isBackHit(actor,target) && Number.isInteger(target.direction) && dashChargesLeft(actor,clock)>=2){
+  const rear=target.direction*Math.PI/4+Math.PI;
+  const offset=bodyRadius(actor)+bodyRadius(target)+8;
+  for(const side of [0,-1,1]){
+   const heading=rear+side*Math.PI/4;
+   const x=target.x+Math.sin(heading)*offset,y=target.y+Math.cos(heading)*offset;
+   const travel=Math.hypot(x-actor.x,y-actor.y);
+   if(travel<30 || travel>90)continue;
+   if(!tryBattleDash(actor,Math.atan2(y-actor.y,x-actor.x),travel,point=>
+    isBackHit(point,target) && Math.hypot(point.x-target.x,point.y-target.y)<=offset+choice.range-8 &&
+    !firstPillar(point.x,point.y,target.x,target.y)))continue;
+   distance=Math.hypot(target.x-actor.x,target.y-actor.y);
+   actor.direction=pmdDirection(target.x-actor.x,target.y-actor.y);
+   if(Math.abs(target.x-actor.x)>3)actor.facing=Math.sign(target.x-actor.x);
+   break;
+  }
+ }
  const cover=choice.rules.scope!=='ally' && !choice.selfCentered && firstPillar(actor.x,actor.y,target.x,target.y);
  const strikeCover=cover && cover.rock.hp>0 && !moveCatalog[choice.move][4] && !sacrificeProfiles.has(choice.move) &&
   (press || cover.rock.hp<=8 || moveCatalog[choice.move][1]>=90 || inSkill(target,null,0,pillarPath(cover.rock,actor)));
@@ -8275,7 +8301,8 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
    (focused || attacker==='Merciless' && victim.ailment===5 || Math.random()<([1/24,1/8,1/2,1][Math.min(3,criticalStage)] ?? 0));
   const boosted=attacker==='Flash Fire' && actor.flashFire && element==='Fire' ? multiplier*1.5 : multiplier;
   const baseDamage=battleDamage(actor,victim,power,boosted,rules.category!==3,element,move,critical)*(cast?.quakeRing===2?0.25:cast?.quakeRing===1?0.5:1);
-  const damage=Math.round(baseDamage*(move==='Hyper Beam'?2:1)*(sacrificeProfiles.get(move)?.damage ?? 1)*(wasAsleep?1.25:1)*(helped?1.5:1));
+  const backHit=actor.friendly!==victim.friendly && isBackHit(cast?.line ?? (cast?.roaming?center:actor),victim);
+  const damage=Math.round(baseDamage*(backHit?1.5:1)*(move==='Hyper Beam'?2:1)*(sacrificeProfiles.get(move)?.damage ?? 1)*(wasAsleep?1.25:1)*(helped?1.5:1));
   const mitigated=actor.friendly!==victim.friendly?defendDamage(victim,damage,clock):damage;
   const dealt=Math.min(victim.hp===victim.max && defender==='Sturdy' && victim.hp>1?victim.hp-1:victim.hp,mitigated);
   victim.hp-=dealt;
@@ -8302,7 +8329,7 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
    (attacker==='Magic Guard'?0:Math.round(dealt*recoil))));
   if(dealt>0 && pivotMoves.has(move))pivot=true;
   if(dealt>0 && forcedSwitchMoves.has(move))forceSwitch(victim,defender);
-  effect(victim,damage,multiplier,{impactOnly:Boolean(cast)});
+  effect(victim,dealt,multiplier,{impactOnly:Boolean(cast),backHit});
   if(actor.hp<=0 && !cast?.roaming) break;
  }
  if(pivot && !recallMoveWait(actor,move))recallWithMove(actor);
@@ -9648,8 +9675,9 @@ function drawImpactLabel(e) {
  const y=e.ty-34-age*38;
  ctx.strokeStyle='#14271f';
  ctx.lineWidth=3;
- ctx.strokeText(label,e.tx,y);
- ctx.fillText(label,e.tx,y);
+ const text=e.backHit?'Back hit · '+label:label;
+ ctx.strokeText(text,e.tx,y);
+ ctx.fillText(text,e.tx,y);
  ctx.restore();
 }
 let previous;
@@ -9767,6 +9795,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.45',changes:['Added 1.5× back-hit damage and flanking dashes.']},
  {version:'0.22.44',changes:['Separated movement quick-step effects from damaging dash skill labels.']},
  {version:'0.22.43',changes:['Quick-step dashes now leave fading Pokémon sprite afterimages.']},
  {version:'0.22.42',changes:['AI uses dash and Defend tactically and fills skill cooldowns with normal attacks.']},

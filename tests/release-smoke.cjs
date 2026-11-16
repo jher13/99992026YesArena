@@ -44,6 +44,12 @@ const impact=new Function('ctx',impactCode+'return drawImpactLabel;')({
 impact({dashSprite:{name:'Pikachu'},life:.3});
 impact({move:'Quick Attack',life:.3,damage:12,multiplier:1});
 assert.deepEqual(labels,[12]);
+const backHitCode=html.slice(html.indexOf('function isBackHit('),html.indexOf('function tacticalMoveScore('));
+const backHit=new Function(backHitCode+'return isBackHit;')();
+const facingRight={x:100,y:100,direction:2};
+assert(backHit({x:90,y:100},facingRight));
+assert(!backHit({x:110,y:100},facingRight));
+assert(!backHit({x:100,y:110},facingRight));
 const hazardCode=html.slice(html.indexOf('function roamingCenter('),html.indexOf('function dodgeSkill('));
 const {hazardHits,warrantsDash}=new Function('canvas','clamp','inSkill','bodyRadius',
  'moveCatalog','battleDamage','effectiveness','moveRules',hazardCode+'return {hazardHits,warrantsDash};')(
