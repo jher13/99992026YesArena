@@ -3442,6 +3442,22 @@ try {
  if(Array.isArray(saved))for(const id of saved)if(gymTeams.some(gym=>gym.id===id))masterGymClears.add(id);
 } catch {}
 function masterGymsUnlocked() {return clearedGyms.length===gymTeams.length;}
+const masterChallengerRoster=['Dragonite','Gardevoir','Magnezone','Milotic','Krookodile','Chandelure'];
+function masterGymOpponent(gym) {
+ const types=gym.types.split(',').map(type=>type.trim());
+ const candidates=dexNames.filter(name=>!gym.roster.includes(name) && !masterChallengerRoster.includes(name));
+ const power=name=>dexStats[dex[name][0]-1].reduce((sum,stat)=>sum+stat,0);
+ const ordered=candidates.sort((a,b)=>Number(types.some(type=>dex[b].slice(1,3).includes(type)))-
+  Number(types.some(type=>dex[a].slice(1,3).includes(type))) || power(b)-power(a));
+ const pool=ordered.slice(0,18);
+ const offset=gymTeams.indexOf(gym)*5%pool.length;
+ const roster=Array.from({length:6},(_,slot)=>pool[(offset+slot)%pool.length]);
+ const team=roster.map((name,slot)=>{
+  const [,role,position]=gym.plan.team[slot];
+  return [name,role,position,wildMoves(name),gymHeldItem(name)];
+ });
+ return {...gym,roster,plan:{...gym.plan,team}};
+}
 function gymDifficulty(gym,master=false) {
  if(master)return {level:100,aceLevel:100};
  const progress=gymTeams.indexOf(gym)/(gymTeams.length-1);
@@ -4173,7 +4189,7 @@ function openBattle(gym=null,wild=null,trainer=null,run=null,master=false) {
  cancelWildRepeat();
  if(gym && (gymTeams.indexOf(gym)<0 || gymTeams.indexOf(gym)>clearedGyms.length)) return;
  newBadge=false;
- selectedGym=gym;
+ selectedGym=master?masterGymOpponent(gym):gym;
  selectedTrainer=trainer;
  selectedWild=wild ? {...wild,level:wild.level ?? rollWildLevel(wildDifficulties[0]),tier:wild.tier ?? 'I'} : null;
  wildResult=null;
@@ -4229,6 +4245,12 @@ function renderCampaign(collection) {
     sprite.style.setProperty('--badge-x',-(index%10)*48+'px');
     sprite.style.setProperty('--badge-y',-Math.floor(index/10)*48+'px');
     medal.append(sprite);
+    if(masterGymClears.has(gym.id)){
+     const mark=element('span','M','master-badge-mark');
+     mark.title='Master clear';
+     mark.setAttribute('aria-label','Master clear');
+     medal.append(mark);
+    }
     card.append(medal,element('strong',gym.badge),element('small',gym.name),
      element('small',earned?'Collected':'Uncollected'));
     if(!earned){
@@ -4241,15 +4263,18 @@ function renderCampaign(collection) {
     grid.append(card);
    } else {
     const card=element('div',null,'bag-item gym-entry'+(available?' is-next':''));
-    const roster=element('div',null,'gym-icons');
-    roster.append(...gym.roster.map(name=>pokemonPortrait(name)));
-    card.append(element('strong',String(index+1)+'. '+gym.name),
-     element('small',gym.city+' · '+gym.types.replaceAll(',',' / ')),
-     element('small',gym.badge+' · '+(earned?(gymRematchRecord(gym)?'Clean rematch complete':'Rematch'):'Unlocked')),
-     element('small',masterGymMode?'Lv. 100 · '+(masterGymClears.has(gym.id)?'Master cleared':'Master challenge'):
-      'Lv. '+gymDifficulty(gym).level+'–'+gymDifficulty(gym).aceLevel),roster,
-     element('small',masterGymMode?gym.plan.brief+' Defeat all six to clear Master.':gymBrief(gym)));
-    const fight=element('button',earned?'Rematch':'Challenge');
+    card.append(element('strong',String(index+1)+'. '+gym.name));
+    if(masterGymMode){
+     card.append(element('small',masterGymClears.has(gym.id)?'Master cleared':'Master challenge'));
+    }else{
+     const roster=element('div',null,'gym-icons');
+     roster.append(...gym.roster.map(name=>pokemonPortrait(name)));
+     card.append(element('small',gym.city+' · '+gym.types.replaceAll(',',' / ')),
+      element('small',gym.badge+' · '+(earned?(gymRematchRecord(gym)?'Clean rematch complete':'Rematch'):'Unlocked')),
+      element('small','Lv. '+gymDifficulty(gym).level+'–'+gymDifficulty(gym).aceLevel),roster,
+      element('small',gymBrief(gym)));
+    }
+    const fight=element('button',masterGymMode?'Challenge':earned?'Rematch':'Challenge');
     fight.type='button';
     fight.onclick=()=>openBattle(gym,null,null,null,masterGymMode);
     card.append(fight);
@@ -4602,7 +4627,7 @@ const battleStatusBadges={
 };
 function updateActivePanels(onlineFields) {
  const fields=onlineFields ?? trainerFields;
- const current = phase==='setup' ? [allies[selected],enemies[0]] :
+ const current = phase==='setup' ? [allies[selected],selectedMasterGym?null:enemies[0]] :
   [displayedPokemon(activePlayer,playerSwitch),displayedPokemon(activeEnemy,enemySwitch)];
  const multiple=onlineFields || selectedTrainer?.format>1;
  if(multiple && !trainerPanels) {
@@ -4626,7 +4651,7 @@ function updateActivePanels(onlineFields) {
   const actor=shown[index];
   const node=panel.node ?? byId(panel.id);
   if(onlineFields && actor?.raidForm?.startsWith('Mega '))return;
-  if(!actor) {if(onlineFields){node.replaceChildren();panel.actor=null;}return;}
+  if(!actor) {if(onlineFields || selectedMasterGym){node.replaceChildren();panel.actor=null;}return;}
   if(panel.actor!==actor || panel.form!==actor.name) {
    panel.actor=actor;panel.form=actor.name;
    const header=element('div',null,'active-header');
@@ -4719,7 +4744,7 @@ function updateStageIcons(container,actor) {
 function renderBattleRosters() {
  rosterCards = [];
  for(const [id,title,roster,friendly] of [
-  ['player-roster','Your team',allies,true],['enemy-roster',selectedGym?.name ?? 'Opponent',enemies,false]
+  ['player-roster',selectedMasterGym?'Master challenger':'Your team',allies,true],['enemy-roster',selectedGym?.name ?? 'Opponent',enemies,false]
  ]) {
   const container=byId(id);
   container.replaceChildren(element('h2',title));
@@ -4732,7 +4757,7 @@ function renderBattleRosters() {
    hp.setAttribute('aria-label',actor.name+' HP');
    const identity=battleRosterIdentity(actor.name,actor.level);
    card.append(pokemonPortrait(actor.name),identity,hp);
-   const xp=friendly && !rogueRun ? element('progress',null,'battle-xp') : null;
+   const xp=friendly && !rogueRun && !selectedMasterGym ? element('progress',null,'battle-xp') : null;
    const exhaustion=makeExhaustionBar(actor);
    card.append(exhaustion);
    if(xp) card.append(xp);
@@ -4767,6 +4792,10 @@ function renderBattleRosters() {
 }
 function updateBattleRosters() {
  for(const {actor,index,card,hp,xp,stages,exhaustion,friendly} of rosterCards) {
+  if(selectedMasterGym && !friendly){
+   if(actor===activeEnemy)actor.masterRevealed=true;
+   card.hidden=!actor.masterRevealed;
+  }
   updateStageIcons(stages,actor);
   updateExhaustionBar(exhaustion,actor);
   const slots=trainerFields?.[friendly?0:1];
@@ -4877,7 +4906,7 @@ function unit(name,x,y,friendly,level=friendly?(ownedPokemon(name)?.level ?? 5):
  const speedFactor=clamp(0.65+stats[3]/200,0.65,1.7);
  return {name,gymRole:!friendly?selectedGym?.plan?.team[gymSlot]?.[1]:null,type:primary,level,hp,max:hp,ai:master?master.ai:friendly && !runMember?normalizeBattleAI(wildProgress.ai[name]):
   !friendly && selectedGym?normalizeBattleAI({style:gymRole(name).tank?'Defensive':'Balanced',target:'Type weakness',position:selectedGym.plan?.team[gymSlot]?.[2]}):null,
-  heldItem:master?master.heldItem:friendly && !rogueRun?wildProgress.held[name]:!friendly && selectedGym?(selectedGym.plan.team[gymSlot][4] ?? gymHeldItem(name)):null,itemUsed:false,itemTimer:4,ability:abilityFor(name,profile),abilityTimer:0,entryPending:false,entryUsed:false,flashFire:false,pace:pace*speedFactor,cooldown:cooldown/speedFactor,moves,profile,stats,
+  heldItem:master?master.heldItem:friendly && selectedMasterGym?runMember?.heldItem:friendly && !rogueRun?wildProgress.held[name]:!friendly && selectedGym?(selectedGym.plan.team[gymSlot][4] ?? gymHeldItem(name)):null,itemUsed:false,itemTimer:4,ability:abilityFor(name,profile),abilityTimer:0,entryPending:false,entryUsed:false,flashFire:false,pace:pace*speedFactor,cooldown:cooldown/speedFactor,moves,profile,stats,
   moveCooldowns:moves.map(skill=>moveRules(skill).cooldown),moveTimers:moves.map(()=>0),
   stages:[0,0,0,0,0,0,0,0,0,0],ailment:null,ailmentSource:null,ailmentTime:0,dot:0,damagedOpponent:false,lastDamageBy:null,
   x,y,friendly,guard:0,charge:0,gait:null,stride:0,motionTicks:0,attackX:0,attackY:0,attackStyle:'attack',attackSpan:0.36,hitSpan:0.28,hitX:0,hitY:0,moveLabel:null,labelTime:0,attack:0,hit:0,facing:friendly?1:-1,direction:friendly?2:6};
@@ -5089,7 +5118,8 @@ function prepare() {
  nextGymSwitchCheck=4;
  battleWeather=null;weatherTime=0;battleTerrain=null;terrainTime=0;
  lastDamageClock=0;
- allies = rogueRun ? rogueRun.members.map(member=>unit(member.name,sendOut.player.x,sendOut.player.y,true,member.level,member)) :
+ allies = selectedMasterGym ? masterChallengerRoster.map(name=>unit(name,sendOut.player.x,sendOut.player.y,true,100,
+  {moves:legalLoadout(name,wildMoves(name)),profile:gymProfile(name),heldItem:gymHeldItem(name)})) : rogueRun ? rogueRun.members.map(member=>unit(member.name,sendOut.player.x,sendOut.player.y,true,member.level,member)) :
   team.map(name=>unit(name,sendOut.player.x,sendOut.player.y,true));
  const difficulty=selectedGym ? gymDifficulty(selectedGym,selectedMasterGym) : null;
  const roster=rogueRun ? rogueRun.enemyRoster.map(member=>member.name) : selectedWild ? [selectedWild.name] : selectedTrainer?.roster.map(member=>member.name) ?? selectedGym?.roster ?? lineup;
@@ -5146,7 +5176,7 @@ function renderControls() {
  updateScore();
  updateBattleRosters();
  byId('status').textContent = {
-  setup:selectedWild ? selectedWild.region+' · Choose one Pokémon to battle.' : selectedTrainer ? selectedTrainer.region+' Trainer · Difficulty '+selectedTrainer.tier.label+' · '+selectedTrainer.format+'v'+selectedTrainer.format+(selectedTrainer.format===1?' · Ready to battle.':' · Choose your lead Pokémon.') : selectedGym ? selectedGym.name+(selectedMasterGym?' · Master · Choose your lead. Defeat all six. ':' · Choose your lead Pokémon. '+gymBrief(selectedGym))+' '+arenaMap.name+' · '+arenaMap.rocks.length+' pillars.'+(clearedGyms.includes(selectedGym.id)?' Rematch challenge: win without losing a Pokémon.':'') : 'Choose your lead Pokémon.',
+  setup:selectedWild ? selectedWild.region+' · Choose one Pokémon to battle.' : selectedTrainer ? selectedTrainer.region+' Trainer · Difficulty '+selectedTrainer.tier.label+' · '+selectedTrainer.format+'v'+selectedTrainer.format+(selectedTrainer.format===1?' · Ready to battle.':' · Choose your lead Pokémon.') : selectedMasterGym ? 'Master Campaign · Choose your challenger’s lead.' : selectedGym ? selectedGym.name+' · Choose your lead Pokémon. '+gymBrief(selectedGym)+' '+arenaMap.name+' · '+arenaMap.rocks.length+' pillars.'+(clearedGyms.includes(selectedGym.id)?' Rematch challenge: win without losing a Pokémon.':'') : 'Choose your lead Pokémon.',
   battle:rogueRun?'Roguelit · Battle '+rogueRun.round:'Tap a healthy teammate on the left to switch Pokémon.',
   draw:'Draw. Neither side won the battle.',
   win:selectedTrainer ? 'Victory! You earned '+selectedTrainer.coins+' coins.' : selectedWild ? 'Wild Pokémon defeated!' : newBadge ? 'Victory! You earned the '+selectedGym.badge+'.'+speedUnlockMessage() : 'Victory! Your team defeated all six opponents.',
@@ -5624,7 +5654,7 @@ function forceSwitch(victim,defender,passStages=false,passSubstitute=0,chooseRes
   if(victim.friendly){playerSwitch=transition;selected=allies.indexOf(incoming);}
   else {
    enemySwitch=transition;
-   if(selectedGym && chooseReserve)noteGymSwitch(incoming,'after a pivot move');
+   if(selectedGym && !selectedMasterGym && chooseReserve)noteGymSwitch(incoming,'after a pivot move');
   }
  }
  return true;
@@ -7448,7 +7478,7 @@ function advanceCombat(dt,realDt,sides) {
  tickSkillCasts(dt);
 }
 function awardKnockoutEVs() {
- if(rogueRun || !(selectedWild || selectedTrainer || selectedGym))return;
+ if(rogueRun || selectedMasterGym || !(selectedWild || selectedTrainer || selectedGym))return;
  let changed=false;
  for(const foe of enemies) {
   if(foe.hp>0 || foe.evAwarded)continue;
@@ -7508,6 +7538,7 @@ function gymReserve(opponent,outgoing) {
  return best;
 }
 function noteGymSwitch(reserve,reason) {
+ if(selectedMasterGym)return;
  gymSwitchNote=selectedGym.name+' sends '+reserve.name+' '+reason+'.';
  byId('status').textContent=gymSwitchNote;
 }
@@ -7565,7 +7596,7 @@ function advance(dt,realDt=dt) {
   if(rogueRun) {finishRogueRound(phase==='win');return;}
   if(phase==='loss') {
    const detail=applyDefeatRewards();
-   const gymAdvice=selectedGym ? [gymSwitchNote,selectedGym.plan?.tip].filter(Boolean).join(' ') : '';
+   const gymAdvice=selectedGym && !selectedMasterGym ? [gymSwitchNote,selectedGym.plan?.tip].filter(Boolean).join(' ') : '';
    openMenu();
    const notice=byId('knockout-notice');
    notice.textContent=[timedOut?(requiresClear?'Time expired. Defeat the entire gym team to clear the challenge.':'Time expired. Your opponent had more team HP remaining.'):'Your team was knocked out.',gymAdvice,detail].filter(Boolean).join(' ');
@@ -7581,7 +7612,7 @@ function advance(dt,realDt=dt) {
    wildProgress.coins+=selectedTrainer.coins;
    saveWildProgress();
   }
-  const stones=phase==='win' && (selectedGym || selectedTrainer)?evolveStoneHolders():[];
+  const stones=phase==='win' && !selectedMasterGym && (selectedGym || selectedTrainer)?evolveStoneHolders():[];
   renderControls();
   if(phase==='win' && selectedGym && selectedMasterGym && !timedOut) {
    masterGymClears.add(selectedGym.id);
@@ -8684,6 +8715,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.46',changes:['Added separate Master challenger teams, hidden leader rosters, and Master badge marks.']},
  {version:'0.22.45',changes:['Added 1.5× back-hit damage and flanking dashes.']},
  {version:'0.22.44',changes:['Separated movement quick-step effects from damaging dash skill labels.']},
  {version:'0.22.43',changes:['Quick-step dashes now leave fading Pokémon sprite afterimages.']},
