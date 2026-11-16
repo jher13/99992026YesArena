@@ -666,7 +666,7 @@ function renderRoster() {
   return name?enableBoxDrag(tile,name):tile;
  }));
 }
-const pcFilterIds=['pc-nature','pc-personality','pc-stat','pc-min-iv','pc-min-ev','pc-sort','pc-order'];
+const pcFilterIds=['pc-nature','pc-personality','pc-stat','pc-min-iv','pc-min-ev','pc-sort','pc-order','pc-favorites'];
 function appendFilterOption(id,label,value=label) {
  const option=element('option',label);
  option.value=value;
@@ -701,11 +701,14 @@ function pcCandidates(storage,query,generation,control=byId) {
  const selectedStat=control('pc-stat').value;
  const minIv=Math.max(0,Number(control('pc-min-iv').value)||0);
  const minEv=Math.max(0,Number(control('pc-min-ev').value)||0);
+ const favoritesOnly=control('pc-favorites').value==='only';
  const sort=control('pc-sort').value || 'number';
  const direction=control('pc-order').value==='desc'?-1:1;
  const readStat=values=>selectedStat==='' ? values.reduce((sum,value)=>sum+value,0) : values[Number(selectedStat)];
  const matches=[];
  for(const name of storage) {
+  const favorite=wildProgress.favorites.includes(name);
+  if(favoritesOnly && !favorite)continue;
   if(generation && generationOf(name)!==generation) continue;
   const number=dex[name][0];
   if(query && !name.toLowerCase().includes(query) &&
@@ -716,7 +719,7 @@ function pcCandidates(storage,query,generation,control=byId) {
   const ivs=readStat(profile.ivs);
   const evs=readStat(profile.evs);
   if((natureFilter && nature!==natureFilter) || (personalityFilter && personality!==personalityFilter) || ivs<minIv || evs<minEv) continue;
-  matches.push({name,number,nature,personality,ivs,evs,level:ownedPokemon(name).level});
+  matches.push({name,number,nature,personality,ivs,evs,favorite:favorite?0:1,level:ownedPokemon(name).level});
  }
  matches.sort((a,b)=>{
   const difference=typeof a[sort]==='number' ? a[sort]-b[sort] : a[sort].localeCompare(b[sort]);
@@ -793,7 +796,7 @@ function addEVs(profile,yieldByStat) {
 function capsuleControl(name) {
  const profile=profileFor(name);
  const current=abilityFor(name,profile);
- const group=element('div');
+ const group=element('div',null,'ability-capsule-controls');
  const label=element('label','Choose an ability ');
  const options=Object.keys(abilityCatalog).filter(ability=>ability!==current).sort();
  const button=element('button','Use Ability Capsule ×'+wildProgress.capsules);
@@ -823,16 +826,21 @@ function applyTrainingItem(profile,stat,{field,delta}) {
  values[stat]=next;
  return change;
 }
-function vitaminControls(name) {
- const group=element('fieldset');
- group.append(element('legend','EV and IV training items'));
+function vitaminControls(name,field,selection) {
+ const group=element('fieldset',null,'training-items');
+ group.append(element('legend',field==='evs'?'EV training':'IV training'));
  const profile=profileFor(name);
- const total=profile.evs.reduce((sum,value)=>sum+value,0);
- group.append(element('small',total+' / 510 EVs'));
+ if(field==='evs'){
+  const total=profile.evs.reduce((sum,value)=>sum+value,0);
+  group.append(element('small',total+' / 510 EVs','training-total'));
+ }
+ let rows=0;
  for(const [item,rule] of Object.entries(trainingItems)) {
+  if(rule.field!==field)continue;
   const quantity=wildProgress.vitamins[item] ?? 0;
   if(!quantity)continue;
-  const label=element('label',item+' ×'+quantity+' ');
+  const row=element('div',null,'training-item-row');
+  const label=element('span',item+' ×'+quantity);
   const select=element('select');
   select.setAttribute('aria-label','Stat for '+item);
   const stats=rule.stat===undefined?statLabels.map((_,i)=>i):[rule.stat];
@@ -843,7 +851,8 @@ function vitaminControls(name) {
    option.disabled=!applyTrainingItem(trial,stat,rule);
    select.append(option);
   }
-  const available=[...select.options].find(option=>!option.disabled);
+  const enabled=[...select.options].filter(option=>!option.disabled);
+  const available=enabled.find(option=>selection?.item===item && Number(option.value)===selection.stat) ?? enabled[0];
   if(available)select.value=available.value;
   const button=element('button','Use');
   button.setAttribute('aria-label','Use '+item);
@@ -855,13 +864,15 @@ function vitaminControls(name) {
    if(!change)return;
    wildProgress.vitamins[item]--;
    playerStorage.setItem(profileStorage,JSON.stringify(profiles));
-   saveWildProgress();renderDetail();
+   saveWildProgress();renderDetail({item,stat});
    const unit=rule.field==='ivs'?' IV':' EV';
    byId('pokemon-detail').append(element('p',name+' · '+statLabels[stat]+' '+(change>0?'+':'')+change+unit));
   };
-  label.append(select,button);
-  group.append(label);
+  row.append(label,select,button);
+  group.append(row);
+  rows++;
  }
+ if(!rows)group.append(element('small','No training items available.'));
  return group;
 }
 function battleAIControls(name) {
@@ -1003,26 +1014,49 @@ function openGambits(name,ai,onClose) {
  dialog.showModal();
 }
 function pcCollectionControls(name) {
- const section=element('fieldset');
- section.append(element('legend','Collection'));
+ const section=element('fieldset',null,'pc-copy');
+ section.append(element('legend','Copies:'));
  const copies=wildProgress.copies[name] ?? [];
+ section.append(element('p',name+' · '+(copies.length+1)+' total','pc-copy-summary'));
+ const actions=element('div',null,'pc-copy-actions');
+ const grid=element('div',null,'tile-grid pc-copy-grid');
+ const details=element('p',null,'pc-copy-details');
+ details.setAttribute('aria-live','polite');
+ section.append(grid,details,actions);
  const entry=ownedPokemon(name);
  const onTeam=team.includes(name);
  const save=()=>{
   playerStorage.setItem(profileStorage,JSON.stringify(profiles));
   saveTeam();saveWildProgress();renderMenu();
  };
- const select=element('select');
- select.setAttribute('aria-label','Choose a duplicate');
- copies.forEach((copy,i)=>{
-  const option=element('option','Copy '+(i+2)+' · Lv. '+copy.level+' · '+natureOf(copy.profile).name+
-   ' · IV '+copy.profile.ivs.join('/'));
-  option.value=String(i);select.append(option);
+ let selected=-1;
+ const duplicateActions=[];
+ const tiles=[{...entry,profile:profileFor(name)},...copies].map((copy,slot)=>{
+  const label=slot===0?'Active':'Copy '+(slot+1);
+  const tile=element('button',null,'tile');
+  tile.type='button';
+  tile.setAttribute('aria-label',name+' · '+label+' · Lv. '+copy.level);
+  tile.append(idlePokemonPortrait(name,null,copy.profile.shiny?spriteVariants(name).shiny:null),
+   element('strong',label),element('small','Lv. '+copy.level));
+  tile.onclick=()=>{
+   selectCopy(slot-1);
+   renderPokemonDetail(name,slot===0?null:copy,slot+1);
+  };
+  return tile;
  });
+ function selectCopy(index){
+  selected=index;
+  for(const [slot,tile] of tiles.entries())tile.setAttribute('aria-pressed',String(slot===index+1));
+  const profile=index<0?profileFor(name):copies[index].profile;
+  details.textContent=natureOf(profile).name+' · IV '+profile.ivs.join('/');
+  for(const action of duplicateActions)action.disabled=index<0;
+ }
+ grid.append(...tiles);
  if(copies.length) {
   const activate=element('button',onTeam?'Swap copy into battle team':'Make this copy active');
   activate.onclick=()=>{
-   const index=Number(select.value),copy=copies[index];
+   const index=selected,copy=copies[index];
+   if(!copy)return;
    copies[index]={...entry,profile:profileFor(name),moves:[...movesFor(name)],ai:wildProgress.ai[name],held:wildProgress.held[name]};
    wildProgress.owned[name]={level:copy.level,xp:copy.xp};
    profiles[dex[name][0]]=copy.profile;
@@ -1035,13 +1069,15 @@ function pcCollectionControls(name) {
   };
   const release=element('button','Release selected copy');
   release.onclick=()=>{
-   if(confirm('Permanently release this '+name+' copy?')) {copies.splice(Number(select.value),1);save();}
+   if(copies[selected] && confirm('Permanently release this '+name+' copy?')) {copies.splice(selected,1);save();}
   };
-  section.append(select,activate,release);
+  duplicateActions.push(activate,release);
+  actions.append(activate,release);
   if(!isLegendaryEncounter(name) && name!=='Ditto' && name!=='Unown') {
    const breed=element('button','Breed selected copy');
    breed.onclick=()=>{
-    const other=copies[Number(select.value)].profile;
+    const other=copies[selected]?.profile;
+    if(!other)return;
     const parent=profileFor(name);
     const child=rollProfile();
     child.evs.fill(0);
@@ -1057,7 +1093,8 @@ function pcCollectionControls(name) {
     save();
     byId('pokemon-detail').append(element('p','A Lv. 1 '+(isAvailablePokemon(base)?base:name)+' hatched.'));
    };
-   section.append(breed);
+   duplicateActions.push(breed);
+   actions.append(breed);
   }
  }
  const release=element('button','Release '+name);
@@ -1071,15 +1108,40 @@ function pcCollectionControls(name) {
   activeSlot=Math.min(activeSlot,team.length-1);
   inspected=null;save();
  };
- section.append(release);
+ actions.append(release);
+ selectCopy(-1);
  return section;
 }
-function renderDetail() {
+function renderDetail(trainingSelection) {
  const name=inspected ?? team[activeSlot] ?? team[0];
+ renderPokemonDetail(name,null,null,trainingSelection);
+ byId('pc-copies').replaceChildren(...(ownedPokemon(name)?[pcCollectionControls(name)]:[]));
+}
+function renderPokemonDetail(name,copy,copyNumber,trainingSelection) {
  const [,primary,secondary]=dex[name];
  const panel=byId('pokemon-detail');
  const title=element('h3',null,'detail-title');
- title.append(idlePokemonPortrait(name,'portrait',profileFor(name).shiny?spriteVariants(name).shiny:null),element('span',name),element('small',dexNumber(name)));
+ const profile=copy?.profile ?? profileFor(name);
+ title.append(idlePokemonPortrait(name,'portrait',profile.shiny?spriteVariants(name).shiny:null),element('span',name));
+ if(!copy && ownedPokemon(name)){
+  const favorite=wildProgress.favorites.includes(name);
+  const toggle=element('button',favorite?'★':'☆','pc-favorite-toggle');
+  toggle.type='button';
+  toggle.title='Favorite '+name;
+  toggle.setAttribute('aria-label',toggle.title);
+  toggle.setAttribute('aria-pressed',String(favorite));
+  toggle.onclick=()=>{
+   const index=wildProgress.favorites.indexOf(name);
+   if(index>=0)wildProgress.favorites.splice(index,1);
+   else wildProgress.favorites.push(name);
+   saveWildProgress();
+   renderBoxes();
+   renderDetail();
+   byId('pokemon-detail').querySelector('.pc-favorite-toggle')?.focus();
+  };
+  title.append(toggle);
+ }
+ title.append(element('small',dexNumber(name)));
  const body=element('div',null,'detail-body');
  const summary=element('div',null,'detail-summary');
  const info=element('div');
@@ -1090,12 +1152,12 @@ function renderDetail() {
   badges.append(badge);
  }
  const [height,weight]=dimensions(name);
- const profile=profileFor(name);
  const nature=natureOf(profile);
- const owned=ownedPokemon(name);
+ const owned=copy ?? ownedPokemon(name);
  const ability=abilityFor(name,profile);
  const effect=nature.up===nature.down ? ' · Neutral' :
   ' · +'+statLabels[nature.up]+' / −'+statLabels[nature.down];
+ if(copy)info.append(element('p','Copy '+copyNumber+' · Stored'));
  info.append(element('p',owned ? 'Lv. '+owned.level+(owned.level<100?' · '+owned.xp+'/'+experienceNeeded(owned.level)+' XP':' · Max level') : 'Unowned',owned?'team-owned':'team-unowned'),
 badges,element('p',height/10+' m · '+weight/10+' kg'),
   element('p','Nature · '+nature.name+effect),element('p','Personality · '+personalityOf(profile)),
@@ -1110,7 +1172,12 @@ badges,element('p',height/10+' m · '+weight/10+' kg'),
   .map((label,i)=>label+' '+chartValues[i]).join(', '));
  summary.append(info,chart);
  body.append(summary,individualTable(name,profile));
- if(owned) body.append(heldItemPicker(name),capsuleControl(name),vitaminControls(name),experienceCandyControls(name),battleAIControls(name),pcCollectionControls(name));
+ if(copy){
+  panel.replaceChildren(title,body);
+  drawStats(chart,chartValues);
+  return;
+ }
+ if(owned) body.append(heldItemPicker(name),capsuleControl(name),vitaminControls(name,'evs',trainingSelection),vitaminControls(name,'ivs',trainingSelection),experienceCandyControls(name),battleAIControls(name));
  body.append(element('h4','Moves','move-heading'));
  body.append(renderSkillSlots(name),renderLearnableSkills(name));
  const actions=element('div',null,'detail-actions');
@@ -1342,7 +1409,7 @@ function pvpLoanerFor(name,roster,choices){
  const item=choices?.[name];
  return pvpLoanerItems.includes(item) && roster.find(member=>choices?.[member]===item)===name?item:null;
 }
-const wildProgress={pvpLoaners:{},autoCaptureBall:0,autoCaptureFallback:'standard',reservePremiumBalls:true,battlePass:{xp:0,claimed:[]},capsules:0,vitamins:{},copies:{},ai:{},owned:{},registered:[],coins:0,megaRaidRewards:[],items:{},held:{},skills:{},balls:[12,1,3,1,1,0,1,0,0],wins:0,autoCapture:false,autoRepeat:false,autoReserve:false,speed:1};
+const wildProgress={favorites:[],pvpLoaners:{},autoCaptureBall:0,autoCaptureFallback:'standard',reservePremiumBalls:true,battlePass:{xp:0,claimed:[]},capsules:0,vitamins:{},copies:{},ai:{},owned:{},registered:[],coins:0,megaRaidRewards:[],items:{},held:{},skills:{},balls:[12,1,3,1,1,0,1,0,0],wins:0,autoCapture:false,autoRepeat:false,autoReserve:false,speed:1};
 try {
  const saved=JSON.parse(playerStorage.getItem(progressKey));
  for(const [name,item] of Object.entries(saved?.pvpLoaners ?? {}))
@@ -1369,6 +1436,7 @@ try {
     Number.isInteger(entry.xp) && entry.xp>=0) wildProgress.owned[name]={level:entry.level,xp:entry.xp};
   }
  }
+ if(Array.isArray(saved?.favorites))wildProgress.favorites=[...new Set(saved.favorites.filter(isAvailablePokemon))];
  if(Array.isArray(saved?.registered)) wildProgress.registered=[...new Set(saved.registered.filter(isAvailablePokemon))];
  wildProgress.balls=migrateBallInventory(saved?.balls) ?? wildProgress.balls;
  if(Number.isInteger(saved?.wins)&&saved.wins>=0) wildProgress.wins=saved.wins;
@@ -2407,12 +2475,15 @@ function useExperienceCandy(name,item) {
  return gainWildExperience(name,experienceCandies[item] ?? experienceNeeded(entry.level));
 }
 function experienceCandyControls(name) {
+ const section=element('fieldset',null,'exp-boosts');
+ section.append(element('legend','EXP Boosts'));
  const controls=element('div',null,'experience-candy-controls');
  const entry=ownedPokemon(name);
  for(const [item,xp] of Object.entries(experienceCandies)) {
   const count=wildProgress.vitamins[item] ?? 0;
   if(!count)continue;
-  const use=element('button','Use '+item+' ×'+count);
+  const use=element('button','Use');
+  use.setAttribute('aria-label','Use '+item);
   use.type='button';
   use.disabled=entry.level>=100;
   use.onclick=()=>{
@@ -2423,9 +2494,13 @@ function experienceCandyControls(name) {
   };
   const icon=bagItemIcon(item);
   icon.title=xp===null?'Raises the Pokémon by 1 level.':'Adds '+xp+' EXP.';
-  controls.append(icon,use);
+  const row=element('div',null,'experience-candy-row');
+  row.append(icon,element('span',item+' ×'+count),use);
+  controls.append(row);
  }
- return controls;
+ if(!controls.children.length)controls.append(element('small','No EXP boosts available.'));
+ section.append(controls);
+ return section;
 }
 function battleExperience(name,xp) {
  return wildProgress.held[name]==='Lucky Egg'?2*xp:xp;
@@ -4262,7 +4337,7 @@ byId('wild-difficulty').onchange=openWildRegions;
 byId('home-gyms').onclick=openGyms;
 byId('home-collection').onclick=openCollection;
 byId('collection-back').onclick=openMenu;
-byId('next-gym').onclick=()=>{const next=gymTeams[clearedGyms.length];if(next) openBattle(next);};
+byId('next-gym').onclick=continueCampaign;
 byId('gym-back').onclick=openMenu;
 byId('team-back').onclick=openMenu;
 let phase, allies, enemies, effects, selected, speed, clock, recallCooldown;
@@ -4592,9 +4667,6 @@ function updateActivePanels(onlineFields) {
    badge.title=status[1];
    badge.setAttribute('aria-label',status[1]);
   }
-  const gait={walk:'Walking',run:'Running'}[actor.gait];
-  const activity=phase==='battle' && gait ? panel.label+' · '+gait : panel.label;
-  if(panel.activity.textContent!==activity) panel.activity.textContent=activity;
   const health=actor.hp+'/'+actor.max+' HP';
   if(panel.hp.textContent!==health) panel.hp.textContent=health;
   panel.moves.forEach(({timer,bar},slot)=>{
@@ -5049,7 +5121,7 @@ function renderControls() {
  });
  if(phase!=='battle' && phase!=='setup') stopBattleMusic();
  updateAutoReserveToggle();
- byId('next-gym').hidden=!(phase==='win' && newBadge && clearedGyms.length<gymTeams.length);
+ byId('next-gym').hidden=!(phase==='win' && selectedGym && gymTeams[clearedGyms.length]);
  updateActivePanels();
  updateScore();
  updateBattleRosters();
@@ -5069,7 +5141,6 @@ function renderControls() {
  byId('speed').textContent = speed + '× speed';
  byId('speed').setAttribute('aria-pressed',String(speed>1));
  byId('choices').replaceChildren();
- if(selectedGym && phase==='win' && gymTeams[clearedGyms.length])button('Continue Campaign',continueCampaign);
  if(selectedTrainer && ['win','loss','draw'].includes(phase)) {
   button('Next trainer',()=>startTrainerEncounter(selectedTrainer.tier,selectedTrainer.format));
   button('Trainer settings',openTrainerSetup);
@@ -5255,6 +5326,7 @@ function recordOpponentDamage(source,victim,amount) {
  lastDpsRender=-1;
  source.damagedOpponent=true;
  victim.lastDamageBy=source;
+ victim.lastDamageAt=clock;
 }
 function tickStatus(actor,dt) {
  if(actor.octolockUntil>clock && !(actor.octolockTick>clock)){
@@ -6183,15 +6255,14 @@ function tryDashDodge(actor,hazard,angle) {
  const id=actor.onlineId ?? (actor.friendly?'ally:':'enemy:')+(actor.friendly?allies:enemies).indexOf(actor);
  const attempts=hazard.dashDodgeAttempts ??= [];
  if(attempts.includes(id))return false;
- const threats=pendingCasts.filter(area=>area.actor.hp>0 && area.actor.friendly!==actor.friendly);
+ const threats=pendingCasts.filter(area=>area.actor!==actor && (area.roaming || (area.actor.hp>0 && (area.friendlyFire || area.actor.friendly!==actor.friendly))));
  const endpoint=[0,1,-1,2,-2,3,-3,4].map(turn=>{
   const heading=angle+turn*Math.PI/4;
   return {x:clamp(actor.x+Math.cos(heading)*90,28,canvas.width-28),
    y:clamp(actor.y+Math.sin(heading)*90,28,canvas.height-28)};
- }).find(point=>movementClearance(actor,actor.x,actor.y,point.x,point.y)===1 && threats.every(area=>!inSkill({...actor,...point},area.center,area.radius,area.line)));
+ }).find(point=>movementClearance(actor,actor.x,actor.y,point.x,point.y)===1 && threats.every(area=>!hazardHits({...actor,...point},area)));
  if(!endpoint)return false;
  attempts.push(id);
- if(onlineRandom()>=0.25)return false;
  const move=actor.moves[slot];
  const dx=endpoint.x-actor.x,dy=endpoint.y-actor.y;
  beginMoveCooldown(actor,slot,0.3);
@@ -6212,25 +6283,38 @@ function tryDashDodge(actor,hazard,angle) {
 function battleActorId(actor) {
  return actor.onlineId ?? (actor.friendly?'ally:':'enemy:')+(actor.friendly?allies:enemies).indexOf(actor);
 }
-function projectedHazard(cast) {
- if(!cast.roaming)return cast;
- const travel=105*Math.min(.25,cast.remaining,cast.turnIn);
- return {...cast,original:cast,center:{
+function roamingCenter(cast,time) {
+ const travel=105*Math.min(time,cast.remaining,cast.turnIn);
+ return {
   x:clamp(cast.center.x+Math.cos(cast.heading)*travel,cast.radius,canvas.width-cast.radius),
   y:clamp(cast.center.y+Math.sin(cast.heading)*travel,cast.radius,canvas.height-cast.radius),
- }};
+ };
+}
+function hazardHits(point,cast,time=0.3) {
+ if(cast.roaming)return [0,time/2,time].some(t=>inSkill(point,roamingCenter(cast,t),cast.radius,null,true));
+ if(cast.flight){
+  const line=cast.line;
+  const along=(point.x-line.x)*line.dx+(point.y-line.y)*line.dy;
+  if(along<cast.travel-line.radius-bodyRadius(point))return false;
+ }
+ return inSkill(point,cast.center,cast.radius,cast.line);
+}
+function warrantsDash(actor,cast,time) {
+ const [type,power,,,status]=moveCatalog[cast.move] ?? [];
+ if(status || !power || time>0.65)return false;
+ const damage=battleDamage(cast.actor,actor,power,effectiveness(type,actor),moveRules(cast.move).category===2,type,cast.move);
+ const area=cast.roaming || cast.radius>=65 || cast.line?.halfWidth || cast.line?.halfAngle;
+ return damage>=actor.hp || Boolean(area && power>=85);
 }
 function dodgeSkill(actor,dt) {
  const hazards=pendingCasts.filter(cast=>cast.roaming?!cast.touched.includes(battleActorId(actor)):
   cast.actor.hp>0 && cast.actor!==actor && (cast.friendlyFire || cast.actor.friendly!==actor.friendly) &&
-  (!cast.flight || (actor.x-cast.line.x)*cast.line.dx+(actor.y-cast.line.y)*cast.line.dy>=cast.travel-cast.line.radius))
-  .map(projectedHazard);
- const hits=(point,cast)=>inSkill(point,cast.center,cast.radius,cast.line,cast.roaming);
+  (!cast.flight || (actor.x-cast.line.x)*cast.line.dx+(actor.y-cast.line.y)*cast.line.dy>=cast.travel-cast.line.radius));
  const impact=cast=>cast.flight?Math.max(0,((actor.x-cast.line.x)*cast.line.dx+
   (actor.y-cast.line.y)*cast.line.dy-cast.travel)/460):cast.roaming?0.25:cast.remaining;
- const hazard=hazards.filter(cast=>hits(actor,cast)).sort((a,b)=>impact(a)-impact(b))[0];
+ const hazard=hazards.filter(cast=>impact(cast)<=0.9 && hazardHits(actor,cast)).sort((a,b)=>impact(a)-impact(b))[0];
  if(!hazard)return false;
- const center=hazard.line?nearestLinePoint(actor,hazard.line):hazard.center;
+ const center=hazard.line?nearestLinePoint(actor,hazard.line):hazard.roaming?roamingCenter(hazard,0.25):hazard.center;
  const heading=Math.atan2(actor.y-center.y,actor.x-center.x);
  const pace=actor.pace*stageFactor(actor,6)*1.22;
  const time=impact(hazard);
@@ -6242,12 +6326,18 @@ function dodgeSkill(actor,dt) {
    const y=clamp(actor.y+Math.sin(angle)*step,28,canvas.height-28);
    const distance=Math.hypot(x-actor.x,y-actor.y);
    if(distance<1 || movementClearance(actor,actor.x,actor.y,x,y)<1)break;
-   if(hazards.some(cast=>hits({...actor,x,y},cast)))continue;
-   if(!best || distance<best.distance)best={x,y,distance};
+   if(hazards.some(cast=>{
+    const progress=Math.min(1,pace*impact(cast)/distance);
+    return hazardHits({...actor,x:actor.x+(x-actor.x)*progress,y:actor.y+(y-actor.y)*progress},cast);
+   }))continue;
+   const clearance=hazard.line?Math.abs((x-hazard.line.x)*hazard.line.dy-(y-hazard.line.y)*hazard.line.dx):
+    Math.hypot(x-center.x,y-center.y);
+   const score=distance-Math.min(140,clearance)*0.22;
+   if(!best || score<best.score)best={x,y,distance,score};
    break;
   }
  }
- if((!best || best.distance/pace>time) && tryDashDodge(actor,hazard.original ?? hazard,heading))return true;
+ if(!best && warrantsDash(actor,hazard,time) && tryDashDodge(actor,hazard,heading))return true;
  if(!best) {
   const route=retreatRoute(actor,center,combatSides()[actor.friendly?1:0]);
   if(!route)return false;
@@ -6256,6 +6346,52 @@ function dodgeSkill(actor,dt) {
  }
  moveActor(actor,(best.x-actor.x)/best.distance,(best.y-actor.y)/best.distance,best.distance,dt,true);
  return true;
+}
+function seekPillarCover(actor,opponents,dt) {
+ if(actor.charge<=0 || actor.ai?.style==='Aggressive' || actor.ai?.position==='Melee')return false;
+ const threats=opponents.filter(enemy=>enemy.hp>0 && enemy.committedTarget===battleActorId(actor) &&
+  enemy.moves.some(move=>!moveCatalog[move][4] && moveCatalog[move][1]>=65 &&
+   ['projectile','beam','wave'].includes(skillShape(move))) &&
+  Math.hypot(enemy.x-actor.x,enemy.y-actor.y)>85);
+ if(!threats.length)return false;
+ const coverCount=point=>threats.filter(enemy=>firstPillar(enemy.x,enemy.y,point.x,point.y)?.rock.hp>0).length;
+ const current=coverCount(actor);
+ let best=null;
+ for(const rock of arenaMap?.rocks ?? []){
+  if(!(rock.hp>0))continue;
+  for(const enemy of threats){
+   const angle=Math.atan2(rock.y-enemy.y,rock.x-enemy.x);
+   const offset=rock.r+bodyRadius(actor)+10;
+   const x=clamp(rock.x+Math.cos(angle)*offset,28,canvas.width-28);
+   const y=clamp(rock.y+Math.sin(angle)*offset,28,canvas.height-28);
+   const distance=Math.hypot(x-actor.x,y-actor.y);
+   if(distance<8 || distance>115 || movementClearance(actor,actor.x,actor.y,x,y)<1)continue;
+   const gain=coverCount({x,y})-current;
+   const score=gain*120-distance;
+   if(gain>0 && (!best || score>best.score))best={x,y,distance,score};
+  }
+ }
+ if(!best)return current>0;
+ moveActor(actor,(best.x-actor.x)/best.distance,(best.y-actor.y)/best.distance,best.distance,dt,true);
+ return true;
+}
+function basicAttackWindow(actor,gap) {
+ return gap<=24 && (actor.normalAttacksEnabled ?? (!actor.friendly || normalAttacksEnabled)) &&
+  (actor.normalAttackAt ?? 0)<=clock;
+}
+function weatherAttackWeight(actor,move,target) {
+ const [type,,,,status]=moveCatalog[move];
+ const weather=abilityWeather();
+ const setup=move==='Rain Dance'?'Water':move==='Sunny Day'?'Fire':null;
+ if(setup){
+  const beneficiaries=activeTeammates(actor).some(member=>
+   (setup==='Water'?activeAbility(member)==='Swift Swim':activeAbility(member)==='Solar Power') ||
+   member.moves.some(attack=>moveCatalog[attack][0]===setup && !moveCatalog[attack][4]));
+  return beneficiaries?1.3:0.7;
+ }
+ if(status)return 1;
+ const boosted=(weather==='Rain' && type==='Water') || (weather==='Sun' && type==='Fire');
+ return boosted && effectiveness(type,target)>=1?1.35:1;
 }
 function readyKnockout(actor,target,gap) {
  return actor.moves.some((move,slot)=>{
@@ -6466,8 +6602,13 @@ function act(actor, opponents, dt) {
   const usable=actor.moves.some(move=>!moveCatalog[move][4] &&
    !moveRestricted(actor,move) && tacticalMoveScore(actor,opponent,move,moveRules(move),separation)>0);
   const preferenceWeight=['Type weakness','Lowest HP','Highest HP'].includes(actor.ai?.target)?40:1;
-  const rank=preference<=-1e6?preference:!covered && readyKnockout(actor,opponent,separation)?-1e5:
-   preference*preferenceWeight+(covered?65:0)+(usable?0:160)-committed-pressure;
+  const attacker=opponent.lastDamageBy;
+  const focus=(actor.ai?.target ?? 'Nearest')==='Nearest' && attacker && attacker!==actor && attacker.hp>0 &&
+   attacker.friendly===actor.friendly && attacker.committedTarget===battleActorId(opponent) &&
+   clock-(opponent.lastDamageAt ?? -Infinity)<2 &&
+   Math.hypot(attacker.x-actor.x,attacker.y-actor.y)<200 ? 28:0;
+  const rank=preference<=-50000?preference:!covered && readyKnockout(actor,opponent,separation)?-1e4:
+   preference*preferenceWeight+(covered?65:0)+(usable?0:160)-committed-pressure-focus;
   if(rank<targetRank || (rank===targetRank && separation<gap)) {
    target=opponent;gap=separation;distance=centerDistance;targetRank=rank;
   }
@@ -6492,8 +6633,9 @@ function act(actor, opponents, dt) {
  let attackReach=0;
  const position=actor.ai?.position ?? 'Auto';
  const formation=position==='Frontline' || position==='Backline';
- const preferredGap=formation?null:battlePositions[position];
+ const preferredGap=position==='Backline'?115:formation?null:battlePositions[position];
  const close=preferredGap!==null && preferredGap<=28;
+ if(!preparing && !gambit && !actor.manualTarget && seekPillarCover(actor,opponents,dt))return;
  let usableAttack=false;
  for(let slot=0;!gambit && slot<actor.moves.length;slot++) {
   const move=actor.moves[slot];
@@ -6516,7 +6658,7 @@ function act(actor, opponents, dt) {
   const preference=actor.ai?.priorities[slot] ?? 1;
   const rangedBias=actor.ai?.target==='Ranged attacks' && range>=90 && rules.scope!=='ally'?1.65:1;
   const positionBias=preferredGap===null || rules.scope==='ally'?1:
-   close?(range<=30?1.35:1):1/(1+Math.max(0,preferredGap-range)/100);
+   close?(range<=30?1.35:1):1/(1+Math.max(0,preferredGap-range)/55);
   const obstruction=rules.scope==='ally' || selfCentered?null:firstPillar(actor.x,actor.y,target.x,target.y);
   const coverCost=obstruction && !(obstruction.rock.hp>0 && obstruction.rock.hp<=8)?65:0;
   const windup=shape || rules.radius?warning:0;
@@ -6526,16 +6668,20 @@ function act(actor, opponents, dt) {
    gymTactics[selectedGym.plan.tactic].includes(move);
   const gymPriority=gymSetup?1.65:
    actor.gymRole==='ace' && move==='Roar'?1.35:1;
-  const value=score*bias*rangedBias*positionBias*gymPriority*[0.4,1,2.5][preference]/
+  const attack=!moveCatalog[move][4];
+  const reserve=attack && actor.moveTimers.some((time,i)=>i!==slot && time>0.4 &&
+   !moveCatalog[actor.moves[i]][4] && moveRules(actor.moves[i]).category===rules.category);
+  const stagger=reserve && basicAttackWindow(actor,gap)?0.7:1;
+  const value=score*bias*rangedBias*positionBias*gymPriority*weatherAttackWeight(actor,move,target)*stagger*[0.4,1,2.5][preference]/
    ((1+(remaining+coverCost)/48)*(1+escapeRisk));
-  if(!choice || value>choice.value) choice={slot,move,rules,shape,range,selfCentered,remaining,value};
+  if(!choice || value>choice.value) choice={slot,move,rules,shape,range,selfCentered,remaining,value,stagger:stagger<1 && target.hp>target.max*.3};
  }
  const basicAllowed=!preparing && (actor.normalAttacksEnabled ?? (!actor.friendly || normalAttacksEnabled));
  const basicRange=24;
  const basicRules={...moveRules('Tackle'),range:basicRange,category:2};
  const basicScore=basicAllowed?tacticalMoveScore(actor,target,'Normal Attack',basicRules,gap):0;
  if(!gambit && basicScore>0 && (actor.normalAttackAt ?? 0)<=clock && gap<=basicRange &&
-    (!choice || choice.remaining>0 || actor.charge>0) && !firstPillar(actor.x,actor.y,target.x,target.y)) {
+    (!choice || choice.remaining>0 || actor.charge>0 || choice.stagger && !readyKnockout(actor,target,gap)) && !firstPillar(actor.x,actor.y,target.x,target.y)) {
   choice={slot:-1,move:'Normal Attack',rules:basicRules,range:basicRange,remaining:0};
  }
  if(!choice && !usableAttack && basicScore>0) {
@@ -6573,7 +6719,7 @@ function act(actor, opponents, dt) {
    moveActor(actor,dx,dy,gap-goal,dt,gap-goal>100,target);
    return;
   }
-  if(!close && !ready && gap<goal-12) {
+  if(!close && !gambit && gap<goal-12 && (!ready || choice.range<goal-12)) {
    const route=retreatRoute(actor,target,opponents);
    if(route) {
     moveActor(actor,route.dx,route.dy,goal-gap,dt,true);
@@ -6596,7 +6742,7 @@ function act(actor, opponents, dt) {
  if(!choice || remaining>0.01 || (choice.move==='Normal Attack'?(actor.normalAttackAt ?? 0)>clock:actor.charge>0)) return;
  const cover=choice.rules.scope!=='ally' && !choice.selfCentered && firstPillar(actor.x,actor.y,target.x,target.y);
  const strikeCover=cover && cover.rock.hp>0 && !moveCatalog[choice.move][4] && !sacrificeProfiles.has(choice.move) &&
-  (cover.rock.hp<=8 || inSkill(target,null,0,pillarPath(cover.rock,actor)));
+  (cover.rock.hp<=8 || moveCatalog[choice.move][1]>=90 || inSkill(target,null,0,pillarPath(cover.rock,actor)));
  if(cover && !strikeCover && distance>1) {
   const dx=(target.x-actor.x)/distance,dy=(target.y-actor.y)/distance;
   const lane=[1,-1].map(side=>{
@@ -8355,6 +8501,12 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.37',changes:['Improved Arena AI cover, hazard dodging, cooldown use, positioning, and team targeting.']},
+ {version:'0.22.36',changes:['Removed battle movement labels and consolidated Campaign victory navigation into Next gym.']},
+ {version:'0.22.35',changes:['Added PC favorites and aligned EXP Boost and Ability Capsule controls.']},
+ {version:'0.22.34',changes:['Separated EXP Boosts, preserved selected training stats, and added stored copy previews.']},
+ {version:'0.22.33',changes:['Added a PC-style grid for copies of the selected Pokémon.']},
+ {version:'0.22.32',changes:['Organized PC training into EV and IV rows and moved copy management below the PC box.']},
  {version:'0.22.31',changes:['Added EXP Candies, Rare Candy, Event Ball, Lucky Egg and Poke Fight Tactics placement rewards.']},
  {version:'0.22.30',changes:['Shop cards now show one outline, with orange for owned families and rose pink for trait matches.']},
  {version:'0.22.29',changes:['Added the shared Poké Ball Carousel and Stage 5 Master Ball Draft.']},

@@ -6,6 +6,20 @@ const read=file=>fs.readFileSync(path.join(__dirname,'..',file),'utf8');
 const html=read('index.html');
 const manifest=JSON.parse(read('version.json'));
 assert.match(manifest.version,/^\d+\.\d+\.\d+$/);
+const hazardCode=html.slice(html.indexOf('function roamingCenter('),html.indexOf('function dodgeSkill('));
+const {hazardHits,warrantsDash}=new Function('canvas','clamp','inSkill','bodyRadius',
+ 'moveCatalog','battleDamage','effectiveness','moveRules',hazardCode+'return {hazardHits,warrantsDash};')(
+ {width:960,height:480},(x,lo,hi)=>Math.max(lo,Math.min(hi,x)),
+ (point,center,radius)=>Math.hypot(point.x-center.x,point.y-center.y)<=radius,
+ ()=>10,{Surf:['Water',90,100,0,false],Tackle:['Normal',40,100,0,false]},
+ (_,__,power)=>power,()=>1,()=>({category:1}));
+const vortex={roaming:true,center:{x:100,y:100},heading:0,remaining:2,turnIn:.5,radius:20};
+assert(hazardHits({x:145,y:100},vortex,.3));
+assert(!hazardHits({x:100,y:145},vortex,.3));
+assert(warrantsDash({hp:200},{move:'Surf',radius:70},.2));
+assert(!warrantsDash({hp:200},{move:'Surf',radius:70},.8));
+assert(!warrantsDash({hp:200},{move:'Tackle'},.2));
+assert(warrantsDash({hp:20},{move:'Tackle'},.2));
 const migrations=fs.readdirSync(path.join(__dirname,'../supabase/migrations'));
 assert(migrations.length>0);
 const migrationVersions=migrations.map(file=>{

@@ -6432,6 +6432,7 @@ function recordOpponentDamage(source,victim,amount) {
  lastDpsRender=-1;
  source.damagedOpponent=true;
  victim.lastDamageBy=source;
+ victim.lastDamageAt=clock;
 }
 function tickStatus(actor,dt) {
  if(actor.octolockUntil>clock && !(actor.octolockTick>clock)){
@@ -7360,15 +7361,14 @@ function tryDashDodge(actor,hazard,angle) {
  const id=actor.onlineId ?? (actor.friendly?'ally:':'enemy:')+(actor.friendly?allies:enemies).indexOf(actor);
  const attempts=hazard.dashDodgeAttempts ??= [];
  if(attempts.includes(id))return false;
- const threats=pendingCasts.filter(area=>area.actor.hp>0 && area.actor.friendly!==actor.friendly);
+ const threats=pendingCasts.filter(area=>area.actor!==actor && (area.roaming || (area.actor.hp>0 && (area.friendlyFire || area.actor.friendly!==actor.friendly))));
  const endpoint=[0,1,-1,2,-2,3,-3,4].map(turn=>{
   const heading=angle+turn*Math.PI/4;
   return {x:clamp(actor.x+Math.cos(heading)*90,28,canvas.width-28),
    y:clamp(actor.y+Math.sin(heading)*90,28,canvas.height-28)};
- }).find(point=>movementClearance(actor,actor.x,actor.y,point.x,point.y)===1 && threats.every(area=>!inSkill({...actor,...point},area.center,area.radius,area.line)));
+ }).find(point=>movementClearance(actor,actor.x,actor.y,point.x,point.y)===1 && threats.every(area=>!hazardHits({...actor,...point},area)));
  if(!endpoint)return false;
  attempts.push(id);
- if(Math.random()>=0.25)return false;
  const move=actor.moves[slot];
  const dx=endpoint.x-actor.x,dy=endpoint.y-actor.y;
  beginMoveCooldown(actor,slot,0.3);
@@ -7389,25 +7389,38 @@ function tryDashDodge(actor,hazard,angle) {
 function battleActorId(actor) {
  return actor.onlineId ?? (actor.friendly?'ally:':'enemy:')+(actor.friendly?allies:enemies).indexOf(actor);
 }
-function projectedHazard(cast) {
- if(!cast.roaming)return cast;
- const travel=105*Math.min(.25,cast.remaining,cast.turnIn);
- return {...cast,original:cast,center:{
+function roamingCenter(cast,time) {
+ const travel=105*Math.min(time,cast.remaining,cast.turnIn);
+ return {
   x:clamp(cast.center.x+Math.cos(cast.heading)*travel,cast.radius,canvas.width-cast.radius),
   y:clamp(cast.center.y+Math.sin(cast.heading)*travel,cast.radius,canvas.height-cast.radius),
- }};
+ };
+}
+function hazardHits(point,cast,time=0.3) {
+ if(cast.roaming)return [0,time/2,time].some(t=>inSkill(point,roamingCenter(cast,t),cast.radius,null,true));
+ if(cast.flight){
+  const line=cast.line;
+  const along=(point.x-line.x)*line.dx+(point.y-line.y)*line.dy;
+  if(along<cast.travel-line.radius-bodyRadius(point))return false;
+ }
+ return inSkill(point,cast.center,cast.radius,cast.line);
+}
+function warrantsDash(actor,cast,time) {
+ const [type,power,,,status]=moveCatalog[cast.move] ?? [];
+ if(status || !power || time>0.65)return false;
+ const damage=battleDamage(cast.actor,actor,power,effectiveness(type,actor),moveRules(cast.move).category===2,type,cast.move);
+ const area=cast.roaming || cast.radius>=65 || cast.line?.halfWidth || cast.line?.halfAngle;
+ return damage>=actor.hp || Boolean(area && power>=85);
 }
 function dodgeSkill(actor,dt) {
  const hazards=pendingCasts.filter(cast=>cast.roaming?!cast.touched.includes(battleActorId(actor)):
   cast.actor.hp>0 && cast.actor!==actor && (cast.friendlyFire || cast.actor.friendly!==actor.friendly) &&
-  (!cast.flight || (actor.x-cast.line.x)*cast.line.dx+(actor.y-cast.line.y)*cast.line.dy>=cast.travel-cast.line.radius))
-  .map(projectedHazard);
- const hits=(point,cast)=>inSkill(point,cast.center,cast.radius,cast.line,cast.roaming);
+  (!cast.flight || (actor.x-cast.line.x)*cast.line.dx+(actor.y-cast.line.y)*cast.line.dy>=cast.travel-cast.line.radius));
  const impact=cast=>cast.flight?Math.max(0,((actor.x-cast.line.x)*cast.line.dx+
   (actor.y-cast.line.y)*cast.line.dy-cast.travel)/460):cast.roaming?0.25:cast.remaining;
- const hazard=hazards.filter(cast=>hits(actor,cast)).sort((a,b)=>impact(a)-impact(b))[0];
+ const hazard=hazards.filter(cast=>impact(cast)<=0.9 && hazardHits(actor,cast)).sort((a,b)=>impact(a)-impact(b))[0];
  if(!hazard)return false;
- const center=hazard.line?nearestLinePoint(actor,hazard.line):hazard.center;
+ const center=hazard.line?nearestLinePoint(actor,hazard.line):hazard.roaming?roamingCenter(hazard,0.25):hazard.center;
  const heading=Math.atan2(actor.y-center.y,actor.x-center.x);
  const pace=actor.pace*stageFactor(actor,6)*1.22;
  const time=impact(hazard);
@@ -7419,12 +7432,18 @@ function dodgeSkill(actor,dt) {
    const y=clamp(actor.y+Math.sin(angle)*step,28,canvas.height-28);
    const distance=Math.hypot(x-actor.x,y-actor.y);
    if(distance<1 || movementClearance(actor,actor.x,actor.y,x,y)<1)break;
-   if(hazards.some(cast=>hits({...actor,x,y},cast)))continue;
-   if(!best || distance<best.distance)best={x,y,distance};
+   if(hazards.some(cast=>{
+    const progress=Math.min(1,pace*impact(cast)/distance);
+    return hazardHits({...actor,x:actor.x+(x-actor.x)*progress,y:actor.y+(y-actor.y)*progress},cast);
+   }))continue;
+   const clearance=hazard.line?Math.abs((x-hazard.line.x)*hazard.line.dy-(y-hazard.line.y)*hazard.line.dx):
+    Math.hypot(x-center.x,y-center.y);
+   const score=distance-Math.min(140,clearance)*0.22;
+   if(!best || score<best.score)best={x,y,distance,score};
    break;
   }
  }
- if((!best || best.distance/pace>time) && tryDashDodge(actor,hazard.original ?? hazard,heading))return true;
+ if(!best && warrantsDash(actor,hazard,time) && tryDashDodge(actor,hazard,heading))return true;
  if(!best) {
   const route=retreatRoute(actor,center,combatSides()[actor.friendly?1:0]);
   if(!route)return false;
@@ -7433,6 +7452,52 @@ function dodgeSkill(actor,dt) {
  }
  moveActor(actor,(best.x-actor.x)/best.distance,(best.y-actor.y)/best.distance,best.distance,dt,true);
  return true;
+}
+function seekPillarCover(actor,opponents,dt) {
+ if(actor.charge<=0 || actor.ai?.style==='Aggressive' || actor.ai?.position==='Melee')return false;
+ const threats=opponents.filter(enemy=>enemy.hp>0 && enemy.committedTarget===battleActorId(actor) &&
+  enemy.moves.some(move=>!moveCatalog[move][4] && moveCatalog[move][1]>=65 &&
+   ['projectile','beam','wave'].includes(skillShape(move))) &&
+  Math.hypot(enemy.x-actor.x,enemy.y-actor.y)>85);
+ if(!threats.length)return false;
+ const coverCount=point=>threats.filter(enemy=>firstPillar(enemy.x,enemy.y,point.x,point.y)?.rock.hp>0).length;
+ const current=coverCount(actor);
+ let best=null;
+ for(const rock of arenaMap?.rocks ?? []){
+  if(!(rock.hp>0))continue;
+  for(const enemy of threats){
+   const angle=Math.atan2(rock.y-enemy.y,rock.x-enemy.x);
+   const offset=rock.r+bodyRadius(actor)+10;
+   const x=clamp(rock.x+Math.cos(angle)*offset,28,canvas.width-28);
+   const y=clamp(rock.y+Math.sin(angle)*offset,28,canvas.height-28);
+   const distance=Math.hypot(x-actor.x,y-actor.y);
+   if(distance<8 || distance>115 || movementClearance(actor,actor.x,actor.y,x,y)<1)continue;
+   const gain=coverCount({x,y})-current;
+   const score=gain*120-distance;
+   if(gain>0 && (!best || score>best.score))best={x,y,distance,score};
+  }
+ }
+ if(!best)return current>0;
+ moveActor(actor,(best.x-actor.x)/best.distance,(best.y-actor.y)/best.distance,best.distance,dt,true);
+ return true;
+}
+function basicAttackWindow(actor,gap) {
+ return gap<=24 && (actor.normalAttacksEnabled ?? (!actor.friendly || normalAttacksEnabled)) &&
+  (actor.normalAttackAt ?? 0)<=clock;
+}
+function weatherAttackWeight(actor,move,target) {
+ const [type,,,,status]=moveCatalog[move];
+ const weather=abilityWeather();
+ const setup=move==='Rain Dance'?'Water':move==='Sunny Day'?'Fire':null;
+ if(setup){
+  const beneficiaries=activeTeammates(actor).some(member=>
+   (setup==='Water'?activeAbility(member)==='Swift Swim':activeAbility(member)==='Solar Power') ||
+   member.moves.some(attack=>moveCatalog[attack][0]===setup && !moveCatalog[attack][4]));
+  return beneficiaries?1.3:0.7;
+ }
+ if(status)return 1;
+ const boosted=(weather==='Rain' && type==='Water') || (weather==='Sun' && type==='Fire');
+ return boosted && effectiveness(type,target)>=1?1.35:1;
 }
 function readyKnockout(actor,target,gap) {
  return actor.moves.some((move,slot)=>{
@@ -7643,8 +7708,13 @@ function act(actor, opponents, dt) {
   const usable=actor.moves.some(move=>!moveCatalog[move][4] &&
    !moveRestricted(actor,move) && tacticalMoveScore(actor,opponent,move,moveRules(move),separation)>0);
   const preferenceWeight=['Type weakness','Lowest HP','Highest HP'].includes(actor.ai?.target)?40:1;
-  const rank=preference<=-1e6?preference:!covered && readyKnockout(actor,opponent,separation)?-1e5:
-   preference*preferenceWeight+(covered?65:0)+(usable?0:160)-committed-pressure;
+  const attacker=opponent.lastDamageBy;
+  const focus=(actor.ai?.target ?? 'Nearest')==='Nearest' && attacker && attacker!==actor && attacker.hp>0 &&
+   attacker.friendly===actor.friendly && attacker.committedTarget===battleActorId(opponent) &&
+   clock-(opponent.lastDamageAt ?? -Infinity)<2 &&
+   Math.hypot(attacker.x-actor.x,attacker.y-actor.y)<200 ? 28:0;
+  const rank=preference<=-50000?preference:!covered && readyKnockout(actor,opponent,separation)?-1e4:
+   preference*preferenceWeight+(covered?65:0)+(usable?0:160)-committed-pressure-focus;
   if(rank<targetRank || (rank===targetRank && separation<gap)) {
    target=opponent;gap=separation;distance=centerDistance;targetRank=rank;
   }
@@ -7669,8 +7739,9 @@ function act(actor, opponents, dt) {
  let attackReach=0;
  const position=actor.ai?.position ?? 'Auto';
  const formation=position==='Frontline' || position==='Backline';
- const preferredGap=formation?null:battlePositions[position];
+ const preferredGap=position==='Backline'?115:formation?null:battlePositions[position];
  const close=preferredGap!==null && preferredGap<=28;
+ if(!preparing && !gambit && !actor.manualTarget && seekPillarCover(actor,opponents,dt))return;
  let usableAttack=false;
  for(let slot=0;!gambit && slot<actor.moves.length;slot++) {
   const move=actor.moves[slot];
@@ -7693,7 +7764,7 @@ function act(actor, opponents, dt) {
   const preference=actor.ai?.priorities[slot] ?? 1;
   const rangedBias=actor.ai?.target==='Ranged attacks' && range>=90 && rules.scope!=='ally'?1.65:1;
   const positionBias=preferredGap===null || rules.scope==='ally'?1:
-   close?(range<=30?1.35:1):1/(1+Math.max(0,preferredGap-range)/100);
+   close?(range<=30?1.35:1):1/(1+Math.max(0,preferredGap-range)/55);
   const obstruction=rules.scope==='ally' || selfCentered?null:firstPillar(actor.x,actor.y,target.x,target.y);
   const coverCost=obstruction && !(obstruction.rock.hp>0 && obstruction.rock.hp<=8)?65:0;
   const windup=shape || rules.radius?warning:0;
@@ -7703,16 +7774,20 @@ function act(actor, opponents, dt) {
    gymTactics[selectedGym.plan.tactic].includes(move);
   const gymPriority=gymSetup?1.65:
    actor.gymRole==='ace' && move==='Roar'?1.35:1;
-  const value=score*bias*rangedBias*positionBias*gymPriority*[0.4,1,2.5][preference]/
+  const attack=!moveCatalog[move][4];
+  const reserve=attack && actor.moveTimers.some((time,i)=>i!==slot && time>0.4 &&
+   !moveCatalog[actor.moves[i]][4] && moveRules(actor.moves[i]).category===rules.category);
+  const stagger=reserve && basicAttackWindow(actor,gap)?0.7:1;
+  const value=score*bias*rangedBias*positionBias*gymPriority*weatherAttackWeight(actor,move,target)*stagger*[0.4,1,2.5][preference]/
    ((1+(remaining+coverCost)/48)*(1+escapeRisk));
-  if(!choice || value>choice.value) choice={slot,move,rules,shape,range,selfCentered,remaining,value};
+  if(!choice || value>choice.value) choice={slot,move,rules,shape,range,selfCentered,remaining,value,stagger:stagger<1 && target.hp>target.max*.3};
  }
  const basicAllowed=!preparing && (actor.normalAttacksEnabled ?? (!actor.friendly || normalAttacksEnabled));
  const basicRange=24;
  const basicRules={...moveRules('Tackle'),range:basicRange,category:2};
  const basicScore=basicAllowed?tacticalMoveScore(actor,target,'Normal Attack',basicRules,gap):0;
  if(!gambit && basicScore>0 && (actor.normalAttackAt ?? 0)<=clock && gap<=basicRange &&
-    (!choice || choice.remaining>0 || actor.charge>0) && !firstPillar(actor.x,actor.y,target.x,target.y)) {
+    (!choice || choice.remaining>0 || actor.charge>0 || choice.stagger && !readyKnockout(actor,target,gap)) && !firstPillar(actor.x,actor.y,target.x,target.y)) {
   choice={slot:-1,move:'Normal Attack',rules:basicRules,range:basicRange,remaining:0};
  }
  if(!choice && !usableAttack && basicScore>0) {
@@ -7750,7 +7825,7 @@ function act(actor, opponents, dt) {
    moveActor(actor,dx,dy,gap-goal,dt,gap-goal>100,target);
    return;
   }
-  if(!close && !ready && gap<goal-12) {
+  if(!close && !gambit && gap<goal-12 && (!ready || choice.range<goal-12)) {
    const route=retreatRoute(actor,target,opponents);
    if(route) {
     moveActor(actor,route.dx,route.dy,goal-gap,dt,true);
@@ -7773,7 +7848,7 @@ function act(actor, opponents, dt) {
  if(!choice || remaining>0.01 || (choice.move==='Normal Attack'?(actor.normalAttackAt ?? 0)>clock:actor.charge>0)) return;
  const cover=choice.rules.scope!=='ally' && !choice.selfCentered && firstPillar(actor.x,actor.y,target.x,target.y);
  const strikeCover=cover && cover.rock.hp>0 && !moveCatalog[choice.move][4] && !sacrificeProfiles.has(choice.move) &&
-  (cover.rock.hp<=8 || inSkill(target,null,0,pillarPath(cover.rock,actor)));
+  (cover.rock.hp<=8 || moveCatalog[choice.move][1]>=90 || inSkill(target,null,0,pillarPath(cover.rock,actor)));
  if(cover && !strikeCover && distance>1) {
   const dx=(target.x-actor.x)/distance,dy=(target.y-actor.y)/distance;
   const lane=[1,-1].map(side=>{
@@ -9532,6 +9607,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.37',changes:['Improved Arena AI cover, hazard dodging, cooldown use, positioning, and team targeting.']},
  {version:'0.22.36',changes:['Removed battle movement labels and consolidated Campaign victory navigation into Next gym.']},
  {version:'0.22.35',changes:['Added PC favorites and aligned EXP Boost and Ability Capsule controls.']},
  {version:'0.22.34',changes:['Separated EXP Boosts, preserved selected training stats, and added stored copy previews.']},
