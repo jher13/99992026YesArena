@@ -669,19 +669,19 @@
   'Relay':{role:'Specialist',color:'#aee0a0',tiers:[[2,{relayMana:10}],[4,{relayMana:18}],[6,{relayMana:25,relayExtra:1}]]},
   'ILoveEevee':{color:'#d8a9dd',members:['Eevee','Vaporeon','Jolteon','Flareon','Espeon','Umbreon','Leafeon','Glaceon','Sylveon'],
    tiers:[[2,{health:.08,power:.08}],[4,{health:.14,power:.16,mana:10}],[6,{health:.22,power:.24,mana:15,regen:1}],[9,{health:.32,power:.36,mana:20,regen:2}]]},
-  'Sun Garden':{color:'#ecd76c',members:['Bellossom','Lilligant','Tsareena'],tiers:[[1,{regen:1}],[2,{health:.16,regen:2}],[3,{health:.24,regen:3}]]},
-  'Spore Garden':{color:'#ba8ad7',members:['Vileplume','Venusaur','Amoonguss','Roserade'],tiers:[[1,{spAttack:8}],[2,{spAttack:18,power:.10}],[3,{spAttack:30,power:.16}]]},
-  'Marsh Guard':{color:'#67b4cc',members:['Poliwrath','Swampert','Seismitoad'],tiers:[[1,{defense:10}],[2,{defense:24,health:.15}]]},
+  'Sun Garden':{color:'#ecd76c',members:['Jumpluff','Leavanny','Bellossom','Lilligant','Tsareena'],tiers:[[1,{regen:1}],[2,{health:.16,regen:2}],[3,{health:.24,regen:3}]]},
+  'Spore Garden':{color:'#ba8ad7',members:['Victreebel','Arboliva','Vileplume','Venusaur','Amoonguss','Roserade'],tiers:[[1,{spAttack:8}],[2,{spAttack:18,power:.10}],[3,{spAttack:30,power:.16}]]},
+  'Marsh Guard':{color:'#67b4cc',members:['Nidoqueen','Nidoking','Poliwrath','Swampert','Seismitoad'],tiers:[[1,{defense:10}],[2,{defense:24,health:.15}]]},
   'Rain Chorus':{color:'#85c5fa',members:['Politoed','Ludicolo','Primarina'],tiers:[[1,{mana:8}],[2,{mana:16,regen:1}],[3,{mana:22,regen:2}]]},
   'Daybreak Wings':{color:'#ffce72',members:['Beautifly','Butterfree','Vivillon','Talonflame'],tiers:[[1,{speed:.06}],[2,{speed:.16,crit:.10}]]},
-  'Night Wings':{color:'#b7a1ed',members:['Dustox','Crobat','Chandelure'],tiers:[[1,{spDefense:12}],[2,{spDefense:24,regen:1}]]},
-  'Mind Ward':{color:'#e3a1d1',members:['Gardevoir','Alakazam','Reuniclus','Hatterene'],tiers:[[1,{mana:8}],[2,{mana:16,spAttack:14}],[3,{mana:24,spAttack:22}]]},
+  'Night Wings':{color:'#b7a1ed',members:['Dustox','Crobat','Chandelure','Gengar','Grimmsnarl','Dusknoir'],tiers:[[2,{spDefense:12}],[4,{spDefense:24,regen:1}],[6,{spDefense:40,regen:3}]]},
+  'Mind Ward':{color:'#e3a1d1',members:['Gothitelle','Orbeetle','Gardevoir','Alakazam','Reuniclus','Hatterene'],tiers:[[1,{mana:8}],[2,{mana:16,spAttack:14}],[3,{mana:24,spAttack:22}]]},
   'Blade Guard':{color:'#e3b599',members:['Gallade','Aegislash','Ceruledge','Tinkaton'],tiers:[[1,{attackPct:.08}],[2,{attackPct:.16,defense:15}],[3,{attackPct:.24,defense:25}]]},
-  'Solar Heralds':{color:'#ffd188',members:['Solgaleo','Groudon','Ho-Oh'],tiers:[[1,{health:.08}],[2,{health:.18,defense:20}],[3,{health:.24,defense:32}]]},
+  'Solar Heralds':{color:'#ffd188',members:['Magmortar','Solgaleo','Groudon','Ho-Oh'],tiers:[[1,{health:.08}],[2,{health:.18,defense:20}],[3,{health:.24,defense:32}]]},
   'Lunar Heralds':{color:'#aaaeff',members:['Lunala','Lugia','Mewtwo'],tiers:[[1,{regen:1}],[2,{regen:2,spAttack:22}],[3,{regen:3,spAttack:32}]]},
-  'Ancient Dragons':{color:'#a5a0ef',members:['Dragonite','Salamence','Garchomp','Hydreigon','Goodra','Kommo-o','Dragapult','Baxcalibur'],tiers:[[2,{health:.12,power:.10}],[4,{health:.22,power:.21}],[6,{health:.30,power:.30,regen:1}]]},
+  'Ancient Dragons':{color:'#a5a0ef',members:['Haxorus','Kingdra','Dragonite','Salamence','Garchomp','Hydreigon','Goodra','Kommo-o','Dragapult','Baxcalibur'],tiers:[[2,{health:.12,power:.10}],[4,{health:.22,power:.21}],[6,{health:.30,power:.30,regen:1}]]},
   'Steel Foundry':{color:'#bbcdd1',members:['Aggron','Magnezone','Metagross','Klinklang','Corviknight','Tinkaton'],tiers:[[2,{armor:15,spDefense:15}],[4,{armor:28,spDefense:28,health:.15}]]},
-  'Aura Guardians':{color:'#9ac5ed',members:['Gallade','Gardevoir','Togekiss','Blastoise'],tiers:[[2,{mana:10,defense:10}],[3,{mana:18,defense:18}]]},
+  'Aura Guardians':{color:'#9ac5ed',members:['Clefable','Gallade','Gardevoir','Togekiss','Blastoise'],tiers:[[2,{mana:10,defense:10}],[3,{mana:18,defense:18}]]},
   'Johto Partners':{families:['Chikorita','Cyndaquil','Totodile'],color:'#d9b7a0',
    tiers:[[2,{health:.08}],[3,{health:.14,thresholdGuard:1}]]},
   'Hoenn Partners':{families:['Treecko','Torchic','Mudkip'],color:'#83cbaa',
@@ -703,13 +703,27 @@
   'Kanto Partners':{color:'#91cf81',members:['Venusaur','Charizard','Blastoise'],tiers:[[3,{health:.16,power:.16,defense:12,thresholdShield:.20}]]},
   'Legendary Birds':{color:'#e4c268',members:['Articuno','Zapdos','Moltres'],tiers:[[3,{power:.20,mana:20,regen:1,thirdShot:.30}]]},
   'Legendary Beasts':{color:'#d69775',members:['Raikou','Entei','Suicune'],tiers:[[3,{health:.18,power:.18,mana:15,takedownHaste:5}]]},
-  'Weather Trio':{color:'#76bcb2',members:['Kyogre','Groudon','Rayquaza'],tiers:[[1,{weather:1}],[2,{weather:2}],[3,{weather:6}]]}
+  'Overcharge':{color:'#ffe071',members:['Raichu','Pawmot','Ampharos','Vikavolt','Eelektross','Luxray','Electivire'],tiers:[[2,{chainTargets:2}],[4,{chainTargets:3}],[6,{chainTargets:4}]]},
+  'Sandstorm':{color:'#d6b57f',members:['Golem','Gigalith','Garganacl','Krookodile','Flygon','Rhyperior','Tyranitar'],tiers:[[2,{sandstorm:.015,defense:15}],[4,{sandstorm:.03,defense:30}],[6,{sandstorm:.05,defense:50}]]},
+  'Guts':{color:'#f39c85',members:['Machamp','Conkeldurr','Obstagoon','Annihilape','Ursaluna'],tiers:[[2,{gutsPower:.35,gutsVamp:.15}],[4,{gutsPower:.65,gutsVamp:.25}]]},
+  'Gale Force':{color:'#b6dfed',members:['Pidgeot','Staraptor','Shiftry','Exploud','Stoutland'],tiers:[[2,{galeDamage:.12}],[4,{galeDamage:.22}]]},
+  'Fairy Ring':{color:'#f3b7d8',members:['Azumarill','Wigglytuff','Blissey','Florges'],tiers:[[2,{fairyPower:.15}],[4,{fairyPower:.30}]]},
+  'Permafrost':{color:'#9fdeff',members:['Mamoswine','Walrein','Vanilluxe'],tiers:[[2,{chillSlow:.25,chillCrit:.20}],[3,{chillSlow:.40,chillCrit:.40}]]},
+  'Toxic Swarm':{color:'#c1e080',members:['Beedrill','Scolipede'],tiers:[[2,{toxicSwarm:.015}]]},
+  'Glitch':{color:'#b9a5ff',members:['Porygon-Z'],tiers:[[1,{glitch:1}]]},
+  'Truant':{color:'#dfb889',members:['Slaking'],tiers:[[1,{truant:1}]]},
+  'Genetic Apex':{color:'#ceacf2',members:['Mewtwo'],tiers:[[1,{geneticApex:1}]]},
+  'Air Lock':{color:'#9fdcbe',members:['Rayquaza'],tiers:[[1,{airLock:1}]]},
+  'Weather Trio':{color:'#76bcb2',members:['Kyogre','Groudon','Rayquaza'],tiers:[[1,{weather:.015}],[2,{weather:.03}],[3,{weather:.06,weatherBreak:1}]]}
  };
  const playableForms=new Set([...roster.flat(),...Object.values(evolutionFamilies).flat(2)]);
  for(const trait of Object.values(collectionTraits))if(trait.members)trait.members=trait.members.filter(name=>playableForms.has(name));
  const themesFor=name=>Object.entries(collectionTraits)
   .filter(([,trait])=>trait.role?trait.role===combatRole(name):trait.families?trait.families.includes(familyOf({name})):trait.members.includes(name)).map(([label])=>label);
- const unitTraits=unit=>new Set([...themesFor(unit.name),...(unit.items ?? []).map(item=>completedItems.get(item)?.trait).filter(Boolean)]);
+ const unitTraits=unit=>{
+  const innate=themesFor(unit.name).filter(name=>!unit.glitchRole || !collectionTraits[name].role);
+  return new Set([...innate,...(unit.glitchRole?[unit.glitchRole]:[]),...(unit.items ?? []).map(item=>completedItems.get(item)?.trait).filter(Boolean)]);
+ };
  const benchLimit=9;
  const attackSlowdown=3;
  const overtimeStartMs=60000;
@@ -785,7 +799,7 @@
   ['Second Wind','Each ally heals 12% max HP the first time it falls below half health and survives.','secondWind'],
   ['Overcharge','Each ally restores 10 mana after its first signature move.','overcharge'],
   ['Momentum','Each ally heals 8% max HP whenever it knocks out an opponent.','momentum'],
-  ['Weather Surge','While Weather Trio is active, its storm deals 1 extra damage each second.','weatherSurge']
+  ['Weather Surge','While Weather Trio is active, its storm deals an extra 1% of enemy max HP each second.','weatherSurge']
  ];
  const randomComponent=()=>drawRogueChoices(Object.keys(components),1)[0];
  const finalStage=18;
@@ -862,6 +876,20 @@
    if(stat==='fullStackAmp')return '+'+Math.round(value*100)+'% damage at full attack-speed stacks';
    if(stat==='takedownHaste')return 'Knockouts trigger a '+value+'-second attack-speed boost';
    if(stat==='relayExtra')return 'Mana relay reaches a second ally';
+   if(stat==='chainTargets')return 'Every fourth basic attack or each cast chains to '+value+' enemies for 35% S.ATK, lowers S.DEF by 20% for 4 seconds, and delays actions by 0.25 seconds';
+   if(stat==='sandstorm')return 'Sandstorm deals '+(value*100)+'% enemy max HP per second';
+   if(stat==='gutsPower')return '+'+Math.round(value*100)+'% ATK below half HP or while Burned, Wounded, Sundered, or Shredded';
+   if(stat==='gutsVamp')return '+'+Math.round(value*100)+'% omnivamp while Guts is active';
+   if(stat==='galeDamage')return 'Signature pushes or delays deal '+Math.round(value*100)+'% target max HP bonus damage and grant 25% attack speed for 4 seconds';
+   if(stat==='fairyPower')return 'Healing or shielding buffs the recipient’s ATK and S.ATK by '+Math.round(value*100)+'% for 4 seconds';
+   if(stat==='chillSlow')return 'Damaging signatures Chill for 4 seconds, lowering attack speed by '+Math.round(value*100)+'%';
+   if(stat==='chillCrit')return '+'+Math.round(value*100)+'% crit chance against Chilled enemies';
+   if(stat==='toxicSwarm')return 'Hits poison for 1.5% enemy max HP per second and Wound for 5 seconds';
+   if(stat==='glitch')return 'At combat start and every second signature, swaps to a random Gold role bonus and gains 25 S.ATK';
+   if(stat==='truant')return 'Sleeps until its first signature, with +40 DEF and S.DEF and +8 mana per second. Awakens for 6 seconds with double attack speed and +50% crit damage';
+   if(stat==='geneticApex')return 'Copies 25% of the strongest enemy ATK or S.ATK and deals 20% more damage to that enemy';
+   if(stat==='airLock')return 'While active, halves enemy weather, damage over time, and opening trait shields';
+   if(stat==='weatherBreak')return 'Disperses existing enemy shields on the first storm pulse unless Air Lock protects them';
    if(stat==='towerWard')return 'The first Tower Duo signature shields all living allies for '+Math.round(value*100)+'% of their max HP for 5 seconds';
    if(stat==='echo')return 'First damaging signature echoes for 35% damage';
    if(stat==='thirdShot')return '+'+Math.round(value*100)+'% damage every third basic attack';
@@ -872,7 +900,7 @@
    if(stat==='health')return '+'+Math.round(value*100)+'% max HP';
    if(stat==='power')return '+'+Math.round(value*100)+'% attack power';
    if(stat==='regen')return value+' mana per second';
-   if(stat==='weather')return value+' damage per second to all enemies';
+   if(stat==='weather')return (value*100)+'% enemy max HP per second';
    return '+'+value+(stat==='mana'?' starting mana':' defense');
   }).join(' · ');
  }
@@ -912,9 +940,9 @@
   }
   return mods;
  }
- function draftCarousel(trainer,offer){
+ function draftCarousel(trainer,offer,branch){
   const {name,item}=offer;
-  const plan=fusionPlan(trainer,{name,star:1,position:null,items:[]});
+  const plan=fusionPlan(trainer,{name,star:1,position:null,items:[]},branch);
   if(plan.overflow)return false;
   if(trainer===run.trainers[0] && plan.displaced.length && !window.confirm(
    'Fusion moves '+plan.displaced.map(unit=>unit.name).join(', ')+' to the bench. Choose this offer?'))return false;
@@ -971,11 +999,17 @@
    }
    if(choice.kind==='augment'){tile.classList.add('tactics-augment-card');tile.append(element('span',['✦','◆','✹'][index],'tactics-augment-icon'),element('strong',offer[0]),element('small',offer[1]));}
    tile.append(button('Choose',()=>{
-    if(choice.kind==='augment')grantAugment(player,offer);
-    else {if(!draftCarousel(player,offer))return;choice.offers.splice(index,1);choice.complete();}
-    run.choice=null;
-    if(choice.kind==='carousel')advanceRound();
-    else startPlanning();
+    if(choice.kind==='augment'){
+     grantAugment(player,offer);
+     run.choice=null;
+     startPlanning();
+    }else pickFusionBranch(player,{name:offer.name,star:1,position:null},branch=>{
+     if(!draftCarousel(player,offer,branch))return;
+     choice.offers.splice(index,1);
+     choice.complete();
+     run.choice=null;
+     advanceRound();
+    });
    },Boolean(plan?.overflow)));
    grid.append(tile);
   }
@@ -1016,8 +1050,9 @@
   trainer.income={base,interest,streak,win};
   trainer.gold+=base+interest+streak+win;
  }
- function takeBossReward(trainer,unit,confirmMove=false){
-  const plan=fusionPlan(trainer,unit);
+ function takeBossReward(trainer,unit,confirmMove=false,branch){
+  const plan=fusionPlan(trainer,unit,branch);
+  if(!confirmMove && trainer===run.trainers[0] && plan.upgrades.some(upgrade=>upgrade.branchStep))return false;
   if(plan.overflow || (plan.displaced.length && trainer===run.trainers[0] &&
      (!confirmMove || !window.confirm('This reward moves '+plan.displaced.map(unit=>unit.name).join(', ')+' to the bench. Claim it?'))))return false;
   applyFusion(trainer,plan);
@@ -1076,6 +1111,7 @@
   const current=run;
   planningTimer=setInterval(()=>{
    if(run!==current || phase!=='tactics'){clearInterval(planningTimer);return;}
+   if(current.branchDialog)return;
    const seconds=Math.max(0,Math.ceil((current.deadline-Date.now())/1000));
    const timer=content.querySelector('.tactics-planning-clock');
    if(timer)timer.textContent=seconds+'s';
@@ -1235,7 +1271,7 @@
  const teamSize=trainer=>trainer.level+trainer.units.reduce((total,unit)=>total+
   (unit.items ?? []).reduce((sum,item)=>sum+(itemBonuses(item).teamSize ?? 0),0),0);
 
- function fusionPlan(trainer,incoming){
+ function fusionPlan(trainer,incoming,chosenBranch){
   const family=familyOf(incoming);
   const units=[...trainer.units,incoming];
   const returned=[];
@@ -1253,11 +1289,13 @@
     else returned.push(item);
    }
    const paths=evolutionFamilies[family];
-   const branch=keeper.branch ?? used.find(unit=>unit.branch!==undefined)?.branch ?? 0;
+   const branchStep=paths?.length>1 && (star===1?paths.some(path=>path[0]!==paths[0][0]):
+    paths.every(path=>path[0]===paths[0][0]));
+   const branch=(branchStep?chosenBranch:undefined) ?? keeper.branch ?? used.find(unit=>unit.branch!==undefined)?.branch ?? 0;
    const name=paths?.[branch]?.[star-1] ?? keeper.name;
    const locked=paths && (star===2 || paths.some(path=>path[0]!==paths[0][0]));
    const upgraded={...keeper,name,family,poolCopies:[keeper,...used].reduce((total,unit)=>total+(unit.poolCopies ?? 3**(unit.star-1)),0),branch:locked?branch:keeper.branch ?? used.find(unit=>unit.branch!==undefined)?.branch,star:star+1,items};
-   upgrades.push({keeper,used,upgraded});
+   upgrades.push({keeper,used,upgraded,branchStep});
    units[units.indexOf(keeper)]=upgraded;
    for(const unit of used)units.splice(units.indexOf(unit),1);
   }
@@ -1267,6 +1305,42 @@
   const overflow=Math.max(0,units.length-deployed.length+displaced.length-benchLimit);
   return {units,upgrades,returned,displaced,overflow};
  }
+ function pickFusionBranch(trainer,incoming,commit){
+  if(run.busy || run.branchDialog)return;
+  const plan=fusionPlan(trainer,incoming);
+  if(plan.overflow)return;
+  const split=plan.upgrades.find(upgrade=>upgrade.branchStep);
+  if(!split){commit(undefined);return;}
+  const current=run;
+  const entered=Date.now();
+  const dialog=element('dialog',null,'tactics-inspect tactics-branch-dialog');
+  const grid=element('div',null,'shop-grid');
+  dialog.append(element('h2','Choose '+familyOf(incoming)+' evolution'),grid,button('Cancel',()=>dialog.close()));
+  for(const [index,path] of branchPaths(incoming).entries()){
+   const form=path[split.upgraded.star-2];
+   const card=button('',()=>{
+    dialog.close();
+    // Resume before applying the selection so the normal purchase path can render.
+    if(finish())commit(index);
+   });
+   card.className='tactics-branch-option';
+   card.append(idlePokemonPortrait(form),element('strong',form),element('small',themesFor(form).join(' · ')));
+   if(path[1]!==form)card.append(element('small','3★ '+path[1]+' · '+themesFor(path[1]).join(' · ')));
+   grid.append(card);
+  }
+  function finish(){
+   if(current.branchDialog!==dialog)return false;
+   current.branchDialog=null;
+   dialog.remove();
+   if(run!==current || phase!=='tactics')return false;
+   current.deadline+=(Date.now()-entered);
+   return true;
+  }
+  current.branchDialog=dialog;
+  dialog.addEventListener('close',finish,{once:true});
+  content.append(dialog);
+  dialog.showModal();
+ }
  function applyFusion(trainer,plan){
   trainer.units=plan.units;
   trainer.items.push(...plan.returned);
@@ -1275,10 +1349,10 @@
    if(run.selected===keeper || used.includes(run.selected))run.selected=upgraded;
   }
  }
- function buy(trainer,index){
+ function buy(trainer,index,branch){
   const name=trainer.shop[index];
   if(!name || trainer.gold<cost(name))return false;
-  const plan=fusionPlan(trainer,{name,star:1,position:null});
+  const plan=fusionPlan(trainer,{name,star:1,position:null},branch);
   if(plan.overflow || (trainer===run.trainers[0] && plan.displaced.length && !window.confirm(
    'Fusion reduces your deployment limit and moves '+plan.displaced.map(unit=>unit.name).join(', ')+' to the bench. Buy anyway?')))
    return false;
@@ -1632,7 +1706,7 @@
    button('Reroll · 2 gold',()=>{player.gold-=2;roll(player);render();},player.gold<2));
   shop.append(economy);
   for(const [index,name] of player.shop.entries()){
-   const tile=button('',()=>{if(buy(player,index))render();},!name || player.gold<cost(name) ||
+   const tile=button('',()=>pickFusionBranch(player,{name,star:1,position:null},branch=>{if(buy(player,index,branch))render();}),!name || player.gold<cost(name) ||
     Boolean(name && fusionPlan(player,{name,star:1,position:null}).overflow));
    tile.className='tactics-offer'+(name?' tier-'+cost(name):'');
    if(name){
@@ -1676,11 +1750,11 @@
   const controls=element('div',null,'tactics-unit-actions');
   for(const prize of player.bossRewards ?? []){
    const plan=fusionPlan(player,prize);
-   controls.append(button('Claim Tier '+cost(prize.name)+' '+prize.name,()=>{
-    if(run.busy || !takeBossReward(player,prize,true))return;
+   controls.append(button('Claim Tier '+cost(prize.name)+' '+prize.name,()=>pickFusionBranch(player,prize,branch=>{
+    if(!takeBossReward(player,prize,true,branch))return;
     player.bossRewards.splice(player.bossRewards.indexOf(prize),1);
     render();
-   },Boolean(plan.overflow)));
+   }),Boolean(plan.overflow)));
   }
   if(run.round===1 && !run.scout)controls.append(element('small','Select a Pokémon, then a hex to deploy. Drag items from the left rail.','tactics-hint'));
   if(run.scout)controls.append(button('Return to your board',()=>{run.scout=null;render();}));
@@ -1752,9 +1826,12 @@
  function fighter(unit,opponent,types,trainer){
   const base=dexStats[dex[unit.name][0]-1];
   const mods=itemMods(unit,trainer);
+  const itemStartShield=mods.startShield ?? 0;
+  let roleBonus={};
   for(const label of unitTraits(unit)){
    const tier=collectionTraits[label].tiers.findLast(([threshold])=>types[label]>=threshold);
    if(!tier)continue;
+   if(collectionTraits[label].role===combatRole(unit.name))roleBonus=tier[1];
    for(const [stat,value] of Object.entries(tier[1]))mods[stat]=(mods[stat] ?? 0)+value;
   }
   const role=combatRole(unit.name);
@@ -1779,12 +1856,12 @@
    defense:Math.round(baseDefense),specialDefense:Math.round(baseSpecialDefense),
    attackSpeed,critChance:.10,critDamage:1.5
   };
-  return {...unit,...baseStats,baseStats,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),role,roleLabel:roleDisplayName(role),roleRule:specialist?.rule ?? profile.rule,range:profile.range,
+  return {...unit,...baseStats,baseStats,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),role,roleLabel:roleDisplayName(role),roleBonus,roleRule:specialist?.rule ?? profile.rule,range:profile.range,
    attack:baseStats.attack*(powerMultiplier+(mods.attackPct ?? 0)),
    specialAttack:baseStats.specialAttack*(powerMultiplier+(mods.spAttackPct ?? 0))+(mods.spAttack ?? 0),
    attackSpeed:attackSpeed*(1+(mods.speed ?? 0)),critChance:Math.min(1,baseStats.critChance+(mods.crit ?? 0)),
    critDamage:baseStats.critDamage+(mods.critDamage ?? 0),gear:mods,
-   elapsed:0,gearStacks:0,attackStacks:0,critStacks:0,shield:hp*(mods.startShield ?? 0),shieldUntil:8000,
+   elapsed:0,gearStacks:0,attackStacks:0,critStacks:0,shield:hp*(mods.startShield ?? 0),traitShield:hp*((mods.startShield ?? 0)-itemStartShield),shieldUntil:8000,
    defense:Math.round(baseDefense+(mods.defense ?? 0)+(mods.armor ?? 0)),specialDefense:Math.round(baseSpecialDefense+(mods.defense ?? 0)+(mods.spDefense ?? 0)),
    direction:opponent?0:4,move,moveType,moveSpecial,moveEffect,moveEffects,movePowers,wait:0,manaRegen:(specialist?.regen ?? profile.regen)+(mods.regen ?? 0),
    manaOnHit:specialist?.hit ?? profile.mana,manaOnDamage:specialist?.incoming ?? (role==='Tank'?5:0),
@@ -1800,9 +1877,44 @@
    return fighter({...unit,combatItems},opponent,counts,trainer);
   };
   const units=[...first.map(unit=>build(unit,false,firstTraits,a)),...second.map(unit=>build(unit,true,secondTraits,b))];
-  const storm=(trainer,counts)=>(counts['Weather Trio'] ?? 0)+(counts['Weather Trio'] && trainer.mods.weatherSurge?1:0);
-  battleEffects.set(units,{elapsed:0,weather:[storm(a,firstTraits),storm(b,secondTraits)]});
+  const storm=(trainer,counts)=>{
+   const base=collectionTraits['Weather Trio'].tiers.findLast(([count])=>(counts['Weather Trio'] ?? 0)>=count)?.[1];
+   return {rate:(base?.weather ?? 0)+(base && trainer.mods.weatherSurge ? .01 : 0),breakShield:Boolean(base?.weatherBreak)};
+  };
+  const effects={elapsed:0,weather:[storm(a,firstTraits),storm(b,secondTraits)]};
+  battleEffects.set(units,effects);
+  for(const unit of units){
+   if(enemiesHaveAirLock(unit,units))unit.shield-=unit.traitShield*.5;
+   if(unit.gear.geneticApex){
+    const enemy=units.filter(other=>other.opponent!==unit.opponent)
+     .sort((a,b)=>Math.max(b.attack,b.specialAttack)-Math.max(a.attack,a.specialAttack))[0];
+    if(enemy){
+     unit.geneticTarget=enemy;
+     const stat=enemy.attack>=enemy.specialAttack?'attack':'specialAttack';
+     unit[stat]+=enemy[stat]*.25;
+    }
+   }
+   if(unit.shield>0)grantFairyPower(unit,unit);
+   if(unit.gear.truant)unit.truantAsleep=true;
+   if(unit.gear.glitch)scrambleRole(unit);
+  }
   return units;
+ }
+ function enemiesHaveAirLock(unit,units){
+  return units.some(other=>other.opponent!==unit.opponent && other.hp>0 && other.gear.airLock);
+ }
+ function scrambleRole(unit){
+  const traits=Object.entries(collectionTraits).filter(([name,trait])=>trait.role && (unit.glitchRole?name!==unit.glitchRole:trait.role!==unit.role));
+  const [name,trait]=traits[Math.floor(Math.random()*traits.length)];
+  for(const [key,value] of Object.entries(unit.glitchBonus ?? unit.roleBonus))unit.gear[key]=(unit.gear[key] ?? 0)-value;
+  unit.glitchBonus=trait.tiers[1][1];
+  unit.glitchRole=name;
+  for(const [key,value] of Object.entries(unit.glitchBonus))unit.gear[key]=(unit.gear[key] ?? 0)+value;
+  if(unit.glitchBonus.startShield){
+   unit.shield+=unit.max*unit.glitchBonus.startShield;
+   unit.shieldUntil=unit.elapsed+8000;
+  }
+  unit.specialAttack+=25;
  }
  function tickWeather(units,now){
   const effects=battleEffects.get(units);
@@ -1810,23 +1922,40 @@
   effects.elapsed+=combatStepMs;
   if(effects.elapsed<1000)return;
   effects.elapsed-=1000;
-  const sources=[false,true].map(opponent=>units.filter(unit=>unit.opponent===opponent && unit.hp>0 &&
+  const weather=[false,true].map(opponent=>units.filter(unit=>unit.opponent===opponent && unit.hp>0 &&
    collectionTraits['Weather Trio'].members.includes(unit.name)));
-  for(const unit of units){
-   const side=unit.opponent?0:1;
-   const credited=sources[side];
-   if(unit.hp<=0 || !credited.length)continue;
-   const actual=receiveDamage(unit,effects.weather[side],now,null,null,true);
-   credited.forEach((member,index)=>{
-    const share=Math.floor(actual/credited.length)+(index<actual%credited.length?1:0);
+  const sand=[false,true].map(opponent=>units.filter(unit=>unit.opponent===opponent && unit.hp>0 && unit.gear.sandstorm));
+  const pulse=(target,rate,credit,airLock)=>{
+   if(!rate || !credit.length || target.hp<=0)return;
+   const actual=receiveDamage(target,target.max*rate*(airLock?.5:1),now,false,null,true);
+   credit.forEach((member,index)=>{
+    const share=Math.floor(actual/credit.length)+(index<actual%credit.length?1:0);
     member.damageDealt=(member.damageDealt ?? 0)+share;
    });
+  };
+  for(const target of units){
+   const side=target.opponent?0:1;
+   const storm=effects.weather[side];
+   const airLock=units.some(unit=>unit.opponent===target.opponent && unit.hp>0 && unit.gear.airLock);
+   if(storm.breakShield && !storm.broke && weather[side].length && !airLock){
+    target.shield=0;
+    target.signatureShield=0;
+   }
+   pulse(target,storm.rate,weather[side],airLock);
+   pulse(target,sand[side][0]?.gear.sandstorm,sand[side],airLock);
   }
+  for(const [side,storm] of effects.weather.entries())if(weather[side].length)storm.broke=true;
+ }
+ function grantFairyPower(unit,source){
+  if(!source.gear?.fairyPower || source.opponent!==unit.opponent)return;
+  unit.fairyPower=Math.max(unit.fairyUntil>unit.elapsed?unit.fairyPower:0,source.gear.fairyPower);
+  unit.fairyUntil=unit.elapsed+4000;
  }
  function heal(unit,amount,source=unit){
   if(unit.hp<=0 || amount<=0)return;
   const restored=Math.min(unit.max-unit.hp,Math.round(amount*(unit.woundUntil>unit.elapsed?.67:1)));
   unit.hp+=restored;
+  if(restored>0)grantFairyPower(unit,source);
   source.healingDone=(source.healingDone ?? 0)+restored;
  }
  function gainMana(unit,amount){
@@ -1869,6 +1998,7 @@
     if(target.gear.thresholdShield){
      target.shield+=target.max*target.gear.thresholdShield;
      target.shieldUntil=target.elapsed+4000;
+     grantFairyPower(target,target);
     }
     gainMana(target,target.gear.thresholdMana ?? 0);
    }
@@ -1889,9 +2019,15 @@
   const elapsed=unit.elapsed;
   if(elapsed>=unit.shieldUntil)unit.shield=0;
   if(unit.critUntil<=elapsed)unit.critStacks=0;
+  if(unit.nextPoison!==undefined && elapsed>=unit.nextPoison){
+   if(unit.poisonUntil>=elapsed){
+    receiveDamage(unit,unit.max*.015*(unit.airLocked?.5:1),now,false,unit.poisonSource,true);
+    unit.nextPoison+=1000;
+   }else unit.nextPoison=undefined;
+  }
   if(unit.nextBurn!==undefined && elapsed>=unit.nextBurn){
    if(unit.burnUntil>=elapsed){
-    receiveDamage(unit,Math.max(1,Math.round(unit.max*.01)),now,false,unit.burnSource,true);
+    receiveDamage(unit,Math.max(1,Math.round(unit.max*.01*(unit.airLocked?.5:1))),now,false,unit.burnSource,true);
     unit.nextBurn+=1000;
    }else unit.nextBurn=undefined;
   }
@@ -1957,16 +2093,19 @@
    if(amount>=existing)ally.shieldProvider=unit;
    ally.signatureShield=Math.max(existing,amount);
    ally.signatureShieldUntil=ally.elapsed+5000;
+   if(amount>=existing && amount>0)grantFairyPower(ally,unit);
   };
-  const cleanse=ally=>{for(const key of ['burnUntil','woundUntil','shredUntil','sunderUntil','weakenUntil'])ally[key]=0;};
-  const delay=(enemy,ms)=>{enemy.wait=Math.max(0,enemy.wait)+ms;};
+  const cleanse=ally=>{for(const key of ['burnUntil','poisonUntil','woundUntil','shredUntil','sunderUntil','weakenUntil','chillUntil','lightningUntil'])ally[key]=0;};
+  const disrupted=new Set();
+  const delay=(enemy,ms)=>{enemy.wait=Math.max(0,enemy.wait)+ms;disrupted.add(enemy);};
   const displace=(actor,away,amount)=>{
    const heading=Math.atan2(actor.position.y-away.position.y,actor.position.x-away.position.x);
    const position={x:Math.max(0,Math.min(6.5,actor.position.x+Math.cos(heading)*amount)),
     y:Math.max(0,Math.min(5.95,actor.position.y+Math.sin(heading)*amount))};
-   if(units.some(other=>other!==actor && other.hp>0 && distance(position,other.position)<.55))return;
+   if(distance(position,actor.position)<.01 || units.some(other=>other!==actor && other.hp>0 && distance(position,other.position)<.55))return false;
    if(now!==null){actor.moveFrom=actor.position;actor.moveStarted=now;}
    actor.position=position;
+   return true;
   };
   const power=unit.movePowers[star];
   for(const effect of unit.moveEffects){
@@ -2008,7 +2147,7 @@
     case 'thorn': unit.thornUntil=unit.elapsed+4000;unit.thornArmor=[15,25,40][star];break;
     case 'veil': for(const ally of [unit,weakest]){ally.veilUntil=ally.elapsed+4000;ally.veilAmount=[.15,.22,.30][star];}break;
     case 'blink': displace(unit,target,[.6,.9,1.2][star]);break;
-    case 'gale': if(target.hp>0)displace(target,unit,[.5,.75,1][star]);break;
+    case 'gale': if(target.hp>0 && displace(target,unit,[.5,.75,1][star]))disrupted.add(target);break;
     case 'volley':
     case 'spread': {
      const nearby=enemies.filter(enemy=>enemy!==target && distance(target.position,enemy.position)<=(effect==='volley'?2:1.5));
@@ -2018,6 +2157,11 @@
     }
    }
   }
+  if(unit.gear.galeDamage && disrupted.size){
+   unit.galeUntil=unit.elapsed+4000;
+   for(const enemy of disrupted)receiveDamage(enemy,enemy.max*unit.gear.galeDamage,now,false,unit,true);
+  }
+
  }
  function grantTowerWard(unit,units){
   const strength=unit.gear.towerWard;
@@ -2039,20 +2183,21 @@
  }
  function tick(units,now=null){
   tickWeather(units,now);
-  for(const unit of units)if(unit.hp>0)updateGear(unit,units,now);
+  for(const unit of units)if(unit.hp>0){unit.airLocked=enemiesHaveAirLock(unit,units);updateGear(unit,units,now);}
   for(const unit of units)if(unit.hp>0)unit.target=chooseTarget(unit,units);
   for(const unit of units){
    if(unit.hp<=0)continue;
    unit.manaLock=Math.max(0,unit.manaLock-combatStepMs);
-   gainMana(unit,unit.manaRegen*combatStepMs/1000);
+   gainMana(unit,(unit.manaRegen+(unit.truantAsleep?8:0))*combatStepMs/1000);
    const target=unit.target;
    if(!target || target.hp<=0)continue;
    unit.wait=Math.max(-combatStepMs,unit.wait-combatStepMs);
    if(unit.wait>0)continue;
    const gap=distance(unit.position,target.position);
    const cast=unit.manaLock===0 && unit.mana>=60 && unit.move;
+   if(unit.truantAsleep && !cast)continue;
    const utility=cast && utilitySignature(unit.moveEffect);
-   if(gap>unit.range && !utility){
+   if(gap>unit.range && !utility && !unit.truantAsleep){
     const step=nextStep(unit,target,units);
     if(step){
      if(now!==null)setBattlerMotion(unit,step,'walk',now);
@@ -2066,14 +2211,19 @@
    const gear=unit.gear;
    const stackBonus=unit.gearStacks*(gear.hitStack ?? 0);
    const stance=gear.stance && unit.hp>unit.max/2?.2:0;
-   const offense=special?(unit.specialAttack+Math.floor(unit.elapsed/5000)*(gear.rampPower ?? 0))*(1+stackBonus+stance):
-    unit.attack*(1+stackBonus+stance+unit.attackStacks*(gear.attackStack ?? 0));
+   const guts=unit.hp<unit.max/2 || ['burnUntil','woundUntil','sunderUntil','shredUntil'].some(key=>unit[key]>unit.elapsed);
+   const fairy=unit.fairyUntil>unit.elapsed?unit.fairyPower:0;
+   const offense=special?(unit.specialAttack+Math.floor(unit.elapsed/5000)*(gear.rampPower ?? 0))*(1+stackBonus+stance+fairy):
+    unit.attack*(1+stackBonus+stance+fairy+(guts?(gear.gutsPower ?? 0):0)+unit.attackStacks*(gear.attackStack ?? 0));
    const aura=special?'shredAura':'sunderAura';
    const defenseDown=(special?target.shredUntil:target.sunderUntil)>target.elapsed ||
     units.some(other=>other.hp>0 && other.opponent===unit.opponent && other.gear[aura] && distance(target.position,other.position)<=2);
    const focus=target.gear.focusArmor?units.filter(other=>other.hp>0 && other.target===target).length*target.gear.focusArmor:0;
-   const defense=((special?target.specialDefense:target.defense)+focus+(target.thornUntil>target.elapsed?target.thornArmor:0))*(defenseDown?.7:1);
-   const critical=Math.random()<unit.critChance?unit.critDamage:1;
+   const resistance=target.truantAsleep?40:0;
+   const defense=((special?target.specialDefense:target.defense)+focus+resistance+(target.thornUntil>target.elapsed?target.thornArmor:0))*
+    (defenseDown?.7:special && target.lightningUntil>target.elapsed?.8:1);
+   const critChance=Math.min(1,unit.critChance+(target.chillUntil>target.elapsed?(gear.chillCrit ?? 0):0));
+   const critical=Math.random()<critChance?unit.critDamage+(unit.truantUntil>unit.elapsed?.5:0):1;
    const amp=1+(gear.amp ?? 0)+unit.critStacks*(gear.critAmp ?? 0)+(target.role==='Tank'?(gear.tankAmp ?? 0):0);
    const execute=cast && unit.moveEffects.includes('execute') && target.hp<target.max/2?1+[.25,.40,.60][unit.star-1]:1;
    const weaken=unit.weakenUntil>unit.elapsed?1-unit.weakenAmount:1;
@@ -2082,7 +2232,8 @@
    const thirdAttack=!cast && unit.basicHits%3===0;
    const thirdShot=thirdAttack?1+(gear.thirdShot ?? 0):1;
    const fullStackAmp=unit.basicHits>=5?1+(gear.fullStackAmp ?? 0):1;
-   const damage=utility?0:Math.max(1,Math.round(overtime*execute*weaken*combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*thirdShot*fullStackAmp*critical*amp*100/(100+defense)));
+   const genetic=unit.geneticTarget===target?1.2:1;
+   const damage=utility?0:Math.max(1,Math.round(genetic*overtime*execute*weaken*combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*thirdShot*fullStackAmp*critical*amp*100/(100+defense)));
    if(now!==null){
     setBattlerMotion(unit,target.position,cast?'cast':unit.range>1?'attack':'lunge',now);
     if(cast)unit.lastCast={started:now,move:unit.move,from:unit.position,to:utility?unit.position:target.position};
@@ -2100,8 +2251,33 @@
     dealt+=receiveDamage(target,Math.max(1,Math.round(damage*.35)),now,critical>1,unit);
    }
    if(!utility)gearHit(unit,target,units,dealt,cast,critical>1,now);
+   if(guts && gear.gutsVamp)heal(unit,dealt*gear.gutsVamp);
+   if(!utility && gear.toxicSwarm && target.hp>0){
+    target.poisonUntil=target.elapsed+5000;
+    target.nextPoison ??= target.elapsed+1000;
+    target.poisonSource=unit;
+    target.woundUntil=Math.max(target.woundUntil ?? 0,target.poisonUntil);
+   }
+   if(cast && dealt>0 && gear.chillSlow){
+    target.chillUntil=target.elapsed+4000;
+    target.chillSlow=gear.chillSlow;
+   }
+   if(gear.chainTargets && (cast || unit.basicHits%4===0)){
+    const victims=units.filter(other=>other.hp>0 && other.opponent!==unit.opponent)
+     .sort((a,b)=>distance(target.position,a.position)-distance(target.position,b.position)).slice(0,gear.chainTargets);
+    for(const victim of victims){
+     receiveDamage(victim,unit.specialAttack*.35*100/(100+victim.specialDefense),now,false,unit);
+     victim.lightningUntil=victim.elapsed+4000;
+     victim.wait=Math.max(0,victim.wait)+250;
+    }
+   }
    if(cast){
     applySignature(unit,target,units,damage,now,dealt);
+    if(unit.truantAsleep){unit.truantAsleep=false;unit.truantUntil=unit.elapsed+6000;}
+    if(gear.glitch){
+     unit.glitchCasts=(unit.glitchCasts ?? 0)+1;
+     if(unit.glitchCasts%2===0)scrambleRole(unit);
+    }
     grantTowerWard(unit,units);
    }
    if(target.hp<=0 && (unit.momentum || gear.takedownHeal))
@@ -2118,8 +2294,9 @@
     unit.manaLock=unit.manaLockMs;
    }else gainMana(unit,unit.manaOnHit+(gear.hitMana ?? 0)+(critical>1?(gear.critMana ?? 0):0));
    const rally=unit.rallyUntil>unit.elapsed?[.15,.25,.40][unit.star-1]:0;
-   const frost=unit.frostUntil>unit.elapsed?.75:1;
-   unit.wait+=1000*(1-(unit.signatureRush ?? 0))/(frost*unit.attackSpeed*(1+rally+Math.min(5,unit.basicHits ?? 0)*(gear.strikeHaste ?? 0)+Math.floor(unit.elapsed/1000)*(gear.rampSpeed ?? 0)));
+   const frost=1-Math.max(unit.frostUntil>unit.elapsed?.25:0,unit.chillUntil>unit.elapsed?unit.chillSlow:0);
+   const traitHaste=(unit.galeUntil>unit.elapsed?.25:0)+(unit.truantUntil>unit.elapsed?1:0);
+   unit.wait+=1000*(1-(unit.signatureRush ?? 0))/(frost*unit.attackSpeed*(1+rally+traitHaste+Math.min(5,unit.basicHits ?? 0)*(gear.strikeHaste ?? 0)+Math.floor(unit.elapsed/1000)*(gear.rampSpeed ?? 0)));
    unit.signatureRush=0;
   }
  }
@@ -2283,9 +2460,9 @@
      const label=cast.move+(effects?' — '+effects:'');
      if(bubble.textContent!==label)bubble.textContent=label;
     }
-    const condition=[activeShield>0?'Shield':null,...[
+    const condition=[activeShield>0?'Shield':null,unit.truantAsleep?'Asleep':null,...[
      ['burnUntil','Burn'],['woundUntil','Wound'],['sunderUntil','DEF ↓'],['shredUntil','S.DEF ↓'],
-     ['rallyUntil','Speed ↑'],['frostUntil','Speed ↓'],['weakenUntil','Damage ↓']
+     ['rallyUntil','Speed ↑'],['frostUntil','Speed ↓'],['weakenUntil','Damage ↓'],['chillUntil','Chill'],['poisonUntil','Poison'],['fairyUntil','ATK ↑'],['truantUntil','Awake']
     ].filter(([key])=>unit[key]>unit.elapsed).map(([,label])=>label)].filter(Boolean).join(' · ');
     if(status.textContent!==condition)status.textContent=condition;
     status.hidden=!condition;

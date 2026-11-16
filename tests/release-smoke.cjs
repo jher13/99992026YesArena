@@ -49,7 +49,7 @@ const context=vm.createContext({
 });
 context.button=(label,onclick,disabled)=>Object.assign(element('button',label),{onclick,disabled});
 const source=read('tactics.js');
-const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,combatRole,evolutionFamilies,signatures,expandedSignatures,signatureEffects,signatureEffectText,extraSignatureText,traits,familyOf,stageLabel,openingRound,wildRound,megaRound,augmentRound,carouselRound,megaRewardTier,finalRound,neutralTrainer,completeNeutral,grantTowerWard,receiveDamage,heal,equip,sell,ignite,fusionPlan,applyFusion,setRound:round=>{run.round=round;},getRun:()=>run};';
+const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,combatRole,evolutionFamilies,collectionTraits,unitTraits,signatures,expandedSignatures,signatureEffects,signatureEffectText,extraSignatureText,traits,familyOf,stageLabel,openingRound,wildRound,megaRound,augmentRound,carouselRound,megaRewardTier,finalRound,neutralTrainer,completeNeutral,grantTowerWard,receiveDamage,heal,equip,sell,ignite,fusionPlan,applyFusion,setRound:round=>{run.round=round;},getRun:()=>run};';
 new vm.Script(data+'\n'+source.replace(/\}\)\(\);\s*$/,auditExports+'})();'),{filename:'tactics.js'}).runInContext(context);
 const a=context.audit;
 byId('home-tactics').onclick();
@@ -197,6 +197,37 @@ for(const name of rosterForms){
 assert.equal(a.expandedSignatures.Tinkaton[0],'Gigaton Hammer');
 assert.equal(a.expandedSignatures.Decidueye[0],'Spirit Quill Snare');
 
+const branchTrainer=a.makeTrainer('Branch modal');
+const kirlia={name:'Kirlia',family:'Ralts',star:2,position:null,branch:0};
+branchTrainer.units=[{...kirlia},{...kirlia}];
+const pathPlan=a.fusionPlan(branchTrainer,{...kirlia},1);
+assert.equal(pathPlan.upgrades[0].branchStep,true);
+assert.equal(pathPlan.units[0].name,'Gallade');
+const cascoon={name:'Cascoon',family:'Wurmple',star:2,position:null,branch:1};
+branchTrainer.units=[{...cascoon},{...cascoon}];
+const lockedPath=a.fusionPlan(branchTrainer,{...cascoon},0);
+assert.equal(lockedPath.upgrades[0].branchStep,false);
+assert.equal(lockedPath.units[0].name,'Dustox');
+
+const noOrigin=[];
+for(const name of a.roster.flat()){
+ for(const [,form] of a.evolutionFamilies[name] ?? [[name,name]]){
+  if(![...a.unitTraits({name:form,star:3})].some(trait=>!a.collectionTraits[trait].role))noOrigin.push(form);
+ }
+}
+assert.deepEqual(noOrigin,[]);
+assert.equal(a.traits([{name:'Tyranitar'},{name:'Gigalith'}]).Sandstorm,2);
+assert.equal(a.traits([{name:'Tyranitar'},{name:'Larvitar'}]).Sandstorm,1);
+const chaseTeam=a.makeTrainer('Chase');
+chaseTeam.units=['Mewtwo','Slaking','Porygon-Z'].map((name,x)=>({name,star:3,position:{x,y:4}}));
+const chaseEnemy=a.makeTrainer('Chase enemy');
+chaseEnemy.units=[{name:'Rayquaza',star:2,position:{x:2,y:4}}];
+const chase=a.battle(chaseTeam,chaseEnemy);
+assert.equal(chase[0].geneticTarget,chase[3]);
+assert(chase[1].truantAsleep);
+assert(chase[2].glitchRole);
+assert(chase[3].gear.airLock);
+
 const afflicted={hp:100,elapsed:500,woundUntil:9000};
 a.ignite(afflicted,5,{});
 assert.equal(afflicted.burnUntil,5500);
@@ -274,15 +305,16 @@ const weatherEnemy=a.makeTrainer('Enemy');
 weatherEnemy.units=[{name:'Squirtle',star:1,position:{x:0,y:7}}];
 const weatherUnits=a.battle(weatherTrainer,weatherEnemy);
 const [storm,victim]=weatherUnits;
-victim.signatureShield=1;victim.signatureShieldUntil=5000;
+const stormPulse=Math.round(victim.max*.015);
+victim.signatureShield=stormPulse;victim.signatureShieldUntil=5000;
 storm.wait=victim.wait=10000;
 
 for(let i=0;i<9;i++)a.tick(weatherUnits);
 assert.equal(weatherUnits[1].signatureShield,0);
 assert.equal(weatherUnits[0].damageDealt ?? 0,0);
 for(let i=0;i<9;i++)a.tick(weatherUnits);
-assert.equal(weatherUnits[0].damageDealt,1);
-assert.equal(weatherUnits[1].damageTaken,1);
+assert.equal(weatherUnits[0].damageDealt,stormPulse);
+assert.equal(weatherUnits[1].damageTaken,stormPulse);
 
 const roster=a.roster.flat();
 const report=new Map();

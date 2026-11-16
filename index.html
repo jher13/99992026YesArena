@@ -810,6 +810,11 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .pvp-loaners label{display:grid;grid-template-columns:minmax(6em,1fr) minmax(7em,1fr);gap:4px;align-items:center;padding:3px 0}
 .pvp-loaners label small{grid-column:1/-1;color:inherit}
 .pvp-loaners select{min-width:0}
+.tactics-branch-dialog{width:min(620px,calc(100vw - 24px));max-height:85dvh;overflow:auto;padding:16px}
+.tactics-branch-dialog .shop-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,135px),1fr));gap:8px;margin:0 0 12px}
+#tactics .tactics-branch-option{display:grid;justify-items:center;gap:5px;padding:9px;text-align:center;background:#26363b;color:#fff2d1;border-color:#9f8656}
+.tactics-branch-option canvas{width:56px;height:56px;object-fit:contain}
+.tactics-branch-option small{color:#eadab6}
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -9366,6 +9371,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.27',changes:['Filled the final-form trait roster, added Legendary passives, and made branching fusions interactive.']},
  {version:'0.22.26',changes:['Gave all Fight Tactics roster forms their own named signature moves.']},
  {version:'0.22.25',changes:['Balanced Fight Tactics roles, strengthened hard trait breakpoints, added starting gold, and overlaid the combat banner.']},
  {version:'0.22.24',changes:['Simplified Tactics role and signature labels and compacted the combat banner.']},
@@ -9619,4 +9625,4 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.26"></script><script src="./multiplayer.js?v=0.22.19"></script></html>
+<script src="./tactics.js?v=0.22.27"></script><script src="./multiplayer.js?v=0.22.19"></script></html>
