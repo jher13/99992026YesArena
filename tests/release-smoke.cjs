@@ -49,7 +49,7 @@ const context=vm.createContext({
 });
 context.button=(label,onclick,disabled)=>Object.assign(element('button',label),{onclick,disabled});
 const source=read('tactics.js');
-const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,evolutionFamilies,traits,familyOf,receiveDamage,heal,equip,sell,ignite,fusionPlan,applyFusion,setRound:round=>{run.round=round;},getRun:()=>run};';
+const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,evolutionFamilies,traits,familyOf,stageLabel,openingRound,wildRound,megaRound,augmentRound,carouselRound,megaRewardTier,finalRound,neutralTrainer,completeNeutral,receiveDamage,heal,equip,sell,ignite,fusionPlan,applyFusion,setRound:round=>{run.round=round;},getRun:()=>run};';
 new vm.Script(data+'\n'+source.replace(/\}\)\(\);\s*$/,auditExports+'})();'),{filename:'tactics.js'}).runInContext(context);
 const a=context.audit;
 byId('home-tactics').onclick();
@@ -115,6 +115,37 @@ assert.equal(fuseFamily('Wurmple',1,1).name,'Cascoon');
 assert.equal(fuseFamily('Eevee',2,1).name,'Jolteon');
 assert.equal(fuseFamily('Mewtwo',2,0).name,'Mewtwo');
 assert.equal(a.traits([{name:'Charmander'},{name:'Charmeleon'}]).Fire,1);
+
+assert.equal(a.stageLabel(1),'1-1');
+assert.equal(a.stageLabel(4),'1-4');
+assert.equal(a.stageLabel(5),'2-1');
+assert.equal(a.stageLabel(20),'4-2');
+assert.equal(a.stageLabel(31),'5-6');
+assert.equal(a.finalRound,123);
+assert.equal(a.stageLabel(a.finalRound),'18-7');
+assert(a.openingRound(1) && a.wildRound(2) && a.wildRound(4) && a.augmentRound(5));
+for(let round=5;round<=a.finalRound;round++){
+ const step=Number(a.stageLabel(round).split('-')[1]);
+ assert.equal(a.carouselRound(round),step===4);
+ assert.equal(a.megaRound(round),step===7);
+}
+for(const [round,tier] of [[11,2],[18,3],[25,4],[32,5],[123,5]]){
+ a.setRound(round);
+ assert.equal(a.megaRewardTier(round),tier);
+ assert.match(a.neutralTrainer().units[0].raidForm,/^Mega /);
+ const winner=a.makeTrainer('Test winner');
+ const loser=a.makeTrainer('Test loser');
+ const award=a.completeNeutral(winner,true);
+ a.completeNeutral(loser,false);
+ assert.equal(winner.items.length,2);
+ assert.equal(winner.gold-loser.gold,15);
+ assert.equal(winner.units.length,1);
+ assert.equal(a.rarities.get(winner.units[0].name)+1,tier);
+ assert.match(award,/Tier /);
+ assert.equal(loser.units.length,0);
+ assert.equal(loser.items.length,0);
+}
+a.setRound(1);
 
 const afflicted={hp:100,elapsed:500,woundUntil:9000};
 a.ignite(afflicted,5,{});
