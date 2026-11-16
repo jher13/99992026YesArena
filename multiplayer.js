@@ -553,7 +553,7 @@
  }
  function raidBackdropUrl(tier) {
   const variant=tier.master?'-master':'';
-  return new URL('./assets/raid-tier-'+tier.tier+variant+'.webp',multiplayerSource).href;
+  return new URL('./assets/raid-tier-'+tier.tier+variant+'.webp'+(tier.master?'?v=2':''),multiplayerSource).href;
  }
  function setRaidRoomBackdrop(root,tier) {
   root.dataset.tier=String(tier?.tier ?? 1);
