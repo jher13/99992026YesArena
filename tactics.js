@@ -734,8 +734,8 @@
  };
  const benchLimit=9;
  const attackSlowdown=3;
- const overtimeStartMs=60000;
- const combatTicks=240*attackSlowdown, combatStepMs=115, combatDamageScale=.55;
+ const overtimeStartMs=40000;
+ const combatStepMs=115, combatTicks=Math.floor(60000/combatStepMs), combatDamageScale=.55;
  const maxLevel=9;
  const cells=Array.from({length:56},(_,i)=>({x:i%7,y:Math.floor(i/7)}));
  const levels=[0,0,4,8,12,16,24,32,40,Infinity];
@@ -1133,18 +1133,26 @@
   content.append(guide);
  }
  const placementRewards=[
-  [3000,[['vitamins','Rare Candy',2],['balls','Ultra Ball',2]]],
-  [2000,[['vitamins','Rare Candy',1],['balls','Ultra Ball',1]]],
-  [1000,[['vitamins','EXP Candy 500',2],['balls','Cherished Ball',2]]],
-  [750,[['vitamins','EXP Candy 250',2],['balls','Cherished Ball',1]]],
-  [500,[['vitamins','EXP Candy 100',1],['balls','Luxury Ball',2]]],
-  [250,[['balls','Premier Ball',2]]],
-  [100,[['balls','Great Ball',2]]],
-  [50,[['balls','Safari Ball',2]]],
+  [8000,[['vitamins','Rare Candy',2],['balls','Ultra Ball',2]]],
+  [6000,[['vitamins','Rare Candy',1],['vitamins','EXP Candy 500',1],['balls','Ultra Ball',1]]],
+  [4500,[['vitamins','EXP Candy 500',2],['balls','Ultra Ball',1]]],
+  [3500,[['vitamins','EXP Candy 500',1],['vitamins','EXP Candy 250',1],['balls','Cherished Ball',2]]],
+  [2000,[['vitamins','EXP Candy 250',2],['balls','Cherished Ball',1]]],
+  [1250,[['vitamins','EXP Candy 250',1],['balls','Luxury Ball',2]]],
+  [500,[['balls','Great Ball',2]]],
+  [250,[['balls','Safari Ball',2]]],
  ];
  function awardPlacement(match){
   if(match.placementReward)return;
-  const [coins,items]=placementRewards[(match.place ?? 1)-1];
+  const [baseCoins,placementItems]=placementRewards[(match.place ?? 1)-1];
+  const coins=earnedCoins(baseCoins);
+  const items=placementItems.map(item=>[...item]);
+  const stageBonus=Math.min(3,Math.max(0,(match.completedStage ?? 0)-3));
+  if(stageBonus){
+   const candy=items.find(([,name])=>name==='EXP Candy 250');
+   if(candy)candy[2]+=stageBonus;
+   else items.push(['vitamins','EXP Candy 250',stageBonus]);
+  }
   for(const item of items)giveArenaItem(...item);
   wildProgress.coins+=coins;
   match.placementReward=[coins.toLocaleString()+' coins',...items.map(([,name,count])=>count+' × '+name)].join(' · ');
@@ -1163,7 +1171,7 @@
  }
  function startPlanning(){
   clearInterval(planningTimer);
-  run.deadline=Date.now()+(run.round===1?20:30)*1000;
+  run.deadline=Date.now()+(augmentRound(run.round)||megaRound(run.round)?30:20)*1000;
   render();
   const current=run;
   planningTimer=setInterval(()=>{
@@ -1555,7 +1563,7 @@
   if(openingRound(run.round))header.append(element('span',player.gold+' gold'));
   if(!run.busy){
    const timer=element('span',Math.max(0,Math.ceil((run.deadline-Date.now())/1000))+'s','tactics-planning-clock');
-   header.append(timer);
+   header.append(timer,button('Ready',()=>{void play();},Boolean(run.branchDialog)));
   }
   const timeline=element('div',null,'tactics-timeline');
   for(let round=run.round;round<run.round+5;round++){
@@ -2594,7 +2602,8 @@
   else startPlanning();
  }
  async function play(){
-  if(run.busy || run.finished)return;
+  if(run.busy || run.finished || run.branchDialog || run.choice)return;
+  clearInterval(planningTimer);
   if(openingRound(run.round)){run.result='Opening complete. Wild battles begin at 1-2.';advanceRound();return;}
   const current=run;
   run.busy=true;
@@ -2679,6 +2688,7 @@
    run.place=ranked.indexOf(player)+1;
    run.finished=true;
   }
+  if(megaRound(run.round))run.completedStage=stageRound(run.round).stage;
   if(run.finished || !player.hp || run.trainers.filter(t=>t.hp>0).length<=1){
    run.finished=true;
    awardPlacement(run);

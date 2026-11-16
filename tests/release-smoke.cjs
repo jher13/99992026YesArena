@@ -376,17 +376,29 @@ assert.equal(catchChance(balls[8],{name:'Mewtwo'}),1);
 const rewards=new Function(passCode+'return passRewards')();
 assert.equal(rewards.length,50);
 assert.deepEqual(rewards.flatMap(([,name],index)=>name==='Master Ball'?[index+1]:[]),[50]);
-for(const [index,coins] of [3000,2000,1000,750,500,250,100,50].entries()){
+for(const [index,coins] of [8000,6000,4500,3500,2000,1250,500,250].entries()){
  const received=[];
  context.wildProgress={coins:0};
  context.giveArenaItem=(...item)=>received.push(item);
  context.saveWildProgress=()=>{};
+ context.earnedCoins=base=>base;
  const match={place:index+1};
  a.awardPlacement(match);
  a.awardPlacement(match);
  assert.equal(context.wildProgress.coins,coins);
- assert.equal(received.length,index<5?2:1);
+ assert.equal(received.length,[2,3,2,3,2,2,1,1][index]);
 }
+const lateMatch={place:4,completedStage:9};
+const lateItems=[];
+context.wildProgress={coins:0};
+context.giveArenaItem=(...item)=>lateItems.push(item);
+context.earnedCoins=base=>base*2;
+a.awardPlacement(lateMatch);
+a.awardPlacement(lateMatch);
+assert.equal(context.wildProgress.coins,7000);
+assert.deepEqual(lateItems.find(([,name])=>name==='EXP Candy 250'),['vitamins','EXP Candy 250',4]);
+assert.equal(Math.ceil(a.combatTicks*a.combatStepMs/1000),60);
+
 
 const candyCode=html.slice(html.indexOf('const experienceCandies='),html.indexOf('const trainingItems='));
 const levelCode=html.slice(html.indexOf('function experienceNeeded('),html.indexOf('}',html.indexOf('function experienceNeeded('))+1);
@@ -570,11 +582,11 @@ async function verifyLoanerGear(){
   id:'b2450000-0000-0000-0000-000000000000',mode:'ranked',format:1,host:'a',guest:'b',
   host_pick:['Pikachu','Squirtle'],guest_pick:['Pikachu'],
   host_entries:playerEntries({Pikachu:'Muscle Band',Squirtle:'Muscle Band'}),
-  guest_entries:playerEntries({Pikachu:'Wise Glasses'})
+  guest_entries:playerEntries({Pikachu:'Shell Bell'})
  };
  const serialized=JSON.stringify(simulateOnline(match,null,0,null,'host'));
  assert.equal((serialized.match(/"heldItem":"Muscle Band"/g) ?? []).length,1);
- assert.equal((serialized.match(/"heldItem":"Wise Glasses"/g) ?? []).length,1);
+ assert.equal((serialized.match(/"heldItem":"Shell Bell"/g) ?? []).length,1);
  assert(!serialized.includes('"heldItem":"Leftovers"'));
 }
 async function verifyPillarChase(){

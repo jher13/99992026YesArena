@@ -1946,6 +1946,16 @@ function vitaminControls(name,field,selection) {
  if(field==='evs'){
   const total=profile.evs.reduce((sum,value)=>sum+value,0);
   group.append(element('small',total+' / 510 EVs','training-total'));
+  const label=element('label','Disable battle EV gains ');
+  const toggle=element('input');
+  toggle.type='checkbox';
+  toggle.checked=profile.disableBattleEVs===true;
+  toggle.onchange=()=>{
+   profile.disableBattleEVs=toggle.checked;
+   playerStorage.setItem(profileStorage,JSON.stringify(profiles));
+  };
+  label.append(toggle);
+  group.append(label);
  }
  let rows=0;
  for(const [item,rule] of Object.entries(trainingItems)) {
@@ -2517,7 +2527,7 @@ const trainingItems=Object.fromEntries([
  ['IV Booster',{field:'ivs',delta:1,price:7500,category:'IV adjustments'}],
  ['IV Reducer',{field:'ivs',delta:-1,price:1500,category:'IV adjustments'}],
 ]);
-const pvpLoanerItems=['Leftovers','Muscle Band','Wise Glasses'];
+const pvpLoanerItems=['Leftovers','Muscle Band','Wise Glasses','Shell Bell'];
 function pvpLoanerFor(name,roster,choices){
  const item=choices?.[name];
  return pvpLoanerItems.includes(item) && roster.find(member=>choices?.[member]===item)===name?item:null;
@@ -2927,6 +2937,7 @@ const bagItemArt={
  'EXP Candy 500':['#9a58de','.....oo..... ....olco.... ...olccgo... ..olwwwcgo.. .olcwwwccgo. ..oocccgoo.. ....ocgo.... .....oo.....'],
  'EXP Candy 250':['#3d94ec','...oooooo... ..olwwcgoo.. ..olwcccgo.. ..olcccgoo.. ..ogcccgoo.. ...oooooo...'],
  'EXP Candy 100':['#43b571','............ .....oo..... ....olco.... ...olccgo... ...occcgo... ....oooo....'],
+ 'Lucky Coin':['#ffc34a','....oooo.... ..oolllcoo.. .olcwcwcgo.. olccwwwccgdo olcwwwwwcgdo olccwwwccgdo .ocgwgwgdo.. ..oogddoo... ....oooo....'],
  'Lucky Egg':['#efa752','.....oo..... ....olwo.... ...olwcco... ..olwwccgo.. ..owwcccgo.. .olwcwcgggo. .occccccddo. ..occcgddo.. ...oooooo...'],
  'Oran Berry':['#4877d2','......gg.... .....ggo.... ..ooooo..... .olcccoo.... olcccccco... occccccco... occccccdo... .occcddo.... ..ooooo.....'],
  'Sitrus Berry':['#efb93b','...ggo...... ...oggo..... ...ocoo..... ..olccco.... .olccccco... .olccccccoo. olccccccggco occcccgcggco .occcggggco. ..oooooooo..'],
@@ -3007,6 +3018,7 @@ function renderItemBag(message='') {
   }
   return [ball.name,count,ballDescriptions[index],button,next?ballCraftCost+' '+ball.name+' → 1 '+next.name:null];
  }));
+ if(hasLuckyCoin())group('Campaign rewards',[['Lucky Coin',1,'Passive · Doubles all coins earned']]);
  group('Held items and evolution items',Object.entries(wildProgress.items).filter(([,count])=>count>0)
   .map(([name,count])=>[name,count,(count-freeHeldCopies(name))+' equipped']));
  group('EXP Candies · Use from a Pokémon’s details',Object.entries(experienceCandies).filter(([name])=>wildProgress.vitamins[name]>0)
@@ -4678,14 +4690,16 @@ function awardBadge(gym) {
  try {playerStorage.setItem(gymSaveKey,JSON.stringify(clearedGyms));} catch {}
  return true;
 }
-const kantoGymIds=gymTeams.filter(gym=>gym.region==='Kanto').map(gym=>gym.id);
+const halfBadgeCount=Math.ceil(gymTeams.length/2);
+function hasLuckyCoin() {return masterGymClears.size===gymTeams.length;}
+function earnedCoins(base) {return base*(hasLuckyCoin()?2:1);}
 function maximumBattleSpeed() {
  if(clearedGyms.length===gymTeams.length) return 4;
- return kantoGymIds.every(id=>clearedGyms.includes(id))?3:2;
+ return clearedGyms.length>=halfBadgeCount?3:2;
 }
 function speedUnlockMessage() {
  if(clearedGyms.length===gymTeams.length) return ' Master Campaign and 4× battle speed unlocked!';
- if(clearedGyms.length===kantoGymIds.length && maximumBattleSpeed()===3) return ' 3× battle speed unlocked!';
+ if(clearedGyms.length===halfBadgeCount && maximumBattleSpeed()===3) return ' 3× battle speed unlocked!';
  return '';
 }
 function progressText() {return clearedGyms.length+' / '+gymTeams.length+' badges collected';}
@@ -5327,7 +5341,7 @@ function continueCampaign(){
 function renderCampaign(collection) {
  const list=byId(collection?'badge-grid':'gym-grid');
  byId(collection?'collection-progress':'gym-progress').textContent=progressText()+
-  ' · Master Collection '+masterGymClears.size+' / '+gymTeams.length;
+  ' · Master Collection '+masterGymClears.size+' / '+gymTeams.length+' · '+(hasLuckyCoin()?'Lucky Coin active':'Lucky Coin at 68 Master badges');
  list.replaceChildren();
  if(!collection && clearedGyms.length<gymTeams.length){
   const next=element('button','Continue Campaign · '+gymTeams[clearedGyms.length].name);
@@ -8635,7 +8649,9 @@ function awardKnockoutEVs() {
   const winner=foe.lastDamageBy;
   const yieldByStat=pokemonEVYields[dex[foe.originalName ?? foe.name][0]];
   if(!winner?.friendly || !ownedPokemon(winner.originalName ?? winner.name) || !yieldByStat)continue;
-  const gains=addEVs(profileFor(winner.originalName ?? winner.name),yieldByStat);
+  const profile=profileFor(winner.originalName ?? winner.name);
+  if(profile.disableBattleEVs===true)continue;
+  const gains=addEVs(profile,yieldByStat);
   if(gains.some(Boolean)) {
    changed=true;
    (winner.evRewards ??=[]).push(foe.name+' awarded '+gains.map((gain,i)=>gain?'+'+gain+' '+statLabels[i]+' EV':'').filter(Boolean).join(', ')+' to '+winner.name+'.');
@@ -8758,15 +8774,18 @@ function advance(dt,realDt=dt) {
   if(phase==='win' && selectedWild) {finishWildBattle(Boolean(timedOut));return;}
   if(phase==='win' && selectedTrainer) {
    if(happyHourBonus)selectedTrainer.coins*=2;
+   selectedTrainer.coins=earnedCoins(selectedTrainer.coins);
    wildProgress.coins+=selectedTrainer.coins;
    saveWildProgress();
   }
   const stones=phase==='win' && (selectedGym || selectedTrainer)?evolveStoneHolders():[];
   renderControls();
   if(phase==='win' && selectedGym && selectedMasterGym && !timedOut) {
+   const hadLuckyCoin=hasLuckyCoin();
    masterGymClears.add(selectedGym.id);
    try {playerStorage.setItem(gymSaveKey+'/master',JSON.stringify([...masterGymClears]));} catch {}
    byId('status').textContent+=' Master clear · '+masterGymClears.size+' / '+gymTeams.length+'.';
+   if(!hadLuckyCoin && hasLuckyCoin())byId('status').textContent+=' Lucky Coin unlocked! All coin rewards are doubled.';
   }
   if(phase==='win' && selectedGym && !selectedMasterGym && !firstBadge && !timedOut && allies.every(actor=>actor.hp>0 && !actor.faintedThisBattle)) {
    gymRematchRecords[selectedGym.id]=true;
@@ -10194,4 +10213,4 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.31"></script><script src="./multiplayer.js?v=0.22.51-raid-art-2"></script></html>
+<script src="./tactics.js?v=0.22.31-rewards"></script><script src="./multiplayer.js?v=0.22.51-raid-art-2"></script></html>
