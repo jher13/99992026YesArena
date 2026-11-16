@@ -7432,9 +7432,7 @@ function tryBattleDash(actor,angle,distance,accept,evading=false) {
  if(dx)actor.facing=Math.sign(dx);
  actor.gait='run';
  actor.motionTicks+=Math.hypot(dx,dy)*1.48;
- actor.moveLabel='Dash';
- actor.labelTime=0.6;
- effects.push({x:actor.x,y:actor.y,tx:endpoint.x,ty:endpoint.y,move:'Dash',
+ effects.push({x:actor.x,y:actor.y,tx:endpoint.x,ty:endpoint.y,
   dashSprite:{name:actor.name,spriteVariant:actorSpriteVariant(actor),raidForm:actor.raidForm,
    motionTicks:actor.motionTicks},life:0.38});
  Object.assign(actor,endpoint);
@@ -9640,13 +9638,13 @@ function drawMove(e) {
 }
 function drawImpactLabel(e) {
  const age=0.58-e.life;
- if(age<0.15 || e.zone || e.damage==='') return;
+ if(e.dashSprite || age<0.15 || e.zone || e.damage==null || e.damage==='') return;
  ctx.save();
  ctx.globalAlpha=Math.min(1,e.life/0.24);
  ctx.fillStyle=e.color;
  ctx.textAlign='center';
  ctx.font='bold 17px system-ui';
- const label=e.multiplier===0 ? 'Immune' : e.multiplier!==1 ? e.damage+' · '+e.multiplier+'×' : e.damage;
+ const label=e.multiplier===0 ? 'Immune' : Number.isFinite(e.multiplier) && e.multiplier!==1 ? e.damage+' · '+e.multiplier+'×' : e.damage;
  const y=e.ty-34-age*38;
  ctx.strokeStyle='#14271f';
  ctx.lineWidth=3;
@@ -9769,6 +9767,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.44',changes:['Separated movement quick-step effects from damaging dash skill labels.']},
  {version:'0.22.43',changes:['Quick-step dashes now leave fading Pokémon sprite afterimages.']},
  {version:'0.22.42',changes:['AI uses dash and Defend tactically and fills skill cooldowns with normal attacks.']},
  {version:'0.22.41',changes:['Defend now recharges and protects for one second. Exhausted Pokémon take extra attack damage.']},

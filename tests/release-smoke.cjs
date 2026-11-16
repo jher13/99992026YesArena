@@ -36,6 +36,14 @@ assert(!dash(dasher,0,90,()=>false));
 assert(dash(dasher,0,90,()=>true));
 assert(!dash(dasher,0,90,()=>true),'Save the last charge for evasion');
 assert(dash(dasher,0,90,()=>true,true));
+const labels=[];
+const impactCode=html.slice(html.indexOf('function drawImpactLabel('),html.indexOf('let previous;',html.indexOf('function drawImpactLabel(')));
+const impact=new Function('ctx',impactCode+'return drawImpactLabel;')({
+ save(){},restore(){},strokeText(){},fillText(label){labels.push(label);}
+});
+impact({dashSprite:{name:'Pikachu'},life:.3});
+impact({move:'Quick Attack',life:.3,damage:12,multiplier:1});
+assert.deepEqual(labels,[12]);
 const hazardCode=html.slice(html.indexOf('function roamingCenter('),html.indexOf('function dodgeSkill('));
 const {hazardHits,warrantsDash}=new Function('canvas','clamp','inSkill','bodyRadius',
  'moveCatalog','battleDamage','effectiveness','moveRules',hazardCode+'return {hazardHits,warrantsDash};')(
