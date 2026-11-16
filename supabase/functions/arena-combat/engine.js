@@ -4677,7 +4677,7 @@ function updateActivePanels(onlineFields) {
    badge.setAttribute('aria-label',status[1]);
   }
   const battleTime=onlineFields?onlineMatchDuration:clock;
-  const remaining=[dashChargesLeft(actor,battleTime),actor.defendCharges ?? 3];
+  const remaining=[dashChargesLeft(actor,battleTime),defendChargesLeft(actor,battleTime)];
   for(const [i,charge] of panel.charges.entries()){
    const count=remaining[i];
    if(charge.count===count)continue;
@@ -6271,10 +6271,22 @@ function retreatRoute(actor,target,opponents) {
 function dashChargesLeft(actor,time) {
  return 3-(actor.dashRecharge ?? []).filter(ready=>ready>time).length;
 }
-function defendDamage(actor,damage) {
- if(isExhausted(actor) || actor.ailment===2 || actor.ailment===3 || actor.flinch>0 ||
-  (actor.defendCharges ?? 3)<=0 || damage<=0 || (damage<actor.hp && damage<actor.max*.15))return damage;
- actor.defendCharges=(actor.defendCharges ?? 3)-1;
+function defendChargesLeft(actor,time) {
+ return 3-(actor.defendRecharge ?? []).filter(ready=>ready>time).length;
+}
+function defendDamage(actor,damage,time) {
+ const exhausted=isExhausted(actor);
+ if(exhausted)damage=Math.round(damage*1.5);
+ if(damage<=0)return damage;
+ if(!(actor.defendUntil>time)){
+  if(exhausted || actor.ailment===2 || actor.ailment===3 || actor.flinch>0 ||
+   defendChargesLeft(actor,time)<=0 || (damage<actor.hp && damage<actor.max*.15))return damage;
+  actor.defendRecharge=(actor.defendRecharge ?? []).filter(ready=>ready>time);
+  actor.defendRecharge.push(time+5);
+  actor.defendUntil=time+1;
+  actor.moveLabel='Defend';
+  actor.labelTime=1;
+ }
  return Math.max(1,Math.floor(damage/2));
 }
 function tryDashDodge(actor,hazard,angle) {
@@ -7122,11 +7134,7 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
   const boosted=attacker==='Flash Fire' && actor.flashFire && element==='Fire' ? multiplier*1.5 : multiplier;
   const baseDamage=battleDamage(actor,victim,power,boosted,rules.category!==3,element,move,critical)*(cast?.quakeRing===2?0.25:cast?.quakeRing===1?0.5:1);
   const damage=Math.round(baseDamage*(move==='Hyper Beam'?2:1)*(sacrificeProfiles.get(move)?.damage ?? 1)*(wasAsleep?1.25:1)*(helped?1.5:1));
-  const mitigated=actor.friendly!==victim.friendly?defendDamage(victim,damage):damage;
-  if(mitigated<damage){
-   victim.moveLabel='Defend';
-   victim.labelTime=.6;
-  }
+  const mitigated=actor.friendly!==victim.friendly?defendDamage(victim,damage,clock):damage;
   const dealt=Math.min(victim.hp===victim.max && defender==='Sturdy' && victim.hp>1?victim.hp-1:victim.hp,mitigated);
   victim.hp-=dealt;
   if(victim.hp<=0 && dealt>0) {
@@ -8588,6 +8596,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.41',changes:['Defend now recharges and protects for one second. Exhausted Pokémon take extra attack damage.']},
  {version:'0.22.40',changes:['Added battle dash and defend charges and removed exhaustion from automatic normal attacks.']},
  {version:'0.22.39',changes:['Preferred Position no longer pulls Pokémon inward before their attacks are in range.']},
  {version:'0.22.38',changes:['Reduced circling around pillars and added threat anticipation, exhaustion-aware play, and team move coordination.']},
@@ -9078,10 +9087,10 @@ export function onlineView(state,side,mode) {
  const visible=[...state.allies,...state.enemies].filter(allowed).map(actor=>{
   const {name,side,onlineId,hp,max,level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendCharges,raidForm,raidSecondary}=actor;
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary}=actor;
   return {name,side,onlineId,hp,max,level:mode==='free_fight'?100:level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendCharges,raidForm,raidSecondary};
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary};
  });
  const ids=new Set(visible.map(actor=>actor.onlineId));
  const fields=state.fields.map(slots=>slots.map(slot=>{

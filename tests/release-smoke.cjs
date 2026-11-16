@@ -7,17 +7,24 @@ const html=read('index.html');
 const manifest=JSON.parse(read('version.json'));
 assert.match(manifest.version,/^\d+\.\d+\.\d+$/);
 const chargeCode=html.slice(html.indexOf('function dashChargesLeft('),html.indexOf('function tryDashDodge('));
-const {dashChargesLeft,defendDamage}=new Function('isExhausted',chargeCode+
- 'return {dashChargesLeft,defendDamage};')(()=>false);
+const {dashChargesLeft,defendChargesLeft,defendDamage}=new Function('isExhausted',chargeCode+
+ 'return {dashChargesLeft,defendChargesLeft,defendDamage};')(actor=>actor.exhausted);
 assert.equal(dashChargesLeft({},0),3);
 assert.equal(dashChargesLeft({dashRecharge:[3,4,5]},2),0);
 assert.equal(dashChargesLeft({dashRecharge:[3,4,5]},3),1);
 assert.equal(dashChargesLeft({dashRecharge:[3,4,5]},5),3);
 const defender={hp:100,max:100};
-assert.equal(defendDamage(defender,10),10);
-for(let i=0;i<3;i++)assert.equal(defendDamage(defender,40),20);
-assert.equal(defender.defendCharges,0);
-assert.equal(defendDamage(defender,40),40);
+assert.equal(defendDamage(defender,10,0),10);
+assert.equal(defendDamage(defender,40,0),20);
+assert.equal(defendDamage(defender,10,.99),5);
+assert.equal(defendChargesLeft(defender,.99),2);
+assert.equal(defendDamage(defender,10,1),10);
+assert.equal(defendDamage(defender,40,1),20);
+assert.equal(defendDamage(defender,40,2),20);
+assert.equal(defendDamage(defender,40,3),40);
+assert.equal(defendChargesLeft(defender,5),1);
+assert.equal(defendDamage(defender,40,5),20);
+assert.equal(defendDamage({hp:100,max:100,exhausted:true},40,0),60);
 const hazardCode=html.slice(html.indexOf('function roamingCenter('),html.indexOf('function dodgeSkill('));
 const {hazardHits,warrantsDash}=new Function('canvas','clamp','inSkill','bodyRadius',
  'moveCatalog','battleDamage','effectiveness','moveRules',hazardCode+'return {hazardHits,warrantsDash};')(
