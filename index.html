@@ -188,6 +188,16 @@ main{max-width:1190px}h1{font-size:clamp(26px,5vw,48px);color:#eff8ff}
 .evolution-stage{background:repeating-linear-gradient(0deg,#030813 0 12px,#14274b 12px 20px,#233e73 20px 23px);background-size:100% 46px;animation:evolution-scroll .65s linear infinite}
 @keyframes evolution-scroll{to{background-position:0 -46px}}
 @media(prefers-reduced-motion:reduce){.evolution-old{display:none}.evolution-new,.evolution-stage{animation:none}}
+.training-items,.pc-copy{min-inline-size:0}
+.training-items .training-total{display:block;margin:.2rem 0 .4rem}
+.training-item-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,7rem) auto;align-items:center;gap:.5rem;padding:.35rem 0}
+.training-item-row select{width:100%;min-width:0}
+.training-item-row button{padding:.4rem .65rem}
+#pc-copies:not(:empty){margin-top:12px}
+.pc-copy-summary{margin:0 0 .5rem}
+.pc-copy-actions{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.pc-copy-actions select{flex:1 0 100%;width:100%;min-width:0}
+#menu .pc-copy{border-color:#b5cbb9}
 .battle-ai-settings legend button{margin-left:.55rem}
 .gambit-dialog{width:min(94vw,760px);max-height:85vh;overflow:auto;background:#19142d;color:#f4ebff;border:1px solid #8e6eb8;border-radius:14px;padding:18px}
 .gambit-dialog::backdrop{background:#060410b0}
@@ -1079,6 +1089,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 </details>
 <div class="box-label"><span id="box-page"></span><span id="box-count"></span></div>
 <div id="box-grid" class="tile-grid"></div>
+<div id="pc-copies" aria-label="Pokémon copies"></div>
 </section>
 <section id="pokemon-detail" class="detail-panel" aria-label="Selected Pokémon"></section>
 </div>
@@ -1909,16 +1920,21 @@ function applyTrainingItem(profile,stat,{field,delta}) {
  values[stat]=next;
  return change;
 }
-function vitaminControls(name) {
- const group=element('fieldset');
- group.append(element('legend','EV and IV training items'));
+function vitaminControls(name,field) {
+ const group=element('fieldset',null,'training-items');
+ group.append(element('legend',field==='evs'?'EV training':'IV training'));
  const profile=profileFor(name);
- const total=profile.evs.reduce((sum,value)=>sum+value,0);
- group.append(element('small',total+' / 510 EVs'));
+ if(field==='evs'){
+  const total=profile.evs.reduce((sum,value)=>sum+value,0);
+  group.append(element('small',total+' / 510 EVs','training-total'));
+ }
+ let rows=0;
  for(const [item,rule] of Object.entries(trainingItems)) {
+  if(rule.field!==field)continue;
   const quantity=wildProgress.vitamins[item] ?? 0;
   if(!quantity)continue;
-  const label=element('label',item+' ×'+quantity+' ');
+  const row=element('div',null,'training-item-row');
+  const label=element('span',item+' ×'+quantity);
   const select=element('select');
   select.setAttribute('aria-label','Stat for '+item);
   const stats=rule.stat===undefined?statLabels.map((_,i)=>i):[rule.stat];
@@ -1945,9 +1961,11 @@ function vitaminControls(name) {
    const unit=rule.field==='ivs'?' IV':' EV';
    byId('pokemon-detail').append(element('p',name+' · '+statLabels[stat]+' '+(change>0?'+':'')+change+unit));
   };
-  label.append(select,button);
-  group.append(label);
+  row.append(label,select,button);
+  group.append(row);
+  rows++;
  }
+ if(!rows)group.append(element('small','No training items available.'));
  return group;
 }
 function battleAIControls(name) {
@@ -2089,9 +2107,12 @@ function openGambits(name,ai,onClose) {
  dialog.showModal();
 }
 function pcCollectionControls(name) {
- const section=element('fieldset');
- section.append(element('legend','Collection'));
+ const section=element('fieldset',null,'pc-copy');
+ section.append(element('legend','Copies:'));
  const copies=wildProgress.copies[name] ?? [];
+ section.append(element('p',name+' · '+(copies.length+1)+' total','pc-copy-summary'));
+ const actions=element('div',null,'pc-copy-actions');
+ section.append(actions);
  const entry=ownedPokemon(name);
  const onTeam=team.includes(name);
  const save=()=>{
@@ -2123,7 +2144,7 @@ function pcCollectionControls(name) {
   release.onclick=()=>{
    if(confirm('Permanently release this '+name+' copy?')) {copies.splice(Number(select.value),1);save();}
   };
-  section.append(select,activate,release);
+  actions.append(select,activate,release);
   if(!isLegendaryEncounter(name) && name!=='Ditto' && name!=='Unown') {
    const breed=element('button','Breed selected copy');
    breed.onclick=()=>{
@@ -2143,7 +2164,7 @@ function pcCollectionControls(name) {
     save();
     byId('pokemon-detail').append(element('p','A Lv. 1 '+(isAvailablePokemon(base)?base:name)+' hatched.'));
    };
-   section.append(breed);
+   actions.append(breed);
   }
  }
  const release=element('button','Release '+name);
@@ -2157,7 +2178,7 @@ function pcCollectionControls(name) {
   activeSlot=Math.min(activeSlot,team.length-1);
   inspected=null;save();
  };
- section.append(release);
+ actions.append(release);
  return section;
 }
 function renderDetail() {
@@ -2196,7 +2217,7 @@ badges,element('p',height/10+' m · '+weight/10+' kg'),
   .map((label,i)=>label+' '+chartValues[i]).join(', '));
  summary.append(info,chart);
  body.append(summary,individualTable(name,profile));
- if(owned) body.append(heldItemPicker(name),capsuleControl(name),vitaminControls(name),experienceCandyControls(name),battleAIControls(name),pcCollectionControls(name));
+ if(owned) body.append(heldItemPicker(name),capsuleControl(name),vitaminControls(name,'evs'),vitaminControls(name,'ivs'),experienceCandyControls(name),battleAIControls(name));
  body.append(element('h4','Moves','move-heading'));
  body.append(renderSkillSlots(name),renderLearnableSkills(name));
  const actions=element('div',null,'detail-actions');
@@ -2210,6 +2231,7 @@ badges,element('p',height/10+' m · '+weight/10+' kg'),
  }
  body.append(actions);
  panel.replaceChildren(title,body);
+ byId('pc-copies').replaceChildren(...(owned?[pcCollectionControls(name)]:[]));
  drawStats(chart,chartValues);
 }
 function renderMenu() {
@@ -9440,6 +9462,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.32',changes:['Organized PC training into EV and IV rows and moved copy management below the PC box.']},
  {version:'0.22.31',changes:['Added EXP Candies, Rare Candy, Event Ball, Lucky Egg and Poke Fight Tactics placement rewards.']},
  {version:'0.22.30',changes:['Shop cards now show one outline, with orange for owned families and rose pink for trait matches.']},
  {version:'0.22.29',changes:['Added the shared Poké Ball Carousel and Stage 5 Master Ball Draft.']},
