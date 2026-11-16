@@ -6324,7 +6324,8 @@ function tryBattleDash(actor,angle,distance,accept,evading=false) {
  actor.moveLabel='Dash';
  actor.labelTime=0.6;
  effects.push({x:actor.x,y:actor.y,tx:endpoint.x,ty:endpoint.y,move:'Dash',
-  color:'#80defb',line:true,shape:'dash',life:0.3,damage:''});
+  dashSprite:{name:actor.name,spriteVariant:actorSpriteVariant(actor),raidForm:actor.raidForm,
+   motionTicks:actor.motionTicks},life:0.38});
  Object.assign(actor,endpoint);
  return true;
 }
@@ -8335,7 +8336,36 @@ function drawSkillBeam(distance,color,age,dash,widthScale=1) {
   ctx.fill();
  }
 }
+function drawDashAfterimages(effect) {
+ const dx=effect.tx-effect.x,dy=effect.ty-effect.y;
+ const pose={...effect.dashSprite,direction:pmdDirection(dx,dy)};
+ const sprite=getSprite(pose.name);
+ const scale=battleSpriteScale*(pose.raidForm?.startsWith('Gigantamax')?1.45:
+  pose.raidForm==='Mega Rayquaza'?2:pose.raidForm?.startsWith('Mega ')?3:pose.raidForm?1.15:1);
+ const fade=clamp(effect.life/.38,0,1);
+ ctx.save();
+ ctx.imageSmoothingEnabled=false;
+ for(const [index,position] of [0,.24,.48,.72].entries()){
+  pose.motionTicks=effect.dashSprite.motionTicks+index*5;
+  const frame=pmdBattleFrame(pose,'run');
+  const image=frame?pmdImage(frame.page):null;
+  ctx.save();
+  ctx.translate(Math.round(effect.x+dx*position),Math.round(effect.y+dy*position+17));
+  ctx.globalAlpha*=fade*(.2+index*.13);
+  if(image?.naturalWidth) {
+   ctx.drawImage(image,frame.sx,frame.sy,frame.width,frame.height,
+    frame.x*scale,frame.y*scale,frame.width*scale,frame.height*scale);
+  }else if(sprite.image.naturalWidth){
+   if(dx)ctx.scale(-Math.sign(dx),1);
+   ctx.drawImage(sprite.image,sprite.sx,sprite.sy,sprite.width,sprite.height,
+    -sprite.width*scale/2,-sprite.height*scale,sprite.width*scale,sprite.height*scale);
+  }
+  ctx.restore();
+ }
+ ctx.restore();
+}
 function drawMove(e) {
+ if(e.dashSprite){drawDashAfterimages(e);return;}
  const age = 0.58-e.life;
  if(e.sector) {
   drawSkillSector(e.sector,e.color,e.shape,age);
@@ -8628,6 +8658,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.43',changes:['Quick-step dashes now leave fading Pokémon sprite afterimages.']},
  {version:'0.22.42',changes:['AI uses dash and Defend tactically and fills skill cooldowns with normal attacks.']},
  {version:'0.22.41',changes:['Defend now recharges and protects for one second. Exhausted Pokémon take extra attack damage.']},
  {version:'0.22.40',changes:['Added battle dash and defend charges and removed exhaustion from automatic normal attacks.']},

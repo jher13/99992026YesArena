@@ -26,9 +26,9 @@ assert.equal(defendChargesLeft(defender,5),1);
 assert.equal(defendDamage(defender,40,5),20);
 assert.equal(defendDamage({hp:100,max:100,exhausted:true},40,0),60);
 const dashCode=html.slice(html.indexOf('function tryBattleDash('),html.indexOf('function battleActorId('));
-const dash=new Function('dashChargesLeft','clock','pendingCasts','canvas','clamp','movementClearance','pmdDirection','effects',
+const dash=new Function('dashChargesLeft','clock','pendingCasts','canvas','clamp','movementClearance','pmdDirection','effects','actorSpriteVariant',
  dashCode+'return tryBattleDash;')(dashChargesLeft,0,[],{width:960,height:480},
- (x,lo,hi)=>Math.max(lo,Math.min(hi,x)),()=>1,()=>0,[]);
+ (x,lo,hi)=>Math.max(lo,Math.min(hi,x)),()=>1,()=>0,[],()=>null);
 const dasher={x:100,y:100,motionTicks:0};
 assert(dash(dasher,0,90,point=>point.x>=185));
 assert.equal(dasher.x,190);
