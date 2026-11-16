@@ -705,7 +705,7 @@
   'Legendary Beasts':{color:'#d69775',members:['Raikou','Entei','Suicune'],tiers:[[3,{health:.18,power:.18,mana:15,takedownHaste:5}]]},
   'Overcharge':{color:'#ffe071',members:['Raichu','Pawmot','Ampharos','Vikavolt','Eelektross','Luxray','Electivire'],tiers:[[2,{chainTargets:2}],[4,{chainTargets:3}],[6,{chainTargets:4}]]},
   'Sandstorm':{color:'#d6b57f',members:['Golem','Gigalith','Garganacl','Krookodile','Flygon','Rhyperior','Tyranitar'],tiers:[[2,{sandstorm:.015,defense:15}],[4,{sandstorm:.03,defense:30}],[6,{sandstorm:.05,defense:50}]]},
-  'Guts':{color:'#f39c85',members:['Machamp','Conkeldurr','Obstagoon','Annihilape','Ursaluna'],tiers:[[2,{gutsPower:.35,gutsVamp:.15}],[4,{gutsPower:.65,gutsVamp:.25}]]},
+  'Guts':{color:'#f39c85',members:['Machamp','Conkeldurr','Obstagoon','Annihilape','Ursaluna','Flareon'],tiers:[[2,{gutsPower:.30,gutsVamp:.15}],[4,{gutsPower:.60,gutsVamp:.25}]]},
   'Gale Force':{color:'#b6dfed',members:['Pidgeot','Staraptor','Shiftry','Exploud','Stoutland'],tiers:[[2,{galeDamage:.12}],[4,{galeDamage:.22}]]},
   'Fairy Ring':{color:'#f3b7d8',members:['Azumarill','Wigglytuff','Blissey','Florges'],tiers:[[2,{fairyPower:.15}],[4,{fairyPower:.30}]]},
   'Permafrost':{color:'#9fdeff',members:['Mamoswine','Walrein','Vanilluxe'],tiers:[[2,{chillSlow:.25,chillCrit:.20}],[3,{chillSlow:.40,chillCrit:.40}]]},
@@ -714,14 +714,22 @@
   'Truant':{color:'#dfb889',members:['Slaking'],tiers:[[1,{truant:1}]]},
   'Genetic Apex':{color:'#ceacf2',members:['Mewtwo'],tiers:[[1,{geneticApex:1}]]},
   'Air Lock':{color:'#9fdcbe',members:['Rayquaza'],tiers:[[1,{airLock:1}]]},
+  'Tailwind':{color:'#a9e6ed',members:['Pidgeot','Staraptor','Jumpluff','Talonflame','Crobat','Flygon','Dragonite'],tiers:[[2,{travelMana:2,moveSpeed:.15}],[4,{travelMana:4,moveSpeed:.30}],[6,{travelMana:7,moveSpeed:.50}]]},
+  'Technician':{color:'#efcf9d',members:['Beedrill','Pawmot','Leavanny','Haxorus'],tiers:[[2,{techRepeat:.50}],[4,{techRepeat:.75}]]},
+  'Colossus':{color:'#b6b5c9',members:['Golem','Rhyperior','Garganacl','Gigalith','Ursaluna','Mamoswine','Tyranitar'],tiers:[[2,{health:.15,colossusSlam:.04}],[4,{health:.30,colossusSlam:.07}],[6,{health:.50,colossusSlam:.12}]]},
+  'Prankster':{color:'#baa2eb',members:['Gengar','Grimmsnarl','Whimsicott','Chandelure'],tiers:[[2,{mana:25,prankLock:1.5}],[4,{mana:45,prankLock:2.5}]]},
+  'Starter Squad':{derived:true,color:'#f4d591',tiers:[[3,{squadVamp:.05,squadMana:5}],[6,{squadVamp:.12,squadMana:12}],[9,{squadVamp:.22,squadMana:20}]]},
+  'Rival Duo':{members:['Tyranitar','Garchomp','Alakazam','Gengar','Electivire','Magmortar'],color:'#f59c83',tiers:[[2,{rivalPulse:1}]]},
   'Weather Trio':{color:'#76bcb2',members:['Kyogre','Groudon','Rayquaza'],tiers:[[1,{weather:.015}],[2,{weather:.03}],[3,{weather:.06,weatherBreak:1}]]}
  };
  const playableForms=new Set([...roster.flat(),...Object.values(evolutionFamilies).flat(2)]);
  for(const trait of Object.values(collectionTraits))if(trait.members)trait.members=trait.members.filter(name=>playableForms.has(name));
  const themesFor=name=>Object.entries(collectionTraits)
-  .filter(([,trait])=>trait.role?trait.role===combatRole(name):trait.families?trait.families.includes(familyOf({name})):trait.members.includes(name)).map(([label])=>label);
+  .filter(([,trait])=>!trait.derived).filter(([,trait])=>trait.role?trait.role===combatRole(name):trait.families?trait.families.includes(familyOf({name})):trait.members.includes(name)).map(([label])=>label);
+ const rivalPairs=[['Tyranitar','Garchomp'],['Alakazam','Gengar'],['Electivire','Magmortar']];
+ const rivalFor=name=>rivalPairs.find(pair=>pair.includes(name))?.find(member=>member!==name);
  const unitTraits=unit=>{
-  const innate=themesFor(unit.name).filter(name=>!unit.glitchRole || !collectionTraits[name].role);
+  const innate=themesFor(unit.name).filter(name=>(name!=='Rival Duo' || unit.star===3) && (!unit.glitchRole || !collectionTraits[name].role));
   return new Set([...innate,...(unit.glitchRole?[unit.glitchRole]:[]),...(unit.items ?? []).map(item=>completedItems.get(item)?.trait).filter(Boolean)]);
  };
  const benchLimit=9;
@@ -876,6 +884,14 @@
    if(stat==='fullStackAmp')return '+'+Math.round(value*100)+'% damage at full attack-speed stacks';
    if(stat==='takedownHaste')return 'Knockouts trigger a '+value+'-second attack-speed boost';
    if(stat==='relayExtra')return 'Mana relay reaches a second ally';
+   if(stat==='travelMana')return '+'+value+' mana per movement step and an opening dash toward the farthest enemy';
+   if(stat==='moveSpeed')return '+'+Math.round(value*100)+'% movement speed';
+   if(stat==='techRepeat')return 'Low-power or multi-hit damaging signatures repeat for '+Math.round(value*100)+'% damage and lock mana for 0.5 seconds less';
+   if(stat==='colossusSlam')return 'Every third basic attack deals bonus physical damage equal to '+Math.round(value*100)+'% of the attacker’s max HP';
+   if(stat==='prankLock')return 'First signature mana-locks its target for '+value+' seconds';
+   if(stat==='squadVamp')return 'Team gains '+Math.round(value*100)+'% omnivamp';
+   if(stat==='squadMana')return 'Team gains '+value+' starting mana';
+   if(stat==='rivalPulse')return 'A signature grants the matched rival 15 mana and 20% attack speed for 3 seconds';
    if(stat==='chainTargets')return 'Every fourth basic attack or each cast chains to '+value+' enemies for 35% S.ATK, lowers S.DEF by 20% for 4 seconds, and delays actions by 0.25 seconds';
    if(stat==='sandstorm')return 'Sandstorm deals '+(value*100)+'% enemy max HP per second';
    if(stat==='gutsPower')return '+'+Math.round(value*100)+'% ATK below half HP or while Burned, Wounded, Sundered, or Shredded';
@@ -1406,7 +1422,13 @@
    if(!members.has(trait))members.set(trait,new Set());
    members.get(trait).add(trait==='ILoveEevee'?unit.name:familyOf(unit));
   }
-  return Object.fromEntries([...members].map(([trait,keys])=>[trait,keys.size]));
+  const counts=Object.fromEntries([...members].map(([trait,keys])=>[trait,keys.size]));
+  const activeRival=rivalPairs.some(pair=>pair.every(name=>units.some(unit=>unit.name===name && unit.star===3)));
+  if(counts['Rival Duo'])counts['Rival Duo']=activeRival?2:1;
+  const starterCount=Object.entries(counts).filter(([label,count])=>label.endsWith(' Partners') &&
+   collectionTraits[label].tiers.some(([threshold])=>count>=threshold)).reduce((sum,[,count])=>sum+count,0);
+  if(starterCount)counts['Starter Squad']=starterCount;
+  return counts;
  }
  const battlerCanvases=new WeakMap();
  function battlerSprite(unit){
@@ -1587,7 +1609,7 @@
    const next=nextTier?.[0];
    const progress=next?count+' / '+next:count+' · Max';
    const needed=next?' Next tier: '+(next-count)+' more.':' Maximum tier reached.';
-   const description=(group.role?roleDisplayName(group.role)+' role. ':group.families?'Families: '+group.families.join(', ')+'. ':'Members: '+group.members.join(', ')+'. ')+
+   const description=(group.derived?'Counts members of active regional Partners traits. ':type==='Rival Duo'?'Field both 3★ Pokémon in a matching pair. ':group.role?roleDisplayName(group.role)+' role. ':group.families?'Families: '+group.families.join(', ')+'. ':'Members: '+group.members.join(', ')+'. ')+
     (tier?(type==='Weather Trio'?'Field effect: ':'Current member bonus: ')+describeBonuses(tier[1])+'.':'Inactive.')+
     (nextTier?' At '+nextTier[0]+': '+describeBonuses(nextTier[1])+'.':'');
    const tip=element('span',description+needed,'tactics-trait-tooltip');
@@ -1705,10 +1727,20 @@
   economy.append(button('Buy XP · 4 gold',()=>{player.gold-=4;xp(player,4);render();},player.gold<4 || player.level>=maxLevel),
    button('Reroll · 2 gold',()=>{player.gold-=2;roll(player);render();},player.gold<2));
   shop.append(economy);
+  const fieldTraits=traits(field(run.scout ?? player));
   for(const [index,name] of player.shop.entries()){
    const tile=button('',()=>pickFusionBranch(player,{name,star:1,position:null},branch=>{if(buy(player,index,branch))render();}),!name || player.gold<cost(name) ||
     Boolean(name && fusionPlan(player,{name,star:1,position:null}).overflow));
    tile.className='tactics-offer'+(name?' tier-'+cost(name):'');
+   if(name && player.units.some(unit=>familyOf(unit)===name)){
+    tile.classList.add('is-owned-family');
+    tile.dataset.ownedFamily='true';
+   }
+   const matching=name?themesFor(name).filter(trait=>fieldTraits[trait]>0):[];
+   if(matching.length){
+    tile.classList.add('is-matching-trait');
+    tile.dataset.matchingTraits=matching.join(', ');
+   }
    if(name){
     const preview=fusionPlan(player,{name,star:1,position:null});
     const paths=branchPaths({name});
@@ -1728,7 +1760,11 @@
     const footer=element('span',null,'tactics-offer-footer');
     footer.append(element('strong',name),element('span','● '+cost(name),'tactics-offer-cost'));
     tile.append(art,footer);
-    tile.setAttribute('aria-label','Buy '+name+' for '+cost(name)+' gold');
+    const indicators=[];
+    if(tile.dataset.ownedFamily)indicators.push('Owned family');
+    if(matching.length)indicators.push('Matching traits: '+matching.join(', '));
+    tile.setAttribute('aria-label',['Buy '+name+' for '+cost(name)+' gold',...indicators].join('. '));
+    if(indicators.length)tile.title=[...indicators,tile.title].filter(Boolean).join('\n');
    }else tile.append(element('small','Sold'));
    const offer=element('div',null,'tactics-shop-slot');
    offer.append(tile);
@@ -1826,6 +1862,11 @@
  function fighter(unit,opponent,types,trainer){
   const base=dexStats[dex[unit.name][0]-1];
   const mods=itemMods(unit,trainer);
+  const squad=collectionTraits['Starter Squad'].tiers.findLast(([threshold])=>types['Starter Squad']>=threshold)?.[1];
+  if(squad){
+   mods.vamp=(mods.vamp ?? 0)+squad.squadVamp;
+   mods.mana=(mods.mana ?? 0)+squad.squadMana;
+  }
   const itemStartShield=mods.startShield ?? 0;
   let roleBonus={};
   for(const label of unitTraits(unit)){
@@ -1865,7 +1906,9 @@
    defense:Math.round(baseDefense+(mods.defense ?? 0)+(mods.armor ?? 0)),specialDefense:Math.round(baseSpecialDefense+(mods.defense ?? 0)+(mods.spDefense ?? 0)),
    direction:opponent?0:4,move,moveType,moveSpecial,moveEffect,moveEffects,movePowers,wait:0,manaRegen:(specialist?.regen ?? profile.regen)+(mods.regen ?? 0),
    manaOnHit:specialist?.hit ?? profile.mana,manaOnDamage:specialist?.incoming ?? (role==='Tank'?5:0),
-   manaOnTravel:specialist?.travel ?? 0,manaLock:0,manaLockMs:channeledSignatures.has(move)?1500:1000,
+   manaOnTravel:(specialist?.travel ?? 0)+(mods.travelMana ?? 0),manaLock:0,manaLockMs:
+    (channeledSignatures.has(move)?1500:1000)-(mods.techRepeat && !utilitySignature(moveEffect) &&
+     (movePowers[0]<=150 || moveEffects.some(effect=>effect==='volley' || effect==='spread'))?500:0),
    guard:mods.guard,echo:mods.echo,secondWind:mods.secondWind,overcharge:mods.overcharge,momentum:mods.momentum,
    position:combatPosition(unit.position,opponent)};
  }
@@ -1883,7 +1926,20 @@
   };
   const effects={elapsed:0,weather:[storm(a,firstTraits),storm(b,secondTraits)]};
   battleEffects.set(units,effects);
+  const openingPositions=new Map(units.map(unit=>[unit,unit.position]));
   for(const unit of units){
+   if(unit.gear.travelMana){
+    const origin=openingPositions.get(unit);
+    const enemy=units.filter(other=>other.opponent!==unit.opponent).sort((a,b)=>
+     distance(origin,openingPositions.get(b))-distance(origin,openingPositions.get(a)))[0];
+    if(enemy){
+     for(let step=0;step<18 && distance(unit.position,enemy.position)>Math.max(.9,unit.range);step++){
+      const next=nextStep(unit,enemy,units);
+      if(!next)break;
+      unit.position=next;
+     }
+    }
+   }
    if(enemiesHaveAirLock(unit,units))unit.shield-=unit.traitShield*.5;
    if(unit.gear.geneticApex){
     const enemy=units.filter(other=>other.opponent!==unit.opponent)
@@ -2063,7 +2119,7 @@
  function nextStep(unit,target,units){
   const {x,y}=unit.position;
   const heading=Math.atan2(target.position.y-y,target.position.x-x);
-  const step=Math.min(.34,Math.max(.08,distance(unit.position,target.position)-unit.range+.04));
+  const step=Math.min(.34*(1+(unit.gear.moveSpeed ?? 0)),Math.max(.08,distance(unit.position,target.position)-unit.range+.04));
   for(const offset of [0,.6,-.6,1.15,-1.15,1.65,-1.65]){
    const angle=heading+offset;
    const point={x:Math.max(0,Math.min(6.5,x+Math.cos(angle)*step)),
@@ -2246,6 +2302,10 @@
      distance(target.position,other.position)<=2).sort((a,b)=>distance(target.position,a.position)-distance(target.position,b.position))[0];
     if(extra)dealt+=receiveDamage(extra,damage*gear.volleyShot,now,false,unit);
    }
+   if(thirdAttack && gear.colossusSlam)dealt+=receiveDamage(target,unit.max*gear.colossusSlam*100/(100+target.defense),now,false,unit);
+   const technician=cast && !utility && gear.techRepeat &&
+    (unit.movePowers[0]<=150 || unit.moveEffects.some(effect=>effect==='volley' || effect==='spread'));
+   if(technician)dealt+=receiveDamage(target,damage*gear.techRepeat,now,critical>1,unit);
    if(cast && !utility && unit.echo){
     unit.echo=false;
     dealt+=receiveDamage(target,Math.max(1,Math.round(damage*.35)),now,critical>1,unit);
@@ -2273,6 +2333,14 @@
    }
    if(cast){
     applySignature(unit,target,units,damage,now,dealt);
+    if(gear.prankLock && !unit.prankUsed){
+     unit.prankUsed=true;
+     target.manaLock=Math.max(target.manaLock,gear.prankLock*1000);
+    }
+    if(gear.rivalPulse){
+     const rival=units.find(other=>other.hp>0 && other.opponent===unit.opponent && other.star===3 && other.name===rivalFor(unit.name));
+     if(rival){gainMana(rival,15);rival.rivalUntil=rival.elapsed+3000;}
+    }
     if(unit.truantAsleep){unit.truantAsleep=false;unit.truantUntil=unit.elapsed+6000;}
     if(gear.glitch){
      unit.glitchCasts=(unit.glitchCasts ?? 0)+1;
@@ -2295,7 +2363,7 @@
    }else gainMana(unit,unit.manaOnHit+(gear.hitMana ?? 0)+(critical>1?(gear.critMana ?? 0):0));
    const rally=unit.rallyUntil>unit.elapsed?[.15,.25,.40][unit.star-1]:0;
    const frost=1-Math.max(unit.frostUntil>unit.elapsed?.25:0,unit.chillUntil>unit.elapsed?unit.chillSlow:0);
-   const traitHaste=(unit.galeUntil>unit.elapsed?.25:0)+(unit.truantUntil>unit.elapsed?1:0);
+   const traitHaste=(unit.galeUntil>unit.elapsed?.25:0)+(unit.truantUntil>unit.elapsed?1:0)+(unit.rivalUntil>unit.elapsed?.20:0);
    unit.wait+=1000*(1-(unit.signatureRush ?? 0))/(frost*unit.attackSpeed*(1+rally+traitHaste+Math.min(5,unit.basicHits ?? 0)*(gear.strikeHaste ?? 0)+Math.floor(unit.elapsed/1000)*(gear.rampSpeed ?? 0)));
    unit.signatureRush=0;
   }
@@ -2398,7 +2466,13 @@
    const bubble=element('span',null,'tactics-cast-bubble');
    const status=element('span',null,'tactics-effect-summary');
    bubble.hidden=true;
-   node.append(bars,battlerSprite(unit),element('span','★'.repeat(unit.star),'tactics-combat-stars'),bubble,status);
+      const sprite=battlerSprite(unit);
+   if(unit.gear.colossusSlam || unit.bossHp){
+    const scale=unit.bossHp?1.5:1+({'0.04':.15,'0.07':.30,'0.12':.50}[unit.gear.colossusSlam] ?? 0);
+    sprite.style.scale=String(scale);
+    sprite.style.transformOrigin='center bottom';
+   }
+   node.append(bars,sprite,element('span','★'.repeat(unit.star),'tactics-combat-stars'),bubble,status);
    unitControls(node,unit,false);
    layer.append(node);
    return {unit,node,hp,mana,bubble,shield,status,shownShield:0};
