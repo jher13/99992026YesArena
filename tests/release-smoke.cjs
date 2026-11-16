@@ -49,7 +49,7 @@ const context=vm.createContext({
 });
 context.button=(label,onclick,disabled)=>Object.assign(element('button',label),{onclick,disabled});
 const source=read('tactics.js');
-const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,combatRole,evolutionFamilies,collectionTraits,unitTraits,signatures,expandedSignatures,signatureEffects,signatureEffectText,extraSignatureText,traits,familyOf,stageLabel,openingRound,wildRound,megaRound,augmentRound,carouselRound,megaRewardTier,finalRound,neutralTrainer,completeNeutral,grantTowerWard,receiveDamage,heal,equip,sell,ignite,fusionPlan,applyFusion,setRound:round=>{run.round=round;},getRun:()=>run};';
+const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,combatRole,evolutionFamilies,collectionTraits,unitTraits,signatures,expandedSignatures,signatureEffects,signatureEffectText,extraSignatureText,traits,familyOf,stageLabel,openingRound,wildRound,megaRound,augmentRound,carouselRound,carouselOffers,draftCarousel,megaRewardTier,finalRound,neutralTrainer,completeNeutral,grantTowerWard,receiveDamage,heal,equip,sell,ignite,fusionPlan,applyFusion,setRound:round=>{run.round=round;},getRun:()=>run};';
 new vm.Script(data+'\n'+source.replace(/\}\)\(\);\s*$/,auditExports+'})();'),{filename:'tactics.js'}).runInContext(context);
 const a=context.audit;
 byId('home-tactics').onclick();
@@ -58,6 +58,22 @@ assert.equal(a.getRun().trainers.length,8);
 assert(a.getRun().trainers.every(trainer=>trainer.gold===2));
 assert.equal(byId('tactics-content').children[0].className,'tactics-layout');
 assert(context.window.hasActiveTacticsRun());
+for(const stage of [2,3,4,5,6]){
+ const pool=structuredClone(a.getRun().pool);
+ const before=[...pool.values()].reduce((sum,entry)=>sum+entry.copies,0);
+ const offers=a.carouselOffers(pool,stage);
+ assert.equal(offers.length,9);
+ assert.equal(new Set(offers.map(offer=>offer.slot)).size,9);
+ assert(offers.every(offer=>offer.unit.items[0]===offer.item));
+ assert.equal(before-[...pool.values()].reduce((sum,entry)=>sum+entry.copies,0),
+  offers.reduce((sum,offer)=>sum+offer.unit.poolCopies,0));
+ if(stage===5)assert(offers.every(offer=>offer.ball==='Master Ball' && offer.tier===5));
+ const drafter=a.makeTrainer('Carousel tester');
+ drafter.units=[];
+ assert(a.draftCarousel(drafter,offers[0]));
+ assert.equal(drafter.units[0].items[0],offers[0].item);
+}
+
 const trainer=a.getRun().trainers[0];
 const starter=trainer.units[0];
 assert(a.equip(trainer,starter,'Claw'));

@@ -956,13 +956,32 @@
   }
   return mods;
  }
+ function carouselOffers(pool,stage){
+  const offers=[];
+  const tiers=stage===5?[5]:Array.from({length:Math.min(stage,5)},(_,i)=>i+1);
+  for(let slot=0;slot<9;slot++){
+   const stocked=[...pool].filter(([,entry])=>entry.copies>0 && tiers.includes(entry.tier+1));
+   const matching=stocked.filter(([,entry])=>entry.tier+1===tiers[slot%tiers.length]);
+   const selected=drawRogueChoices(matching.length?matching:stocked,1)[0];
+   if(!selected)break;
+   const [name,entry]=selected;
+   const tier=entry.tier+1;
+   const evolved=tier<=2 && slot%3===2 && entry.copies>=3 && evolutionFamilies[name]?.length===1;
+   const star=evolved?2:1;
+   const poolCopies=evolved?3:1;
+   const item=stage===5?drawRogueChoices(standardGear,1)[0]:randomComponent();
+   const ball=tier===5?'Master Ball':tier===4?'Ultra Ball':tier===3?'Great Ball':'Poké Ball';
+   const unit={name:evolved?evolutionFamilies[name][0][0]:name,family:name,star,position:null,items:[item],poolCopies};
+   entry.copies-=poolCopies;
+   offers.push({slot,name,item,ball,tier,unit});
+  }
+  return offers;
+ }
  function draftCarousel(trainer,offer,branch){
-  const {name,item}=offer;
-  const plan=fusionPlan(trainer,{name,star:1,position:null,items:[]},branch);
+  const plan=fusionPlan(trainer,offer.unit,branch);
   if(plan.overflow)return false;
   if(trainer===run.trainers[0] && plan.displaced.length && !window.confirm(
    'Fusion moves '+plan.displaced.map(unit=>unit.name).join(', ')+' to the bench. Choose this offer?'))return false;
-  trainer.items.push(item);
   applyFusion(trainer,plan);
   return true;
  }
@@ -974,16 +993,11 @@
    for(const ai of living.slice(1))grantAugment(ai,drawRogueChoices(augments.filter(([label])=>!ai.augments.includes(label)),1)[0]);
    run.choice={kind:'augment',offers:drawRogueChoices(augments.filter(([label])=>!player.augments.includes(label)),3)};
   }else if(carouselRound(run.round)){
-   const offers=[];
-   for(let i=0;i<living.length+2;i++){
-    const pool=[...run.pool].filter(([,entry])=>entry.copies>0 && entry.tier<=Math.min(4,Math.floor(run.round/6)));
-    const selected=drawRogueChoices(pool,1)[0];
-    if(!selected)break;
-    const [name,entry]=selected;entry.copies--;
-    offers.push({name,item:randomComponent()});
-   }
+   const {stage}=stageRound(run.round);
+   const offers=carouselOffers(run.pool,stage);
+   const release=()=>{for(const offer of offers)run.pool.get(offer.name).copies+=offer.unit.poolCopies;};
    const order=[...living].sort((a,b)=>a.hp-b.hp);
-   const fits=(trainer,offer)=>!fusionPlan(trainer,{name:offer.name,star:1,position:null}).overflow;
+   const fits=(trainer,offer)=>!fusionPlan(trainer,offer.unit).overflow;
    const aiPick=trainer=>{
     const eligible=offers.filter(offer=>fits(trainer,offer));
     if(!eligible.length)return;
@@ -993,22 +1007,31 @@
    while(order.length && order[0]!==player)aiPick(order.shift());
    if(!offers.some(offer=>fits(player,offer))){
     for(const ai of order.slice(1))aiPick(ai);
-    for(const offer of offers)run.pool.get(offer.name).copies++;
+    release();
     return false;
-   }else run.choice={kind:'carousel',offers,complete:()=>{
+   }else run.choice={kind:'carousel',stage,offers,complete:()=>{
     for(const ai of order.slice(1))aiPick(ai);
-    for(const offer of offers)run.pool.get(offer.name).copies++;
+    release();
    }};
   }
  }
  function renderChoice(choice){
   const player=run.trainers[0];
-  const grid=element('div',null,'shop-grid');
-  for(const [index,offer] of choice.offers.entries()){
-   const tile=choice.kind==='carousel'?card(offer,offer.item):element('div',null,'bag-item');
-   const plan=choice.kind==='carousel'?fusionPlan(player,{name:offer.name,star:1,position:null}):null;
+  const carousel=choice.kind==='carousel';
+  const grid=element('div',null,carousel?'tactics-carousel-grid':'shop-grid');
+  const slots=carousel?Array.from({length:9},(_,slot)=>choice.offers.find(offer=>offer.slot===slot)):choice.offers;
+  for(const [index,offer] of slots.entries()){
+   if(!offer){grid.append(element('div','Unavailable','tactics-carousel-empty'));continue;}
+   const tile=element('div',null,'bag-item');
+   const plan=carousel?fusionPlan(player,offer.unit):null;
    if(plan){
-    tile.append(itemIcon(offer.item));
+    tile.classList.add('tactics-carousel-ball','tier-'+offer.tier);
+    if(choice.stage<=3)tile.classList.add('is-mystery');
+    tile.tabIndex=0;
+    const preview=element('div',null,'tactics-carousel-preview');
+    preview.append(idlePokemonPortrait(offer.unit.name),element('strong',offer.unit.name+' '+'★'.repeat(offer.unit.star)));
+    tile.append(bagItemIcon(offer.ball),element('strong',offer.ball),element('small','Tier '+offer.tier),
+     preview,itemIcon(offer.item),element('small',offer.item));
     if(plan.overflow)tile.append(element('small','Needs '+plan.overflow+' more bench slot(s).'));
     else if(plan.displaced.length)tile.append(element('small','Moves to bench: '+plan.displaced.map(unit=>unit.name).join(', ')));
     else if(plan.upgrades.length)tile.append(element('small','Fuses immediately.'));
@@ -1019,9 +1042,9 @@
      grantAugment(player,offer);
      run.choice=null;
      startPlanning();
-    }else pickFusionBranch(player,{name:offer.name,star:1,position:null},branch=>{
+    }else pickFusionBranch(player,offer.unit,branch=>{
      if(!draftCarousel(player,offer,branch))return;
-     choice.offers.splice(index,1);
+     choice.offers.splice(choice.offers.indexOf(offer),1);
      choice.complete();
      run.choice=null;
      advanceRound();
@@ -1030,7 +1053,7 @@
    grid.append(tile);
   }
   const panel=element('section',null,'tactics-choice'+(choice.kind==='augment'?' tactics-augment-screen':''));
-  panel.append(choice.kind==='augment'?element('h2','Choose one'):heading('Shared carousel'),grid);
+  panel.append(choice.kind==='augment'?element('h2','Choose one'):heading(choice.stage===5?'Master Ball Draft':'Poké Ball Carousel'),grid);
   content.replaceChildren(panel);
  }
  function neutralTrainer(){
@@ -1402,12 +1425,6 @@
   while(trainer.level<maxLevel && trainer.xp>=levels[trainer.level]){
    trainer.xp-=levels[trainer.level];trainer.level++;
   }
- }
- function card(unit,detail){
-  const tile=element('div',null,'bag-item');
-  tile.append(idlePokemonPortrait(unit.name),element('strong',unit.name),element('small',detail));
-  if(unit.items?.length)tile.append(element('small',unit.items.join(' · ')));
-  return tile;
  }
  function moveUnit(player,position,unit=run.selected){
   if(!unit || unit.position===position)return;

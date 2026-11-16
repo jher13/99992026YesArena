@@ -590,6 +590,18 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 #tactics .tactics-offer small,.tactics-offer-cost{font-size:10px}
 #tactics .tactics-hint{color:#c8d3c7;text-align:center;font-size:12px;margin:6px 0}
 .tactics-choice{padding:12px}
+.tactics-carousel-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#tactics .tactics-carousel-ball,.tactics-carousel-empty{display:grid;justify-items:center;align-content:center;gap:4px;text-align:center;min-width:0;padding:7px;border:1px solid var(--ball-rim,#c8c8bb);border-radius:8px;background:#202f34;color:#fff0cf}
+#tactics .tactics-carousel-ball.tier-2{--ball-rim:#81ce9f}
+#tactics .tactics-carousel-ball.tier-3{--ball-rim:#80bafa}
+#tactics .tactics-carousel-ball.tier-4{--ball-rim:#d9a6ff}
+#tactics .tactics-carousel-ball.tier-5{--ball-rim:#efce76}
+#tactics .tactics-carousel-ball>canvas{width:38px;height:38px;image-rendering:pixelated}
+.tactics-carousel-preview{display:grid;justify-items:center;font-size:12px;min-width:0;overflow-wrap:anywhere}
+#tactics .tactics-carousel-preview canvas{width:40px;height:40px;object-fit:contain;image-rendering:pixelated}
+.tactics-carousel-ball.is-mystery:not(:hover):not(:focus-within) .tactics-carousel-preview canvas{filter:brightness(0) drop-shadow(0 0 2px #b9ccc8)}
+.tactics-carousel-ball.is-mystery:not(:hover):not(:focus-within) .tactics-carousel-preview strong{visibility:hidden}
+.tactics-carousel-empty{opacity:.65}
 #tactics .tactics-choice .bag-item small{color:#d5dccc}
 @media(max-width:760px){
  .tactics-layout{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -9373,6 +9385,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.29',changes:['Added the shared Poké Ball Carousel and Stage 5 Master Ball Draft.']},
  {version:'0.22.28',changes:['Added shop indicators for owned families and matching traits, plus new combat traits.']},
  {version:'0.22.27',changes:['Filled the final-form trait roster, added Legendary passives, and made branching fusions interactive.']},
  {version:'0.22.26',changes:['Gave all Fight Tactics roster forms their own named signature moves.']},
@@ -9628,4 +9641,4 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.28"></script><script src="./multiplayer.js?v=0.22.19"></script></html>
+<script src="./tactics.js?v=0.22.29"></script><script src="./multiplayer.js?v=0.22.19"></script></html>
