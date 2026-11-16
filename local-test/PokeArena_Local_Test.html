@@ -7669,6 +7669,50 @@ function gambitChoice(actor,opponents,defaultTarget) {
  }
  return null;
 }
+const aiControlMoves=new Set(['Sleep Powder','Spore','Thunder Wave','Stun Spore','Yawn','Glare','Nuzzle']);
+const aiEntryTraps=new Set(['Spikes','Sticky Web']);
+function anticipateAttack(actor,target,gap,dt) {
+ if(actor.charge<=0 || actor.ai?.style==='Aggressive' || target.charge>0.5 || isExhausted(target))return false;
+ const threat=target.moves.find((move,slot)=>{
+  const timer=target.moveTimers[slot];
+  if(!(timer>0 && timer<=0.5) || moveRestricted(target,move))return false;
+  const geometry=arenaMoveGeometry(move,moveRules(move));
+  return (moveCatalog[move][1]>=100 || aiControlMoves.has(move)) &&
+   gap<=geometry.range+12 && gap>=Math.max(16,geometry.range-42);
+ });
+ if(!threat || firstPillar(target.x,target.y,actor.x,actor.y))return false;
+ const route=retreatRoute(actor,target,[target]);
+ if(!route)return false;
+ moveActor(actor,route.dx,route.dy,28,dt,true);
+ return true;
+}
+function coordinatedMoveWeight(actor,target,move,rules) {
+ const teammates=activeTeammates(actor).filter(ally=>ally!==actor);
+ if(!teammates.length)return 1;
+ const hasFollowUp=teammates.some(ally=>ally.moves.some((attack,slot)=>
+  !moveCatalog[attack][4] && moveCatalog[attack][1]>=85 && ally.moveTimers[slot]<=1.5 &&
+  ['wave','beam','cone','zone'].includes(skillShape(attack))));
+ if(aiControlMoves.has(move) && !target.ailment && hasFollowUp)return 1.4;
+ if(aiEntryTraps.has(move) && hasFollowUp && forcedSwitchOptions(target,null).length)return 1.2;
+ const {shape,warning}=arenaMoveGeometry(move,rules);
+ if(moveCatalog[move][4] || (!rules.radius && !['wave','beam','cone'].includes(shape)))return 1;
+ const overlap=pendingCasts.some(cast=>cast.actor!==actor && cast.actor.friendly===actor.friendly &&
+  (cast.radius>=50 || cast.line?.halfWidth || cast.line?.halfAngle) && hazardHits(target,cast));
+ const pinned=target.ailment===2 || isExhausted(target) || target.flinch>warning;
+ return (overlap?0.42:1)*(pinned?1.4:1);
+}
+function pivotMoveWeight(actor,target,move) {
+ if(!selfRecallMoves.has(move) || recallMoveWait(actor,move)>0 || fieldMoveActive('Fairy Lock'))return 1;
+ const reserves=forcedSwitchOptions(actor,null).filter(reserve=>reserve.hp>=reserve.max*.45 && reserveMatchup(reserve)>-50);
+ const incomingThreat=member=>Math.max(1,...target.moves.filter(attack=>!moveCatalog[attack][4])
+  .map(attack=>effectiveness(moveCatalog[attack][0],member)));
+ const threat=incomingThreat(actor);
+ if((actor.hp<actor.max*.35 || threat>=4) && reserves.some(reserve=>incomingThreat(reserve)<threat || reserveMatchup(reserve)>reserveMatchup(actor)+.6))return move==='Shed Tail'?1.25:2.5;
+ if(move==='Baton Pass' && actor.stages.some((stage,index)=>[2,4,6].includes(index) && stage>0) &&
+  reserves.some(reserve=>reserve.moves.some(attack=>!moveCatalog[attack][4] &&
+   (actor.stages[moveRules(attack).category===2?2:4]>0 || actor.stages[6]>0))))return 1.8;
+ return 1;
+}
 function act(actor, opponents, dt) {
  actor.gait = null;
  if(actor.hp<=0) return;
@@ -7704,7 +7748,7 @@ function act(actor, opponents, dt) {
   const covered=rockIntersection(actor.x,actor.y,opponent.x,opponent.y)<1;
   const previous=battleActorId(opponent)===actor.committedTarget;
   const committed=previous?12:0;
-  const pressure=opponent.attack>0?8:0;
+  const pressure=isExhausted(opponent)?42:opponent.attack>0?8:0;
   const usable=actor.moves.some(move=>!moveCatalog[move][4] &&
    !moveRestricted(actor,move) && tacticalMoveScore(actor,opponent,move,moveRules(move),separation)>0);
   const preferenceWeight=['Type weakness','Lowest HP','Highest HP'].includes(actor.ai?.target)?40:1;
@@ -7741,7 +7785,13 @@ function act(actor, opponents, dt) {
  const formation=position==='Frontline' || position==='Backline';
  const preferredGap=position==='Backline'?115:formation?null:battlePositions[position];
  const close=preferredGap!==null && preferredGap<=28;
- if(!preparing && !gambit && !actor.manualTarget && seekPillarCover(actor,opponents,dt))return;
+ const stalled=!preparing && clock-lastDamageClock>=3.5;
+ const press=stalled || isExhausted(target);
+ if(!preparing && !gambit && !actor.manualTarget && !press &&
+  (anticipateAttack(actor,target,gap,dt) || seekPillarCover(actor,opponents,dt)))return;
+ const cooling=!gambit && !press && actor.exhaustion>=70;
+ const finishing=!preparing && actor.charge<=0 && readyKnockout(actor,target,gap);
+
  let usableAttack=false;
  for(let slot=0;!gambit && slot<actor.moves.length;slot++) {
   const move=actor.moves[slot];
@@ -7775,10 +7825,16 @@ function act(actor, opponents, dt) {
   const gymPriority=gymSetup?1.65:
    actor.gymRole==='ace' && move==='Roar'?1.35:1;
   const attack=!moveCatalog[move][4];
+  const cost=moveExhaustionCost(actor,slot);
+  if(cooling && actor.exhaustion+cost>=100 && !finishing)continue;
+  const fatigue=cooling && !finishing && cost>=15?0.35:1;
+  const commit=press && attack?(remaining>0?0.55:1.8):press && !attack?0.55:1;
+
   const reserve=attack && actor.moveTimers.some((time,i)=>i!==slot && time>0.4 &&
    !moveCatalog[actor.moves[i]][4] && moveRules(actor.moves[i]).category===rules.category);
   const stagger=reserve && basicAttackWindow(actor,gap)?0.7:1;
-  const value=score*bias*rangedBias*positionBias*gymPriority*weatherAttackWeight(actor,move,target)*stagger*[0.4,1,2.5][preference]/
+  const value=score*bias*rangedBias*positionBias*gymPriority*weatherAttackWeight(actor,move,target)*stagger*fatigue*commit*
+   pivotMoveWeight(actor,target,move)*coordinatedMoveWeight(actor,target,move,rules)*[0.4,1,2.5][preference]/
    ((1+(remaining+coverCost)/48)*(1+escapeRisk));
   if(!choice || value>choice.value) choice={slot,move,rules,shape,range,selfCentered,remaining,value,stagger:stagger<1 && target.hp>target.max*.3};
  }
@@ -7787,7 +7843,7 @@ function act(actor, opponents, dt) {
  const basicRules={...moveRules('Tackle'),range:basicRange,category:2};
  const basicScore=basicAllowed?tacticalMoveScore(actor,target,'Normal Attack',basicRules,gap):0;
  if(!gambit && basicScore>0 && (actor.normalAttackAt ?? 0)<=clock && gap<=basicRange &&
-    (!choice || choice.remaining>0 || actor.charge>0 || choice.stagger && !readyKnockout(actor,target,gap)) && !firstPillar(actor.x,actor.y,target.x,target.y)) {
+    (!choice || choice.remaining>0 || actor.charge>0 || choice.stagger && !press && !finishing) && !firstPillar(actor.x,actor.y,target.x,target.y)) {
   choice={slot:-1,move:'Normal Attack',rules:basicRules,range:basicRange,remaining:0};
  }
  if(!choice && !usableAttack && basicScore>0) {
@@ -7799,7 +7855,7 @@ function act(actor, opponents, dt) {
   const rules=moveRules(move);
   choice={slot:-1,move,rules,range:rules.range,remaining:Math.max(0,gap-rules.range)};
  }
- if(formation && choice?.rules.scope!=='ally' && (!choice || choice.remaining>0 || actor.charge>0)) {
+ if(!press && formation && choice?.rules.scope!=='ally' && (!choice || choice.remaining>0 || actor.charge>0)) {
   const team=activeTeammates(actor).filter(member=>member!==actor);
   if(team.length) {
    const x=team.reduce((sum,member)=>sum+member.x,0)/team.length;
@@ -7821,11 +7877,11 @@ function act(actor, opponents, dt) {
   const ready=choice && choice.remaining===0 && actor.charge<=0;
   const dx=(target.x-actor.x)/distance;
   const dy=(target.y-actor.y)/distance;
-  if(gap>goal+10 && (close || !ready)) {
+  if(!press && gap>goal+10 && !ready && (choice || gap>attackReach)) {
    moveActor(actor,dx,dy,gap-goal,dt,gap-goal>100,target);
    return;
   }
-  if(!close && !gambit && gap<goal-12 && (!ready || choice.range<goal-12)) {
+  if(!press && !close && !gambit && !ready && gap<goal-12) {
    const route=retreatRoute(actor,target,opponents);
    if(route) {
     moveActor(actor,route.dx,route.dy,goal-gap,dt,true);
@@ -7833,7 +7889,7 @@ function act(actor, opponents, dt) {
    }
   }
  }
- const retreat=preferredGap===null && (actor.ai?.style!=='Aggressive' || actor.ai?.target==='Ranged attacks') && meleeThreat && gap<48 && rangedReadyIn>0 && rangedReadyIn<=1.2 &&
+ const retreat=!press && preferredGap===null && (actor.ai?.style!=='Aggressive' || actor.ai?.target==='Ranged attacks') && meleeThreat && gap<48 && rangedReadyIn>0 && rangedReadyIn<=1.2 &&
   (!choice || actor.charge>0) && distance>1;
  const route=retreat && !gambit?retreatRoute(actor,target,opponents):null;
  if(route) {
@@ -7841,6 +7897,10 @@ function act(actor, opponents, dt) {
   return;
  }
  const remaining=choice?.remaining ?? 0;
+ if(press && !gambit && !choice && distance>1 && gap>18){
+  moveActor(actor,(target.x-actor.x)/distance,(target.y-actor.y)/distance,gap-18,dt,true,target);
+  return;
+ }
  if(remaining>0.01 && distance>1) {
   moveActor(actor,(target.x-actor.x)/distance,(target.y-actor.y)/distance,remaining,dt,remaining>100,target);
   return;
@@ -7848,7 +7908,7 @@ function act(actor, opponents, dt) {
  if(!choice || remaining>0.01 || (choice.move==='Normal Attack'?(actor.normalAttackAt ?? 0)>clock:actor.charge>0)) return;
  const cover=choice.rules.scope!=='ally' && !choice.selfCentered && firstPillar(actor.x,actor.y,target.x,target.y);
  const strikeCover=cover && cover.rock.hp>0 && !moveCatalog[choice.move][4] && !sacrificeProfiles.has(choice.move) &&
-  (cover.rock.hp<=8 || moveCatalog[choice.move][1]>=90 || inSkill(target,null,0,pillarPath(cover.rock,actor)));
+  (press || cover.rock.hp<=8 || moveCatalog[choice.move][1]>=90 || inSkill(target,null,0,pillarPath(cover.rock,actor)));
  if(cover && !strikeCover && distance>1) {
   const dx=(target.x-actor.x)/distance,dy=(target.y-actor.y)/distance;
   const lane=[1,-1].map(side=>{
@@ -8222,14 +8282,17 @@ function updateExhaustionBar(bar,actor) {
  const label=actor.name+' · '+(value===100?'Exhausted':'Exhaustion '+value+'%');
  if(bar.title!==label){bar.title=label;bar.setAttribute('aria-label',label);}
 }
-function addMoveExhaustion(actor,slot,animation,overrideCost) {
- if(actor.side==='boss')return;
+function moveExhaustionCost(actor,slot) {
+ if(actor.side==='boss')return 0;
  const move=actor.moves[slot] ?? 'Struggle';
  const power=moveCatalog[move][1];
  const cooldown=actor.moveCooldowns[slot] ?? 2;
  const quick=power<=60 && (cooldown<=3 || moveCatalog[move][3]>0);
- const cost=quick?6:power>=120?32:power>=90?23:power>0?15:12;
- actor.exhaustion=Math.min(100,(actor.exhaustion ?? 0)+(overrideCost ?? cost));
+ return quick?6:power>=120?32:power>=90?23:power>0?15:12;
+}
+function addMoveExhaustion(actor,slot,animation,overrideCost) {
+ if(actor.side==='boss')return;
+ actor.exhaustion=Math.min(100,(actor.exhaustion ?? 0)+(overrideCost ?? moveExhaustionCost(actor,slot)));
  actor.exhaustionAnimationUntil=Math.max(actor.exhaustionAnimationUntil ?? 0,clock+animation);
 }
 function tickExhaustion(actor,dt) {
@@ -9607,6 +9670,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.38',changes:['Reduced circling around pillars and added threat anticipation, exhaustion-aware play, and team move coordination.']},
  {version:'0.22.37',changes:['Improved Arena AI cover, hazard dodging, cooldown use, positioning, and team targeting.']},
  {version:'0.22.36',changes:['Removed battle movement labels and consolidated Campaign victory navigation into Next gym.']},
  {version:'0.22.35',changes:['Added PC favorites and aligned EXP Boost and Ability Capsule controls.']},

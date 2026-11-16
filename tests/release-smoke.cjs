@@ -528,6 +528,21 @@ async function verifyLoanerGear(){
  assert.equal((serialized.match(/"heldItem":"Wise Glasses"/g) ?? []).length,1);
  assert(!serialized.includes('"heldItem":"Leftovers"'));
 }
-Promise.all([verifyPendingRecovery(),verifyLoanerGear()]).then(()=>{
+async function verifyPillarChase(){
+ const {simulateOnline}=await import('../supabase/functions/arena-combat/engine.js');
+ const match={id:'b2450000-0000-0000-0000-000000000000',mode:'unranked',format:1,
+  host:'a',guest:'b',host_pick:['Mewtwo'],guest_pick:['Malamar'],host_entries:{},guest_entries:{}};
+ const {state}=simulateOnline(match,null,0,null,'host');
+ const [mewtwo]=state.allies;
+ const [malamar]=state.enemies;
+ Object.assign(mewtwo,{x:415,y:270,moves:['Night Shade','Sucker Punch','Confusion','Shadow Ball'],
+  moveTimers:[0,0,0,0],moveCooldowns:[5,4,3,5],
+  ai:{target:'Nearest',style:'Aggressive',position:'Melee',priorities:[1,2,1,1]}});
+ Object.assign(malamar,{x:545,y:270});
+ state.arenaMap.rocks=[{x:480,y:270,r:32,hp:32,maxHp:32,cover:true}];
+ const result=simulateOnline(match,state,600,null,'host');
+ assert(result.state.lastDamageClock>0,'Mewtwo and Malamar must exchange damage around a pillar');
+}
+Promise.all([verifyPendingRecovery(),verifyLoanerGear(),verifyPillarChase()]).then(()=>{
  console.log('Manual Capture, full-bench fusion, pending-save recovery, and server loaner gear checks passed.');
 }).catch(error=>{console.error(error);process.exitCode=1;});
