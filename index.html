@@ -5443,7 +5443,7 @@ byId('wild-difficulty').onchange=openWildRegions;
 byId('home-gyms').onclick=openGyms;
 byId('home-collection').onclick=openCollection;
 byId('collection-back').onclick=openMenu;
-byId('next-gym').onclick=()=>{const next=gymTeams[clearedGyms.length];if(next) openBattle(next);};
+byId('next-gym').onclick=continueCampaign;
 byId('gym-back').onclick=openMenu;
 byId('team-back').onclick=openMenu;
 let phase, allies, enemies, effects, selected, speed, clock, recallCooldown;
@@ -5773,9 +5773,6 @@ function updateActivePanels(onlineFields) {
    badge.title=status[1];
    badge.setAttribute('aria-label',status[1]);
   }
-  const gait={walk:'Walking',run:'Running'}[actor.gait];
-  const activity=phase==='battle' && gait ? panel.label+' · '+gait : panel.label;
-  if(panel.activity.textContent!==activity) panel.activity.textContent=activity;
   const health=actor.hp+'/'+actor.max+' HP';
   if(panel.hp.textContent!==health) panel.hp.textContent=health;
   panel.moves.forEach(({timer,bar},slot)=>{
@@ -6230,7 +6227,7 @@ function renderControls() {
  });
  if(phase!=='battle' && phase!=='setup') stopBattleMusic();
  updateAutoReserveToggle();
- byId('next-gym').hidden=!(phase==='win' && newBadge && clearedGyms.length<gymTeams.length);
+ byId('next-gym').hidden=!(phase==='win' && selectedGym && gymTeams[clearedGyms.length]);
  updateActivePanels();
  updateScore();
  updateBattleRosters();
@@ -6250,7 +6247,6 @@ function renderControls() {
  byId('speed').textContent = speed + '× speed';
  byId('speed').setAttribute('aria-pressed',String(speed>1));
  byId('choices').replaceChildren();
- if(selectedGym && phase==='win' && gymTeams[clearedGyms.length])button('Continue Campaign',continueCampaign);
  if(selectedTrainer && ['win','loss','draw'].includes(phase)) {
   button('Next trainer',()=>startTrainerEncounter(selectedTrainer.tier,selectedTrainer.format));
   button('Trainer settings',openTrainerSetup);
@@ -9536,6 +9532,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.36',changes:['Removed battle movement labels and consolidated Campaign victory navigation into Next gym.']},
  {version:'0.22.35',changes:['Added PC favorites and aligned EXP Boost and Ability Capsule controls.']},
  {version:'0.22.34',changes:['Separated EXP Boosts, preserved selected training stats, and added stored copy previews.']},
  {version:'0.22.33',changes:['Added a PC-style grid for copies of the selected Pokémon.']},
