@@ -3442,10 +3442,10 @@ try {
  if(Array.isArray(saved))for(const id of saved)if(gymTeams.some(gym=>gym.id===id))masterGymClears.add(id);
 } catch {}
 function masterGymsUnlocked() {return clearedGyms.length===gymTeams.length;}
-const masterChallengerRoster=['Dragonite','Gardevoir','Magnezone','Milotic','Krookodile','Chandelure'];
+const masterOpponentExclusions=['Dragonite','Gardevoir','Magnezone','Milotic','Krookodile','Chandelure'];
 function masterGymOpponent(gym) {
  const types=gym.types.split(',').map(type=>type.trim());
- const candidates=dexNames.filter(name=>!gym.roster.includes(name) && !masterChallengerRoster.includes(name));
+ const candidates=dexNames.filter(name=>!gym.roster.includes(name) && !masterOpponentExclusions.includes(name));
  const power=name=>dexStats[dex[name][0]-1].reduce((sum,stat)=>sum+stat,0);
  const ordered=candidates.sort((a,b)=>Number(types.some(type=>dex[b].slice(1,3).includes(type)))-
   Number(types.some(type=>dex[a].slice(1,3).includes(type))) || power(b)-power(a));
@@ -4744,7 +4744,7 @@ function updateStageIcons(container,actor) {
 function renderBattleRosters() {
  rosterCards = [];
  for(const [id,title,roster,friendly] of [
-  ['player-roster',selectedMasterGym?'Master challenger':'Your team',allies,true],['enemy-roster',selectedGym?.name ?? 'Opponent',enemies,false]
+  ['player-roster','Your team',allies,true],['enemy-roster',selectedGym?.name ?? 'Opponent',enemies,false]
  ]) {
   const container=byId(id);
   container.replaceChildren(element('h2',title));
@@ -4757,7 +4757,7 @@ function renderBattleRosters() {
    hp.setAttribute('aria-label',actor.name+' HP');
    const identity=battleRosterIdentity(actor.name,actor.level);
    card.append(pokemonPortrait(actor.name),identity,hp);
-   const xp=friendly && !rogueRun && !selectedMasterGym ? element('progress',null,'battle-xp') : null;
+   const xp=friendly && !rogueRun ? element('progress',null,'battle-xp') : null;
    const exhaustion=makeExhaustionBar(actor);
    card.append(exhaustion);
    if(xp) card.append(xp);
@@ -4906,7 +4906,7 @@ function unit(name,x,y,friendly,level=friendly?(ownedPokemon(name)?.level ?? 5):
  const speedFactor=clamp(0.65+stats[3]/200,0.65,1.7);
  return {name,gymRole:!friendly?selectedGym?.plan?.team[gymSlot]?.[1]:null,type:primary,level,hp,max:hp,ai:master?master.ai:friendly && !runMember?normalizeBattleAI(wildProgress.ai[name]):
   !friendly && selectedGym?normalizeBattleAI({style:gymRole(name).tank?'Defensive':'Balanced',target:'Type weakness',position:selectedGym.plan?.team[gymSlot]?.[2]}):null,
-  heldItem:master?master.heldItem:friendly && selectedMasterGym?runMember?.heldItem:friendly && !rogueRun?wildProgress.held[name]:!friendly && selectedGym?(selectedGym.plan.team[gymSlot][4] ?? gymHeldItem(name)):null,itemUsed:false,itemTimer:4,ability:abilityFor(name,profile),abilityTimer:0,entryPending:false,entryUsed:false,flashFire:false,pace:pace*speedFactor,cooldown:cooldown/speedFactor,moves,profile,stats,
+  heldItem:master?master.heldItem:friendly && !rogueRun?wildProgress.held[name]:!friendly && selectedGym?(selectedGym.plan.team[gymSlot][4] ?? gymHeldItem(name)):null,itemUsed:false,itemTimer:4,ability:abilityFor(name,profile),abilityTimer:0,entryPending:false,entryUsed:false,flashFire:false,pace:pace*speedFactor,cooldown:cooldown/speedFactor,moves,profile,stats,
   moveCooldowns:moves.map(skill=>moveRules(skill).cooldown),moveTimers:moves.map(()=>0),
   stages:[0,0,0,0,0,0,0,0,0,0],ailment:null,ailmentSource:null,ailmentTime:0,dot:0,damagedOpponent:false,lastDamageBy:null,
   x,y,friendly,guard:0,charge:0,gait:null,stride:0,motionTicks:0,attackX:0,attackY:0,attackStyle:'attack',attackSpan:0.36,hitSpan:0.28,hitX:0,hitY:0,moveLabel:null,labelTime:0,attack:0,hit:0,facing:friendly?1:-1,direction:friendly?2:6};
@@ -5118,8 +5118,7 @@ function prepare() {
  nextGymSwitchCheck=4;
  battleWeather=null;weatherTime=0;battleTerrain=null;terrainTime=0;
  lastDamageClock=0;
- allies = selectedMasterGym ? masterChallengerRoster.map(name=>unit(name,sendOut.player.x,sendOut.player.y,true,100,
-  {moves:legalLoadout(name,wildMoves(name)),profile:gymProfile(name),heldItem:gymHeldItem(name)})) : rogueRun ? rogueRun.members.map(member=>unit(member.name,sendOut.player.x,sendOut.player.y,true,member.level,member)) :
+ allies = rogueRun ? rogueRun.members.map(member=>unit(member.name,sendOut.player.x,sendOut.player.y,true,member.level,member)) :
   team.map(name=>unit(name,sendOut.player.x,sendOut.player.y,true));
  const difficulty=selectedGym ? gymDifficulty(selectedGym,selectedMasterGym) : null;
  const roster=rogueRun ? rogueRun.enemyRoster.map(member=>member.name) : selectedWild ? [selectedWild.name] : selectedTrainer?.roster.map(member=>member.name) ?? selectedGym?.roster ?? lineup;
@@ -5176,7 +5175,7 @@ function renderControls() {
  updateScore();
  updateBattleRosters();
  byId('status').textContent = {
-  setup:selectedWild ? selectedWild.region+' · Choose one Pokémon to battle.' : selectedTrainer ? selectedTrainer.region+' Trainer · Difficulty '+selectedTrainer.tier.label+' · '+selectedTrainer.format+'v'+selectedTrainer.format+(selectedTrainer.format===1?' · Ready to battle.':' · Choose your lead Pokémon.') : selectedMasterGym ? 'Master Campaign · Choose your challenger’s lead.' : selectedGym ? selectedGym.name+' · Choose your lead Pokémon. '+gymBrief(selectedGym)+' '+arenaMap.name+' · '+arenaMap.rocks.length+' pillars.'+(clearedGyms.includes(selectedGym.id)?' Rematch challenge: win without losing a Pokémon.':'') : 'Choose your lead Pokémon.',
+  setup:selectedWild ? selectedWild.region+' · Choose one Pokémon to battle.' : selectedTrainer ? selectedTrainer.region+' Trainer · Difficulty '+selectedTrainer.tier.label+' · '+selectedTrainer.format+'v'+selectedTrainer.format+(selectedTrainer.format===1?' · Ready to battle.':' · Choose your lead Pokémon.') : selectedMasterGym ? 'Master Campaign · Choose your lead Pokémon.' : selectedGym ? selectedGym.name+' · Choose your lead Pokémon. '+gymBrief(selectedGym)+' '+arenaMap.name+' · '+arenaMap.rocks.length+' pillars.'+(clearedGyms.includes(selectedGym.id)?' Rematch challenge: win without losing a Pokémon.':'') : 'Choose your lead Pokémon.',
   battle:rogueRun?'Roguelit · Battle '+rogueRun.round:'Tap a healthy teammate on the left to switch Pokémon.',
   draw:'Draw. Neither side won the battle.',
   win:selectedTrainer ? 'Victory! You earned '+selectedTrainer.coins+' coins.' : selectedWild ? 'Wild Pokémon defeated!' : newBadge ? 'Victory! You earned the '+selectedGym.badge+'.'+speedUnlockMessage() : 'Victory! Your team defeated all six opponents.',
@@ -7478,7 +7477,7 @@ function advanceCombat(dt,realDt,sides) {
  tickSkillCasts(dt);
 }
 function awardKnockoutEVs() {
- if(rogueRun || selectedMasterGym || !(selectedWild || selectedTrainer || selectedGym))return;
+ if(rogueRun || !(selectedWild || selectedTrainer || selectedGym))return;
  let changed=false;
  for(const foe of enemies) {
   if(foe.hp>0 || foe.evAwarded)continue;
@@ -7612,7 +7611,7 @@ function advance(dt,realDt=dt) {
    wildProgress.coins+=selectedTrainer.coins;
    saveWildProgress();
   }
-  const stones=phase==='win' && !selectedMasterGym && (selectedGym || selectedTrainer)?evolveStoneHolders():[];
+  const stones=phase==='win' && (selectedGym || selectedTrainer)?evolveStoneHolders():[];
   renderControls();
   if(phase==='win' && selectedGym && selectedMasterGym && !timedOut) {
    masterGymClears.add(selectedGym.id);
@@ -8715,6 +8714,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.47',changes:['Master Campaign uses your regular battle team.']},
  {version:'0.22.46',changes:['Added separate Master challenger teams, hidden leader rosters, and Master badge marks.']},
  {version:'0.22.45',changes:['Added 1.5× back-hit damage and flanking dashes.']},
  {version:'0.22.44',changes:['Separated movement quick-step effects from damaging dash skill labels.']},
