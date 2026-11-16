@@ -6274,19 +6274,22 @@ function dashChargesLeft(actor,time) {
 function defendChargesLeft(actor,time) {
  return 3-(actor.defendRecharge ?? []).filter(ready=>ready>time).length;
 }
+function activateDefend(actor,time) {
+ if(actor.defendUntil>time || isExhausted(actor) || actor.ailment===2 || actor.ailment===3 ||
+  actor.flinch>0 || defendChargesLeft(actor,time)<=0)return false;
+ actor.defendRecharge=(actor.defendRecharge ?? []).filter(ready=>ready>time);
+ actor.defendRecharge.push(time+5);
+ actor.defendUntil=time+1;
+ actor.moveLabel='Defend';
+ actor.labelTime=1;
+ return true;
+}
 function defendDamage(actor,damage,time) {
  const exhausted=isExhausted(actor);
  if(exhausted)damage=Math.round(damage*1.5);
  if(damage<=0)return damage;
- if(!(actor.defendUntil>time)){
-  if(exhausted || actor.ailment===2 || actor.ailment===3 || actor.flinch>0 ||
-   defendChargesLeft(actor,time)<=0 || (damage<actor.hp && damage<actor.max*.15))return damage;
-  actor.defendRecharge=(actor.defendRecharge ?? []).filter(ready=>ready>time);
-  actor.defendRecharge.push(time+5);
-  actor.defendUntil=time+1;
-  actor.moveLabel='Defend';
-  actor.labelTime=1;
- }
+ if(!(actor.defendUntil>time) &&
+  ((damage<actor.hp && damage<actor.max*.15) || !activateDefend(actor,time)))return damage;
  return Math.max(1,Math.floor(damage/2));
 }
 function tryDashDodge(actor,hazard,angle) {
@@ -6294,14 +6297,23 @@ function tryDashDodge(actor,hazard,angle) {
  const id=actor.onlineId ?? (actor.friendly?'ally:':'enemy:')+(actor.friendly?allies:enemies).indexOf(actor);
  const attempts=hazard.dashDodgeAttempts ??= [];
  if(attempts.includes(id))return false;
- const threats=pendingCasts.filter(area=>area.actor!==actor && (area.roaming || (area.actor.hp>0 && (area.friendlyFire || area.actor.friendly!==actor.friendly))));
- const endpoint=[0,1,-1,2,-2,3,-3,4].map(turn=>{
-  const heading=angle+turn*Math.PI/4;
-  return {x:clamp(actor.x+Math.cos(heading)*90,28,canvas.width-28),
-   y:clamp(actor.y+Math.sin(heading)*90,28,canvas.height-28)};
- }).find(point=>Math.hypot(point.x-actor.x,point.y-actor.y)>=30 && movementClearance(actor,actor.x,actor.y,point.x,point.y)===1 && threats.every(area=>!hazardHits({...actor,...point},area)));
- if(!endpoint)return false;
+ if(!tryBattleDash(actor,angle,90,()=>true,true))return false;
  attempts.push(id);
+ return true;
+}
+function tryBattleDash(actor,angle,distance,accept,evading=false) {
+ if(actor.ingrainAt || dashChargesLeft(actor,clock)<(evading?1:2))return false;
+ const threats=pendingCasts.filter(area=>area.actor!==actor && (area.roaming ||
+  (area.actor.hp>0 && (area.friendlyFire || area.actor.friendly!==actor.friendly))));
+ const turns=evading?[0,1,-1,2,-2,3,-3,4]:[0,1,-1];
+ const endpoint=turns.map(turn=>{
+  const heading=angle+turn*Math.PI/4;
+  return {x:clamp(actor.x+Math.cos(heading)*distance,28,canvas.width-28),
+   y:clamp(actor.y+Math.sin(heading)*distance,28,canvas.height-28)};
+ }).find(point=>Math.hypot(point.x-actor.x,point.y-actor.y)>=30 &&
+  movementClearance(actor,actor.x,actor.y,point.x,point.y)===1 && accept(point) &&
+  threats.every(area=>!hazardHits({...actor,...point},area)));
+ if(!endpoint)return false;
  actor.dashRecharge=(actor.dashRecharge ?? []).filter(ready=>ready>clock);
  actor.dashRecharge.push(clock+3);
  const dx=endpoint.x-actor.x,dy=endpoint.y-actor.y;
@@ -6340,7 +6352,7 @@ function warrantsDash(actor,cast,time) {
  if(status || !power || time>0.65)return false;
  const damage=battleDamage(cast.actor,actor,power,effectiveness(type,actor),moveRules(cast.move).category===2,type,cast.move);
  const area=cast.roaming || cast.radius>=65 || cast.line?.halfWidth || cast.line?.halfAngle;
- return damage>=actor.hp || Boolean(area && power>=85);
+ return damage>=actor.hp || damage>=actor.max*.15 || Boolean(area && power>=85);
 }
 function dodgeSkill(actor,dt) {
  const hazards=pendingCasts.filter(cast=>cast.roaming?!cast.touched.includes(battleActorId(actor)):
@@ -6373,7 +6385,10 @@ function dodgeSkill(actor,dt) {
    break;
   }
  }
- if(!best && warrantsDash(actor,hazard,time) && tryDashDodge(actor,hazard,heading))return true;
+ if(!best){
+  if(tryDashDodge(actor,hazard,heading))return true;
+  if(time<=.18 && warrantsDash(actor,hazard,time))activateDefend(actor,clock);
+ }
  if(!best) {
   const route=retreatRoute(actor,center,combatSides()[actor.friendly?1:0]);
   if(!route)return false;
@@ -6710,6 +6725,7 @@ function act(actor, opponents, dt) {
  }
  let choice=gambit?.choice ?? null;
  let rangedReadyIn=Infinity;
+ let nextRangedReach=0;
  let attackReach=0;
  const position=actor.ai?.position ?? 'Auto';
  const formation=position==='Frontline' || position==='Backline';
@@ -6736,7 +6752,10 @@ function act(actor, opponents, dt) {
    attackReach=Math.max(attackReach,range);
   }
   const timer=Math.max(actor.charge,actor.moveTimers[slot]);
-  if(score>0 && !moveCatalog[move][4] && range>=90) rangedReadyIn=Math.min(rangedReadyIn,timer);
+  if(score>0 && !moveCatalog[move][4] && range>=90 && timer<rangedReadyIn){
+   rangedReadyIn=timer;
+   nextRangedReach=range;
+  }
   if(actor.moveTimers[slot]>0 || score<=0) continue;
   const style=actor.ai?.style;
   const bias=style==='Aggressive'?(moveCatalog[move][4]?0.65:1.3):
@@ -6770,6 +6789,21 @@ function act(actor, opponents, dt) {
   if(!choice || (remaining===0 && choice.remaining>0) ||
    ((remaining===0)===(choice.remaining===0) && value>choice.value)) choice={slot,move,rules,shape,range,selfCentered,remaining,value,stagger:stagger<1 && target.hp>target.max*.3};
  }
+ const upcomingRanged=!gambit && !press && !choice && !close && rangedReadyIn>0 && rangedReadyIn<=.85;
+ if(upcomingRanged && gap<52 && distance>1){
+  const route=retreatRoute(actor,target,opponents);
+  if(route){
+   const radii=bodyRadius(actor)+bodyRadius(target);
+   const desired=Math.min(nextRangedReach-8,Math.max(70,preferredGap ?? 70));
+   const angle=Math.atan2(route.dy,route.dx);
+   if(tryBattleDash(actor,angle,Math.min(90,desired-gap),point=>{
+    const nextGap=Math.hypot(point.x-target.x,point.y-target.y)-radii;
+    return nextGap>=gap+25 && nextGap<=nextRangedReach-5 && !firstPillar(point.x,point.y,target.x,target.y);
+   }))return;
+   moveActor(actor,route.dx,route.dy,desired-gap,dt,true);
+   return;
+  }
+ }
  const basicAllowed=!preparing && (actor.normalAttacksEnabled ?? (!actor.friendly || normalAttacksEnabled));
  const basicRange=24;
  const basicRules={...moveRules('Tackle'),range:basicRange,category:2};
@@ -6778,7 +6812,7 @@ function act(actor, opponents, dt) {
     (!choice || choice.remaining>0 || actor.charge>0 || choice.stagger && !press && !finishing) && !firstPillar(actor.x,actor.y,target.x,target.y)) {
   choice={slot:-1,move:'Normal Attack',rules:basicRules,range:basicRange,remaining:0};
  }
- if(!choice && !usableAttack && basicScore>0) {
+ if(!choice && !upcomingRanged && basicScore>0) {
   choice={slot:-1,move:'Normal Attack',rules:basicRules,range:basicRange,remaining:Math.max(0,gap-basicRange)};
  }
  if(preparing && !choice)return;
@@ -6787,7 +6821,7 @@ function act(actor, opponents, dt) {
   const rules=moveRules(move);
   choice={slot:-1,move,rules,range:rules.range,remaining:Math.max(0,gap-rules.range)};
  }
- if(!press && !gambit && formation && choice?.rules.scope!=='ally' && (!choice || actor.charge>0) && gap<=attackReach) {
+ if(!press && !gambit && choice?.move!=='Normal Attack' && formation && choice?.rules.scope!=='ally' && (!choice || actor.charge>0) && gap<=attackReach) {
   const team=activeTeammates(actor).filter(member=>member!==actor);
   if(team.length) {
    const x=team.reduce((sum,member)=>sum+member.x,0)/team.length;
@@ -6802,9 +6836,7 @@ function act(actor, opponents, dt) {
    }
   }
  }
- const meleeThreat=target.moves.some(move=>moveRules(move).range===16) &&
-  !target.moves.some(move=>!moveCatalog[move][4] && moveRules(move).range>=90);
- if(preferredGap!==null && attackReach>0 && distance>1 && choice?.rules.scope!=='ally') {
+ if(choice?.move!=='Normal Attack' && preferredGap!==null && attackReach>0 && distance>1 && choice?.rules.scope!=='ally') {
   const goal=Math.min(preferredGap,Math.max(0,attackReach-5));
   const ready=choice && choice.remaining===0 && actor.charge<=0;
   if(!press && !close && !gambit && (!choice || actor.charge>0) && !ready && gap<goal-18) {
@@ -6815,19 +6847,19 @@ function act(actor, opponents, dt) {
    }
   }
  }
- const retreat=!press && preferredGap===null && (actor.ai?.style!=='Aggressive' || actor.ai?.target==='Ranged attacks') && meleeThreat && gap<48 && rangedReadyIn>0 && rangedReadyIn<=1.2 &&
-  (!choice || actor.charge>0) && distance>1;
- const route=retreat && !gambit?retreatRoute(actor,target,opponents):null;
- if(route) {
-  moveActor(actor,route.dx,route.dy,48-gap,dt,true);
-  return;
- }
  const remaining=choice?.remaining ?? 0;
  if(press && !gambit && !choice && distance>1 && gap>18){
   moveActor(actor,(target.x-actor.x)/distance,(target.y-actor.y)/distance,gap-18,dt,true,target);
   return;
  }
  if(remaining>0.01 && distance>1) {
+  if(!gambit && actor.charge<=.25 && remaining>=30 && remaining<=90 &&
+   (choice.move!=='Normal Attack' || (actor.normalAttackAt ?? 0)<=clock)){
+   const radii=bodyRadius(actor)+bodyRadius(target);
+   if(tryBattleDash(actor,Math.atan2(target.y-actor.y,target.x-actor.x),Math.min(90,remaining+5),point=>
+    Math.hypot(point.x-target.x,point.y-target.y)-radii<=choice.range &&
+    !firstPillar(point.x,point.y,target.x,target.y)))return;
+  }
   moveActor(actor,(target.x-actor.x)/distance,(target.y-actor.y)/distance,remaining,dt,remaining>100,target);
   return;
  }
@@ -8596,6 +8628,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.42',changes:['AI uses dash and Defend tactically and fills skill cooldowns with normal attacks.']},
  {version:'0.22.41',changes:['Defend now recharges and protects for one second. Exhausted Pokémon take extra attack damage.']},
  {version:'0.22.40',changes:['Added battle dash and defend charges and removed exhaustion from automatic normal attacks.']},
  {version:'0.22.39',changes:['Preferred Position no longer pulls Pokémon inward before their attacks are in range.']},

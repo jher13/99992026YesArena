@@ -25,6 +25,17 @@ assert.equal(defendDamage(defender,40,3),40);
 assert.equal(defendChargesLeft(defender,5),1);
 assert.equal(defendDamage(defender,40,5),20);
 assert.equal(defendDamage({hp:100,max:100,exhausted:true},40,0),60);
+const dashCode=html.slice(html.indexOf('function tryBattleDash('),html.indexOf('function battleActorId('));
+const dash=new Function('dashChargesLeft','clock','pendingCasts','canvas','clamp','movementClearance','pmdDirection','effects',
+ dashCode+'return tryBattleDash;')(dashChargesLeft,0,[],{width:960,height:480},
+ (x,lo,hi)=>Math.max(lo,Math.min(hi,x)),()=>1,()=>0,[]);
+const dasher={x:100,y:100,motionTicks:0};
+assert(dash(dasher,0,90,point=>point.x>=185));
+assert.equal(dasher.x,190);
+assert(!dash(dasher,0,90,()=>false));
+assert(dash(dasher,0,90,()=>true));
+assert(!dash(dasher,0,90,()=>true),'Save the last charge for evasion');
+assert(dash(dasher,0,90,()=>true,true));
 const hazardCode=html.slice(html.indexOf('function roamingCenter('),html.indexOf('function dodgeSkill('));
 const {hazardHits,warrantsDash}=new Function('canvas','clamp','inSkill','bodyRadius',
  'moveCatalog','battleDamage','effectiveness','moveRules',hazardCode+'return {hazardHits,warrantsDash};')(
@@ -37,7 +48,7 @@ assert(hazardHits({x:145,y:100},vortex,.3));
 assert(!hazardHits({x:100,y:145},vortex,.3));
 assert(warrantsDash({hp:200},{move:'Surf',radius:70},.2));
 assert(!warrantsDash({hp:200},{move:'Surf',radius:70},.8));
-assert(!warrantsDash({hp:200},{move:'Tackle'},.2));
+assert(!warrantsDash({hp:200,max:400},{move:'Tackle'},.2));
 assert(warrantsDash({hp:20},{move:'Tackle'},.2));
 const migrations=fs.readdirSync(path.join(__dirname,'../supabase/migrations'));
 assert(migrations.length>0);
