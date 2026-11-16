@@ -303,7 +303,7 @@ window.collectServerRaidRewards=async()=>{
   for(const reward of data.rewards){
    if(!wildProgress.megaRaidRewards.includes(reward.mode))wildProgress.megaRaidRewards.push(reward.mode);
    wildProgress.coins+=reward.coins;
-   wildProgress.balls[7]+=reward.master_balls;
+   wildProgress.balls[ultraBallIndex]+=reward.ultra_balls;
    wildProgress.items[reward.pvp_item]=(wildProgress.items[reward.pvp_item] ?? 0)+1;
   }
   if(data.rewards.length)saveWildProgress();

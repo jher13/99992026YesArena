@@ -610,7 +610,7 @@
  };
  async function collectMegaRaidRewards() {
   const awarded=await window.collectServerRaidRewards();
-  const rewards=awarded.map(reward=>'Tier '+megaRaidTiers[reward.mode].tier+' first clear · '+reward.master_balls+' Master Balls · '+reward.coins.toLocaleString()+' coins · '+reward.pvp_item);
+  const rewards=awarded.map(reward=>'Tier '+megaRaidTiers[reward.mode].tier+' first clear · '+reward.ultra_balls+' Ultra Balls'+' · '+reward.coins.toLocaleString()+' coins · '+reward.pvp_item);
   const tickets=await window.refreshCoopTickets();
   if(tickets)rewards.push('+'+tickets+' Co-op '+(tickets===1?'ticket':'tickets'));
   return rewards;

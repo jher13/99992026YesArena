@@ -49,7 +49,7 @@ const context=vm.createContext({
 });
 context.button=(label,onclick,disabled)=>Object.assign(element('button',label),{onclick,disabled});
 const source=read('tactics.js');
-const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,combatRole,evolutionFamilies,collectionTraits,unitTraits,signatures,expandedSignatures,signatureEffects,signatureEffectText,extraSignatureText,traits,familyOf,stageLabel,openingRound,wildRound,megaRound,augmentRound,carouselRound,carouselOffers,draftCarousel,megaRewardTier,finalRound,neutralTrainer,completeNeutral,grantTowerWard,receiveDamage,heal,equip,sell,ignite,fusionPlan,applyFusion,setRound:round=>{run.round=round;},getRun:()=>run};';
+const auditExports='globalThis.audit={makeTrainer,start,battle,tick,outcome,combatTicks,combatStepMs,roster,rarities,combatRole,evolutionFamilies,collectionTraits,unitTraits,signatures,expandedSignatures,signatureEffects,signatureEffectText,extraSignatureText,traits,familyOf,stageLabel,openingRound,wildRound,megaRound,augmentRound,carouselRound,carouselOffers,draftCarousel,awardPlacement,megaRewardTier,finalRound,neutralTrainer,completeNeutral,grantTowerWard,receiveDamage,heal,equip,sell,ignite,fusionPlan,applyFusion,setRound:round=>{run.round=round;},getRun:()=>run};';
 new vm.Script(data+'\n'+source.replace(/\}\)\(\);\s*$/,auditExports+'})();'),{filename:'tactics.js'}).runInContext(context);
 const a=context.audit;
 byId('home-tactics').onclick();
@@ -302,6 +302,45 @@ pass.recordBattlePass({battles:3,wins:3});
 pass.claimPassReward(0,false);
 pass.claimPassReward(0,false);
 assert.equal(progress.balls[0],5);
+const ballCode=html.slice(html.indexOf('const ballTypes='),html.indexOf('function battleBallDrops'));
+const catchChanceCode=html.slice(html.indexOf('function catchChance('),html.indexOf('let repeatTimer='));
+const {balls,migrate,catchChance}=new Function('isLegendaryEncounter',ballCode+catchChanceCode+
+ 'return {balls:ballTypes,migrate:migrateBallInventory,catchChance}')(()=>true);
+assert.deepEqual(migrate([1,2,3,4,5,6,7,8]),[1,2,3,4,5,6,7,0,8]);
+assert.equal(catchChance(balls[6],{name:'Mewtwo'}),.5);
+assert.equal(catchChance(balls[7],{name:'Mewtwo'}),.75);
+assert.equal(catchChance(balls[8],{name:'Mewtwo'}),1);
+const rewards=new Function(passCode+'return passRewards')();
+assert.equal(rewards.length,50);
+assert.deepEqual(rewards.flatMap(([,name],index)=>name==='Master Ball'?[index+1]:[]),[50]);
+for(const [index,coins] of [3000,2000,1000,750,500,250,100,50].entries()){
+ const received=[];
+ context.wildProgress={coins:0};
+ context.giveArenaItem=(...item)=>received.push(item);
+ context.saveWildProgress=()=>{};
+ const match={place:index+1};
+ a.awardPlacement(match);
+ a.awardPlacement(match);
+ assert.equal(context.wildProgress.coins,coins);
+ assert.equal(received.length,index<5?2:1);
+}
+
+const candyCode=html.slice(html.indexOf('const experienceCandies='),html.indexOf('const trainingItems='));
+const levelCode=html.slice(html.indexOf('function experienceNeeded('),html.indexOf('}',html.indexOf('function experienceNeeded('))+1);
+const candyActions=html.slice(html.indexOf('function useExperienceCandy('),html.indexOf('let selectedWild='));
+const candyInventory={vitamins:{'Rare Candy':2,'EXP Candy 100':1},held:{Pikachu:'Lucky Egg'}};
+const pika={level:20,xp:30};
+const candy=new Function('wildProgress','ownedPokemon','stoneTarget','levelEvolutions','dex','saveWildProgress',
+ candyCode+levelCode+candyActions+'return {useExperienceCandy,battleExperience}')(
+ candyInventory,()=>pika,()=>null,{}, {Pikachu:[25]},()=>{});
+assert.equal(candy.battleExperience('Pikachu',100),200);
+candy.useExperienceCandy('Pikachu','EXP Candy 100');
+assert.deepEqual(pika,{level:20,xp:130});
+candy.useExperienceCandy('Pikachu','Rare Candy');
+assert.deepEqual(pika,{level:21,xp:130});
+pika.level=100;
+candy.useExperienceCandy('Pikachu','Rare Candy');
+assert.equal(candyInventory.vitamins['Rare Candy'],1);
 const shieldProvider={};
 const shielded={hp:50,max:50,signatureShield:6,signatureShieldUntil:2000,elapsed:0,shieldProvider,gear:{},manaLock:0,mana:0,manaOnDamage:0};
 assert.equal(a.receiveDamage(shielded,10),4);

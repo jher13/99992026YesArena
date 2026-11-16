@@ -1132,6 +1132,24 @@
   guide.append(element('summary','How to play'),element('p','Buy Pokémon from the shop, then select one and choose a hex on your half of the board. Fusing copies stars up and evolves the Pokémon. Select a branching Pokémon and pick its evolution path before it fuses. Drag items from the left rail to equip them. Focus or hover an item to see its recipes. Lock offers you want to keep for next round. Select a Pokémon to sell it and recover its items. Stages 2–18 end with a Mega boss round. Winning earns two item components, a random Pokémon of the stage’s reward tier, and 15 Tactics gold.'));
   content.append(guide);
  }
+ const placementRewards=[
+  [3000,[['vitamins','Rare Candy',2],['balls','Ultra Ball',2]]],
+  [2000,[['vitamins','Rare Candy',1],['balls','Ultra Ball',1]]],
+  [1000,[['vitamins','EXP Candy 500',2],['balls','Cherished Ball',2]]],
+  [750,[['vitamins','EXP Candy 250',2],['balls','Cherished Ball',1]]],
+  [500,[['vitamins','EXP Candy 100',1],['balls','Luxury Ball',2]]],
+  [250,[['balls','Premier Ball',2]]],
+  [100,[['balls','Great Ball',2]]],
+  [50,[['balls','Safari Ball',2]]],
+ ];
+ function awardPlacement(match){
+  if(match.placementReward)return;
+  const [coins,items]=placementRewards[(match.place ?? 1)-1];
+  for(const item of items)giveArenaItem(...item);
+  wildProgress.coins+=coins;
+  match.placementReward=[coins.toLocaleString()+' coins',...items.map(([,name,count])=>count+' × '+name)].join(' · ');
+  saveWildProgress();
+ }
  function start(){
   const tiers=roster;
   const pool=new Map(tiers.flatMap((names,tier)=>names.map(name=>[name,{tier,copies:[26,22,18,12,9][tier]}])));
@@ -1698,7 +1716,7 @@
  function render(){
   const player=run.trainers[0];
   if(run.finished || player.hp<=0 || run.trainers.every(t=>t===player || !t.hp)){
-   content.replaceChildren(heading((run.place ?? 1)===1?'First place':'Place '+run.place),element('p',run.result),standingsPanel(),...(run.damageReport?[damageChart(run.damageReport).panel]:[]),button('Play again',start),button('Back to Poke Fight Tactics',openTactics));
+   content.replaceChildren(heading((run.place ?? 1)===1?'First place':'Place '+run.place),element('p',run.result),element('p','Placement rewards · '+run.placementReward),standingsPanel(),...(run.damageReport?[damageChart(run.damageReport).panel]:[]),button('Play again',start),button('Back to Poke Fight Tactics',openTactics));
    return;
   }
   if(run.choice){renderChoice(run.choice);return;}
@@ -2663,6 +2681,7 @@
   }
   if(run.finished || !player.hp || run.trainers.filter(t=>t.hp>0).length<=1){
    run.finished=true;
+   awardPlacement(run);
    const note=recordBattlePass({battles:1,wins:!run.place || run.place===1?1:0,tacticsMatches:1});
    if(note)showPassBattleNotice(note+' · '+battlePassProgressText());
    run.busy=false;

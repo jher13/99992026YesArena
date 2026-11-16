@@ -1110,7 +1110,7 @@ badges,element('p',height/10+' m · '+weight/10+' kg'),
   .map((label,i)=>label+' '+chartValues[i]).join(', '));
  summary.append(info,chart);
  body.append(summary,individualTable(name,profile));
- if(owned) body.append(heldItemPicker(name),capsuleControl(name),vitaminControls(name),battleAIControls(name),pcCollectionControls(name));
+ if(owned) body.append(heldItemPicker(name),capsuleControl(name),vitaminControls(name),experienceCandyControls(name),battleAIControls(name),pcCollectionControls(name));
  body.append(element('h4','Moves','move-heading'));
  body.append(renderSkillSlots(name),renderLearnableSkills(name));
  const actions=element('div',null,'detail-actions');
@@ -1155,14 +1155,17 @@ const ballTypes=[
  {name:'Luxury Ball',multiplier:2},
  {name:'Cherished Ball',multiplier:2.5},
  {name:'Ultra Ball',multiplier:3},
+ {name:'Event Ball',multiplier:5.25},
  {name:'Master Ball',multiplier:Infinity},
 ];
+const ultraBallIndex=ballTypes.findIndex(ball=>ball.name==='Ultra Ball');
 function migrateBallInventory(balls) {
  if(!Array.isArray(balls) || !balls.every(n=>Number.isSafeInteger(n) && n>=0))return null;
  if(balls.length===ballTypes.length)return balls;
+ if(balls.length===8)return [...balls.slice(0,7),0,balls[7]];
  if(balls.length!==7)return null;
  const [poke,great,ultra,net,nest,timer,master]=balls;
- return [poke,nest,great,net,timer,0,ultra+master,0];
+ return [poke,nest,great,net,timer,0,ultra+master,0,0];
 }
 function battleBallDrops(roll) {
  const drops=[];
@@ -1179,6 +1182,7 @@ const hiddenAbilities={"1":"Chlorophyll","2":"Chlorophyll","3":"Chlorophyll","4"
 const stoneEvolutions={"Haunter":{"Linking Cord":"Gengar"},"Pikachu":{"Thunder Stone":"Raichu"},"Nidorina":{"Moon Stone":"Nidoqueen"},"Nidorino":{"Moon Stone":"Nidoking"},"Clefairy":{"Moon Stone":"Clefable"},"Vulpix":{"Fire Stone":"Ninetales"},"Jigglypuff":{"Moon Stone":"Wigglytuff"},"Gloom":{"Leaf Stone":"Vileplume","Sun Stone":"Bellossom"},"Growlithe":{"Fire Stone":"Arcanine"},"Poliwhirl":{"Water Stone":"Poliwrath"},"Weepinbell":{"Leaf Stone":"Victreebel"},"Magneton":{"Thunder Stone":"Magnezone"},"Shellder":{"Water Stone":"Cloyster"},"Exeggcute":{"Leaf Stone":"Exeggutor"},"Staryu":{"Water Stone":"Starmie"},"Eevee":{"Water Stone":"Vaporeon","Thunder Stone":"Jolteon","Fire Stone":"Flareon","Leaf Stone":"Leafeon","Ice Stone":"Glaceon"},"Togetic":{"Shiny Stone":"Togekiss"},"Sunkern":{"Sun Stone":"Sunflora"},"Murkrow":{"Dusk Stone":"Honchkrow"},"Misdreavus":{"Dusk Stone":"Mismagius"},"Lombre":{"Water Stone":"Ludicolo"},"Nuzleaf":{"Leaf Stone":"Shiftry"},"Kirlia":{"Dawn Stone":"Gallade"},"Nosepass":{"Thunder Stone":"Probopass"},"Skitty":{"Moon Stone":"Delcatty"},"Roselia":{"Shiny Stone":"Roserade"},"Snorunt":{"Dawn Stone":"Froslass"},"Pansage":{"Leaf Stone":"Simisage"},"Pansear":{"Fire Stone":"Simisear"},"Panpour":{"Water Stone":"Simipour"},"Munna":{"Moon Stone":"Musharna"},"Cottonee":{"Sun Stone":"Whimsicott"},"Petilil":{"Sun Stone":"Lilligant"},"Minccino":{"Shiny Stone":"Cinccino"},"Eelektrik":{"Thunder Stone":"Eelektross"},"Lampent":{"Dusk Stone":"Chandelure"},"Floette":{"Shiny Stone":"Florges"},"Doublade":{"Dusk Stone":"Aegislash"},"Helioptile":{"Sun Stone":"Heliolisk"},"Charjabug":{"Thunder Stone":"Vikavolt"},"Crabrawler":{"Ice Stone":"Crabominable"},"Capsakid":{"Fire Stone":"Scovillain"},"Tadbulb":{"Thunder Stone":"Bellibolt"},"Cetoddle":{"Ice Stone":"Cetitan"},"Happiny":{"Oval Stone":"Chansey"}};
 const evolutionStones=[...new Set(Object.values(stoneEvolutions).flatMap(Object.keys))];
 const heldItems={
+ 'Lucky Egg':{price:500000,description:'Doubles the holder’s earned battle EXP.'},
  ...Object.fromEntries(evolutionStones.map(stone=>[stone,{price:1500,description:'Equip on a compatible Pokémon. Consumed when it evolves after battle.'}])),
  'Oran Berry':{price:45,description:'Restores 10 HP at half health. Can activate once between knockouts.',heal:10},
  'Sitrus Berry':{price:100,description:'Restores 25% max HP at half health. Can activate once between knockouts.',healRatio:0.25},
@@ -1194,10 +1198,11 @@ const heldItems={
 };
 const ballCraftCost=2;
 const ballPrices=[24];
-for(let tier=1;tier<ballTypes.length-1;tier++)ballPrices.push(Math.ceil(ballPrices[tier-1]*ballCraftCost*1.1));
-ballPrices.push(null);
+for(let tier=1;tier<=ultraBallIndex;tier++)ballPrices.push(Math.ceil(ballPrices[tier-1]*ballCraftCost*1.1));
+ballPrices.push(null,null);
 const ballDescriptions=ballTypes.map(ball=>ball.multiplier===Infinity?
- 'Guaranteed capture, including Legendary and Mythical Pokémon. Special rewards only.':
+ 'Guaranteed capture. Battle Pass Tier 50 reward.':
+ ball.name==='Event Ball'?'75% capture chance for Legendary and Mythical Pokémon. Event reward only.':
  ball.multiplier+'× base catch chance.');
 const canEvolveIds=new Set(Object.values(evolutionData).map(([parent])=>parent).filter(Boolean));
 const abilityAbsorptions={'Water Absorb':'Water','Volt Absorb':'Electric','Dry Skin':'Water','Earth Eater':'Ground'};
@@ -1323,6 +1328,7 @@ function gambitValues(condition,current) {
  return current && !condition.values.includes(current)?[...condition.values,current]:condition.values;
 }
 const battleTargeting=['Nearest','Type weakness','Frontline','Backline','Farthest','Lowest HP','Highest HP','Ranged attacks'];
+const experienceCandies={'Rare Candy':null,'EXP Candy 500':500,'EXP Candy 250':250,'EXP Candy 100':100};
 const trainingItems=Object.fromEntries([
  ...['HP Up','Protein','Iron','Carbos','Zinc','Calcium'].map((name,stat)=>
   [name,{stat,field:'evs',delta:10,price:2500,category:'EV vitamins'}]),
@@ -1336,7 +1342,7 @@ function pvpLoanerFor(name,roster,choices){
  const item=choices?.[name];
  return pvpLoanerItems.includes(item) && roster.find(member=>choices?.[member]===item)===name?item:null;
 }
-const wildProgress={pvpLoaners:{},autoCaptureBall:0,autoCaptureFallback:'standard',reservePremiumBalls:true,battlePass:{xp:0,claimed:[]},capsules:0,vitamins:{},copies:{},ai:{},owned:{},registered:[],coins:0,megaRaidRewards:[],items:{},held:{},skills:{},balls:[12,1,3,1,1,0,1,0],wins:0,autoCapture:false,autoRepeat:false,autoReserve:false,speed:1};
+const wildProgress={pvpLoaners:{},autoCaptureBall:0,autoCaptureFallback:'standard',reservePremiumBalls:true,battlePass:{xp:0,claimed:[]},capsules:0,vitamins:{},copies:{},ai:{},owned:{},registered:[],coins:0,megaRaidRewards:[],items:{},held:{},skills:{},balls:[12,1,3,1,1,0,1,0,0],wins:0,autoCapture:false,autoRepeat:false,autoReserve:false,speed:1};
 try {
  const saved=JSON.parse(playerStorage.getItem(progressKey));
  for(const [name,item] of Object.entries(saved?.pvpLoaners ?? {}))
@@ -1345,7 +1351,7 @@ try {
   wildProgress.battlePass=saved.battlePass;
  }
  if(Number.isSafeInteger(saved?.capsules) && saved.capsules>0)wildProgress.capsules=saved.capsules;
- for(const item of Object.keys(trainingItems)) {
+ for(const item of [...Object.keys(trainingItems),...Object.keys(experienceCandies)]) {
   const count=saved?.vitamins?.[item];
   if(Number.isSafeInteger(count) && count>0)wildProgress.vitamins[item]=count;
  }
@@ -1367,7 +1373,7 @@ try {
  wildProgress.balls=migrateBallInventory(saved?.balls) ?? wildProgress.balls;
  if(Number.isInteger(saved?.wins)&&saved.wins>=0) wildProgress.wins=saved.wins;
  wildProgress.autoCapture=saved?.autoCapture===true;
- if (Number.isInteger(saved?.autoCaptureBall) && ballTypes[saved.autoCaptureBall])wildProgress.autoCaptureBall=saved.autoCaptureBall;
+ if (Number.isInteger(saved?.autoCaptureBall) && ballTypes[saved.autoCaptureBall])wildProgress.autoCaptureBall=saved.balls?.length===8 && saved.autoCaptureBall===7?8:saved.autoCaptureBall;
  if (['none','standard','any'].includes(saved?.autoCaptureFallback))wildProgress.autoCaptureFallback=saved.autoCaptureFallback;
  wildProgress.reservePremiumBalls=saved?.reservePremiumBalls!==false;
  wildProgress.autoRepeat=saved?.autoRepeat===true;
@@ -1399,20 +1405,20 @@ const passRewards=[
  ['balls','Great Ball',5],['vitamins','Protein',3],['items','Sitrus Berry',2],
  ['balls','Ultra Ball',3],['capsules','Ability Capsule',1],['vitamins','IV Booster',2],
  ['items','Leftovers',1],['balls','Ultra Ball',5],['capsules','Ability Capsule',2],
- ['balls','Master Ball',1],
+ ['vitamins','EXP Candy 100',2],
  ['balls','Great Ball',6],['vitamins','Protein',4],['items','Sitrus Berry',3],
  ['balls','Ultra Ball',4],['capsules','Ability Capsule',1],['vitamins','IV Booster',2],
  ['items','Leftovers',1],['balls','Ultra Ball',6],['capsules','Ability Capsule',2],
- ['balls','Master Ball',1],['balls','Great Ball',8],['vitamins','Iron',5],
+ ['balls','Event Ball',1],['balls','Great Ball',8],['vitamins','Iron',5],
  ['items','Sitrus Berry',4],['balls','Ultra Ball',5],['capsules','Ability Capsule',1],
  ['vitamins','IV Booster',3],['items','Leftovers',1],['balls','Ultra Ball',8],
- ['capsules','Ability Capsule',2],['balls','Master Ball',1],['balls','Great Ball',10],
+ ['capsules','Ability Capsule',2],['vitamins','EXP Candy 250',2],['balls','Great Ball',10],
  ['vitamins','Calcium',6],['items','Sitrus Berry',5],['balls','Ultra Ball',6],
  ['capsules','Ability Capsule',1],['vitamins','IV Booster',4],['items','Leftovers',1],
- ['balls','Ultra Ball',10],['capsules','Ability Capsule',3],['balls','Master Ball',1],
+ ['balls','Ultra Ball',10],['capsules','Ability Capsule',3],['vitamins','Rare Candy',1],
  ['balls','Great Ball',12],['vitamins','Zinc',7],['items','Sitrus Berry',6],
  ['balls','Ultra Ball',7],['capsules','Ability Capsule',1],['vitamins','IV Booster',5],
- ['items','Leftovers',1],['balls','Ultra Ball',12],['capsules','Ability Capsule',3],
+ ['items','Leftovers',1],['vitamins','EXP Candy 500',2],['capsules','Ability Capsule',3],
  ['balls','Master Ball',1]
 ];
 const passQuests={
@@ -1473,14 +1479,17 @@ function recordBattlePass(events,raidId=null) {
  return added?'Battle Pass +'+added+' XP'+(completed.length?' · Quests completed: '+completed.join(', '):''):'';
 
 }
+function giveArenaItem(kind,name,amount) {
+ if(kind==='capsules')wildProgress.capsules+=amount;
+ else if(kind==='balls')wildProgress.balls[ballTypes.findIndex(ball=>ball.name===name)]+=amount;
+ else wildProgress[kind][name]=(wildProgress[kind][name] ?? 0)+amount;
+}
 function claimPassReward(index,refresh=true) {
  const pass=battlePassState();
  const reward=passRewards[index];
  if(!reward || pass.claimed.includes(index) || pass.xp<(index+1)*passTierXP)return;
  const [kind,name,amount]=reward;
- if(kind==='capsules')wildProgress.capsules+=amount;
- else if(kind==='balls')wildProgress.balls[ballTypes.findIndex(ball=>ball.name===name)]+=amount;
- else wildProgress[kind][name]=(wildProgress[kind][name] ?? 0)+amount;
+ giveArenaItem(kind,name,amount);
  pass.claimed.push(index);
  saveWildProgress();
  if(refresh)renderBattlePass();
@@ -1704,7 +1713,7 @@ function renderShop(message='') {
  }
 }
 function craftBall(index) {
- if(!Number.isInteger(index) || index<0 || index>=ballTypes.length-2 ||
+ if(!Number.isInteger(index) || index<0 || index>=ultraBallIndex ||
     wildProgress.balls[index]<ballCraftCost)return false;
  wildProgress.balls[index]-=ballCraftCost;
  wildProgress.balls[index+1]++;
@@ -1713,7 +1722,7 @@ function craftBall(index) {
 }
 function autoCraftBalls() {
  const crafted=[];
- for(let tier=0;tier<ballTypes.length-2;tier++) {
+ for(let tier=0;tier<ultraBallIndex;tier++) {
   const quantity=Math.floor(wildProgress.balls[tier]/ballCraftCost);
   wildProgress.balls[tier]-=quantity*ballCraftCost;
   wildProgress.balls[tier+1]+=quantity;
@@ -1732,6 +1741,12 @@ const bagPixelShapes={
  gear:['....oooo....','..ooccgcoo..','.olccggggco.','.olcooocgco.','.olcowocgco.','.olcooocgco.','.olcccccgco.','..oogcgcoo..','....oooo....'],
 };
 const bagItemArt={
+ 'Event Ball':['#149f99','....oooo.... ..oollcooo.. .olccwccgco. .olcwwwcgco. occccwccccgo ooooooocoooo owwwwowowwwo .odwwwowwdo. .odddwwddo.. ...oooooo...'],
+ 'Rare Candy':['#f35b91','oo........oo olgo....oglo .ocooooooco. ..olwccgo... ..olccwgo... ..ogcccgo... .ocooooooco. olgo....oglo oo........oo'],
+ 'EXP Candy 500':['#9a58de','.....oo..... ....olco.... ...olccgo... ..olwwwcgo.. .olcwwwccgo. ..oocccgoo.. ....ocgo.... .....oo.....'],
+ 'EXP Candy 250':['#3d94ec','...oooooo... ..olwwcgoo.. ..olwcccgo.. ..olcccgoo.. ..ogcccgoo.. ...oooooo...'],
+ 'EXP Candy 100':['#43b571','............ .....oo..... ....olco.... ...olccgo... ...occcgo... ....oooo....'],
+ 'Lucky Egg':['#efa752','.....oo..... ....olwo.... ...olwcco... ..olwwccgo.. ..owwcccgo.. .olwcwcgggo. .occccccddo. ..occcgddo.. ...oooooo...'],
  'Oran Berry':['#4877d2','......gg.... .....ggo.... ..ooooo..... .olcccoo.... olcccccco... occccccco... occccccdo... .occcddo.... ..ooooo.....'],
  'Sitrus Berry':['#efb93b','...ggo...... ...oggo..... ...ocoo..... ..olccco.... .olccccco... .olccccccoo. olccccccggco occcccgcggco .occcggggco. ..oooooooo..'],
  'Shell Bell':['#dfbd66','.....oo..... ....ocgo.... ...olccgo... ...olccgo... ..olccccgo.. .olccccccgo. .oooooooooo. .....oo.....'],
@@ -1752,7 +1767,7 @@ const bagStoneColors={
  'Thunder Stone':'#e7ce4b','Water Stone':'#4279c8',Eviolite:'#a86cc7',
 };
 
-const bagItemNames=[...new Set([...Object.keys(heldItems),...Object.keys(trainingItems),'Ability Capsule'])];
+const bagItemNames=[...new Set([...Object.keys(heldItems),...Object.keys(trainingItems),...Object.keys(experienceCandies),'Ability Capsule'])];
 function bagItemIcon(name) {
  const tier=ballTypes.findIndex(ball=>ball.name===name);
  const art=bagItemArt[name];
@@ -1789,7 +1804,7 @@ function inventoryTile(name,count,detail,action,extra) {
 }
 function renderItemBag(message='') {
  byId('bag-status').textContent=message;
- byId('bag-auto-craft').disabled=!wildProgress.balls.slice(0,-2).some(count=>count>=ballCraftCost);
+ byId('bag-auto-craft').disabled=!wildProgress.balls.slice(0,ultraBallIndex).some(count=>count>=ballCraftCost);
  const bag=byId('bag-inventory');
  bag.replaceChildren();
  const group=(title,entries)=>{
@@ -1800,7 +1815,7 @@ function renderItemBag(message='') {
  };
  group('Poké Balls',ballTypes.map((ball,index)=>{
   const count=wildProgress.balls[index];
-  const next=index<ballTypes.length-2?ballTypes[index+1]:null;
+  const next=index<ultraBallIndex?ballTypes[index+1]:null;
   const button=next?element('button','Craft '+next.name):null;
   if(button) {
    button.type='button';
@@ -1813,8 +1828,10 @@ function renderItemBag(message='') {
  }));
  group('Held items and evolution items',Object.entries(wildProgress.items).filter(([,count])=>count>0)
   .map(([name,count])=>[name,count,(count-freeHeldCopies(name))+' equipped']));
+ group('EXP Candies · Use from a Pokémon’s details',Object.entries(experienceCandies).filter(([name])=>wildProgress.vitamins[name]>0)
+  .map(([name,xp])=>[name,wildProgress.vitamins[name],xp===null?'+1 level':'+'+xp+' EXP']));
  group('Training and ability items',[
-  ['Ability Capsule',wildProgress.capsules],...Object.entries(wildProgress.vitamins)
+  ['Ability Capsule',wildProgress.capsules],...Object.entries(wildProgress.vitamins).filter(([name])=>!Object.hasOwn(experienceCandies,name))
  ].filter(([,count])=>count>0));
  group('Skill items',Object.entries(wildProgress.skills).filter(([,count])=>count>0)
   .map(([move,count])=>[skillItem(move).name,count]));
@@ -2383,6 +2400,36 @@ function playEvolutionScenes(done=()=>{}) {
   finish.disabled=false;finish.focus();
  },typeof matchMedia==='function' && matchMedia('(prefers-reduced-motion: reduce)').matches?0:5400);
 }
+function useExperienceCandy(name,item) {
+ const entry=ownedPokemon(name);
+ if(!entry || entry.level>=100 || !Object.hasOwn(experienceCandies,item) || !(wildProgress.vitamins[item]>0))return [];
+ wildProgress.vitamins[item]--;
+ return gainWildExperience(name,experienceCandies[item] ?? experienceNeeded(entry.level));
+}
+function experienceCandyControls(name) {
+ const controls=element('div',null,'experience-candy-controls');
+ const entry=ownedPokemon(name);
+ for(const [item,xp] of Object.entries(experienceCandies)) {
+  const count=wildProgress.vitamins[item] ?? 0;
+  if(!count)continue;
+  const use=element('button','Use '+item+' ×'+count);
+  use.type='button';
+  use.disabled=entry.level>=100;
+  use.onclick=()=>{
+   const messages=useExperienceCandy(name,item);
+   renderDetail();
+   showPassBattleNotice([xp===null?'Used Rare Candy.':name+' gained '+xp+' XP.',...messages].join(' '));
+   playEvolutionScenes(()=>{});
+  };
+  const icon=bagItemIcon(item);
+  icon.title=xp===null?'Raises the Pokémon by 1 level.':'Adds '+xp+' EXP.';
+  controls.append(icon,use);
+ }
+ return controls;
+}
+function battleExperience(name,xp) {
+ return wildProgress.held[name]==='Lucky Egg'?2*xp:xp;
+}
 function gainWildExperience(name,xp) {
  const entry=ownedPokemon(name);
  entry.xp+=xp;
@@ -2431,6 +2478,7 @@ function catchChance(ball,encounter) {
  const legendary=isLegendaryEncounter(encounter.name);
  const multiplier=ball.multiplier;
  if(multiplier===Infinity) return 1;
+ if(legendary && ball.name==='Event Ball')return 0.75;
  if(legendary) return 0.5*multiplier/ballTypes.find(type=>type.name==='Ultra Ball').multiplier;
  const base=evolutionData[dex[encounter.name][0]][1]/255;
  return Math.min(1,Math.max(0.11,base)*multiplier);
@@ -2528,7 +2576,7 @@ function renderAutoOptions(container,onChange) {
    saveWildProgress();
    onChange?.();
   };
-  reserve.append(checkbox,element('span','Reserve Ultra and Master Balls for rare encounters'));
+  reserve.append(checkbox,element('span','Reserve Ultra, Event, and Master Balls for rare encounters'));
   container.append(reserve);
  }
 }
@@ -2607,8 +2655,12 @@ function wildVictoryExperience(level) {return Math.floor((25+level*6)/2+level*le
 function applyDefeatRewards() {
  if(selectedWild) {
   const xp=Math.floor(wildVictoryExperience(selectedWild.level)/10);
-  const growth=allies.flatMap(actor=>gainWildExperience(actor.originalName ?? actor.name,xp));
-  return ['Your team gained '+xp+' XP per Pokémon.',...growth].join(' ');
+  const awards=allies.map(actor=>{
+   const name=actor.originalName ?? actor.name;
+   return {name,xp:battleExperience(name,xp)};
+  });
+  const growth=awards.flatMap(award=>gainWildExperience(award.name,award.xp));
+  return [...awards.map(award=>award.name+' gained '+award.xp+' XP.'),...growth].join(' ');
  }
  if(selectedTrainer) {
   const lost=Math.floor(wildProgress.coins/100);
@@ -2629,14 +2681,15 @@ function finishWildBattle(timedOut=false) {
  });
  const rewardMessage=rewards.length ? 'You earned '+rewards.join(' and ')+'.' : '';
  const finisher=enemy.lastDamageBy?.friendly ? enemy.lastDamageBy : activePlayer;
+ const finisherXP=battleExperience(finisher.originalName ?? finisher.name,gained);
  const awards=allies.map(actor=>{
   const share=actor===finisher ? 100 : actor.damagedOpponent ? 50 : 25;
-  return {name:actor.originalName ?? actor.name,share,xp:Math.floor(gained*share/100)};
+  return {name:actor.originalName ?? actor.name,share,xp:battleExperience(actor.originalName ?? actor.name,Math.floor(gained*share/100))};
  });
  const growth=awards.flatMap(award=>gainWildExperience(award.name,award.xp));
  growth.push(...evolveStoneHolders());
  wildResult={name:wildName,profile:structuredClone(enemy.originalProfile ?? enemy.profile),level:enemy.level,duration:clock,region:selectedWild.region,tier:selectedWild.tier,
-  message:[finisher.name+' earned '+gained+' XP.',rewardMessage,...allies.flatMap(actor=>actor.evRewards ?? []),...growth].filter(Boolean).join(' '),awards,timedOut,resolved:timedOut};
+  message:[finisher.name+' earned '+finisherXP+' XP.',rewardMessage,...allies.flatMap(actor=>actor.evRewards ?? []),...growth].filter(Boolean).join(' '),awards,timedOut,resolved:timedOut};
  captureMenu=false;
  difficultyMenu=false;
  saveWildProgress();
@@ -2649,7 +2702,7 @@ function finishWildBattle(timedOut=false) {
 function canCatchResult(result) {
  return result && !result.resolved;
 }
-const ballColors=['#ed4757','#628746','#408afa','#f0e8e5','#554236','#ed6b92','#29253d','#9456cf'];
+const ballColors=['#ed4757','#628746','#408afa','#f0e8e5','#554236','#ed6b92','#29253d','#149f99','#9456cf'];
 const captureDuration=4200;
 function tryCatch(index) {
  const result=wildResult;
@@ -8302,6 +8355,18 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.31',changes:['Added EXP Candies, Rare Candy, Event Ball, Lucky Egg and Poke Fight Tactics placement rewards.']},
+ {version:'0.22.30',changes:['Shop cards now show one outline, with orange for owned families and rose pink for trait matches.']},
+ {version:'0.22.29',changes:['Added the shared Poké Ball Carousel and Stage 5 Master Ball Draft.']},
+ {version:'0.22.28',changes:['Added shop indicators for owned families and matching traits, plus new combat traits.']},
+ {version:'0.22.27',changes:['Filled the final-form trait roster, added Legendary passives, and made branching fusions interactive.']},
+ {version:'0.22.26',changes:['Gave all Fight Tactics roster forms their own named signature moves.']},
+ {version:'0.22.25',changes:['Balanced Fight Tactics roles, strengthened hard trait breakpoints, added starting gold, and overlaid the combat banner.']},
+ {version:'0.22.24',changes:['Simplified Tactics role and signature labels and compacted the combat banner.']},
+ {version:'0.22.23',changes:['Added eight regional partner synergies and the Tower Duo lore trait in Fight Tactics.']},
+ {version:'0.22.22',changes:['Replaced Tactics elemental matchups and synergies with six combat-role traits.']},
+ {version:'0.22.21',changes:['Reworked Tactics into 18 stages with standalone carousels and Mega boss rewards.']},
+ {version:'0.22.20',changes:['Added a family-based Fight Tactics roster, branching star evolutions, and form-specific traits.']},
  {version:'0.22.19',changes:['Added equal PvP loaner gear, pending-save recovery, fusion-aware drafts, and manual Capture protection.']},
  {version:'0.22.18',changes:['Added Auto Capture preferences, safe fusion capacity, fuller Campaign backups, session recovery, and server-recorded raid rewards.']},
  {version:'0.22.17',changes:['Added server-side save validation, private integrity flags, and one active game session per account.']},
