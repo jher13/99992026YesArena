@@ -196,7 +196,11 @@ main{max-width:1190px}h1{font-size:clamp(26px,5vw,48px);color:#eff8ff}
 #pc-copies:not(:empty){margin-top:12px}
 .pc-copy-summary{margin:0 0 .5rem}
 .pc-copy-actions{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
-.pc-copy-actions select{flex:1 0 100%;width:100%;min-width:0}
+.pc-copy-grid{margin-bottom:.55rem}
+.pc-copy-grid .tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15rem;padding:.3rem;min-width:0}
+.pc-copy-grid .tile canvas{width:42px;height:42px;object-fit:contain;image-rendering:pixelated}
+.pc-copy-grid .tile[aria-pressed=true]{outline:2px solid #247454;outline-offset:-2px}
+.pc-copy-details{margin:.35rem 0 .65rem;font-size:.82rem;overflow-wrap:anywhere}
 #menu .pc-copy{border-color:#b5cbb9}
 .battle-ai-settings legend button{margin-left:.55rem}
 .gambit-dialog{width:min(94vw,760px);max-height:85vh;overflow:auto;background:#19142d;color:#f4ebff;border:1px solid #8e6eb8;border-radius:14px;padding:18px}
@@ -2112,24 +2116,41 @@ function pcCollectionControls(name) {
  const copies=wildProgress.copies[name] ?? [];
  section.append(element('p',name+' · '+(copies.length+1)+' total','pc-copy-summary'));
  const actions=element('div',null,'pc-copy-actions');
- section.append(actions);
+ const grid=element('div',null,'tile-grid pc-copy-grid');
+ const details=element('p',null,'pc-copy-details');
+ details.setAttribute('aria-live','polite');
+ section.append(grid,details,actions);
  const entry=ownedPokemon(name);
  const onTeam=team.includes(name);
  const save=()=>{
   playerStorage.setItem(profileStorage,JSON.stringify(profiles));
   saveTeam();saveWildProgress();renderMenu();
  };
- const select=element('select');
- select.setAttribute('aria-label','Choose a duplicate');
- copies.forEach((copy,i)=>{
-  const option=element('option','Copy '+(i+2)+' · Lv. '+copy.level+' · '+natureOf(copy.profile).name+
-   ' · IV '+copy.profile.ivs.join('/'));
-  option.value=String(i);select.append(option);
+ let selected=-1;
+ const duplicateActions=[];
+ const tiles=[{...entry,profile:profileFor(name)},...copies].map((copy,slot)=>{
+  const label=slot===0?'Active':'Copy '+(slot+1);
+  const tile=element('button',null,'tile');
+  tile.type='button';
+  tile.setAttribute('aria-label',name+' · '+label+' · Lv. '+copy.level);
+  tile.append(idlePokemonPortrait(name,null,copy.profile.shiny?spriteVariants(name).shiny:null),
+   element('strong',label),element('small','Lv. '+copy.level));
+  tile.onclick=()=>selectCopy(slot-1);
+  return tile;
  });
+ function selectCopy(index){
+  selected=index;
+  for(const [slot,tile] of tiles.entries())tile.setAttribute('aria-pressed',String(slot===index+1));
+  const profile=index<0?profileFor(name):copies[index].profile;
+  details.textContent=natureOf(profile).name+' · IV '+profile.ivs.join('/');
+  for(const action of duplicateActions)action.disabled=index<0;
+ }
+ grid.append(...tiles);
  if(copies.length) {
   const activate=element('button',onTeam?'Swap copy into battle team':'Make this copy active');
   activate.onclick=()=>{
-   const index=Number(select.value),copy=copies[index];
+   const index=selected,copy=copies[index];
+   if(!copy)return;
    copies[index]={...entry,profile:profileFor(name),moves:[...movesFor(name)],ai:wildProgress.ai[name],held:wildProgress.held[name]};
    wildProgress.owned[name]={level:copy.level,xp:copy.xp};
    profiles[dex[name][0]]=copy.profile;
@@ -2142,13 +2163,15 @@ function pcCollectionControls(name) {
   };
   const release=element('button','Release selected copy');
   release.onclick=()=>{
-   if(confirm('Permanently release this '+name+' copy?')) {copies.splice(Number(select.value),1);save();}
+   if(copies[selected] && confirm('Permanently release this '+name+' copy?')) {copies.splice(selected,1);save();}
   };
-  actions.append(select,activate,release);
+  duplicateActions.push(activate,release);
+  actions.append(activate,release);
   if(!isLegendaryEncounter(name) && name!=='Ditto' && name!=='Unown') {
    const breed=element('button','Breed selected copy');
    breed.onclick=()=>{
-    const other=copies[Number(select.value)].profile;
+    const other=copies[selected]?.profile;
+    if(!other)return;
     const parent=profileFor(name);
     const child=rollProfile();
     child.evs.fill(0);
@@ -2164,6 +2187,7 @@ function pcCollectionControls(name) {
     save();
     byId('pokemon-detail').append(element('p','A Lv. 1 '+(isAvailablePokemon(base)?base:name)+' hatched.'));
    };
+   duplicateActions.push(breed);
    actions.append(breed);
   }
  }
@@ -2179,6 +2203,7 @@ function pcCollectionControls(name) {
   inspected=null;save();
  };
  actions.append(release);
+ selectCopy(-1);
  return section;
 }
 function renderDetail() {
@@ -9462,6 +9487,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.33',changes:['Added a PC-style grid for copies of the selected Pokémon.']},
  {version:'0.22.32',changes:['Organized PC training into EV and IV rows and moved copy management below the PC box.']},
  {version:'0.22.31',changes:['Added EXP Candies, Rare Candy, Event Ball, Lucky Egg and Poke Fight Tactics placement rewards.']},
  {version:'0.22.30',changes:['Shop cards now show one outline, with orange for owned families and rose pink for trait matches.']},
