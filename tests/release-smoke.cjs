@@ -6,6 +6,11 @@ const read=file=>fs.readFileSync(path.join(__dirname,'..',file),'utf8');
 const html=read('index.html');
 const manifest=JSON.parse(read('version.json'));
 assert.match(manifest.version,/^\d+\.\d+\.\d+$/);
+const residualCode=html.slice(html.indexOf('function raidResidualDamage('),html.indexOf('const updateLogEntries='));
+const residual=new Function(residualCode+'return raidResidualDamage;')();
+assert.equal(residual({max:10000,masterRaidPhase:2},312),65);
+assert.equal(residual({max:10000,masterRaidPhase:3},20),20);
+assert.equal(residual({max:10000},312),312);
 const chargeCode=html.slice(html.indexOf('function dashChargesLeft('),html.indexOf('function tryDashDodge('));
 const {dashChargesLeft,defendChargesLeft,defendDamage}=new Function('isExhausted',chargeCode+
  'return {dashChargesLeft,defendChargesLeft,defendDamage};')(actor=>actor.exhausted);

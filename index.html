@@ -3168,6 +3168,8 @@ function skillDescription(move) {
  if(move==='Tailwind') notes.push('Raises the Speed of all living teammates, including reserves, by two stages.');
  if(['Seismic Toss','Night Shade'].includes(move)) notes.push('Fixed damage scales with the user’s level after the Arena damage reduction, with a minimum of 1 HP.');
  if(move==='Dragon Rage') notes.push('Deals '+scaledBattleDamage(40)+' base fixed HP damage on a hit.');
+ if(['Leech Seed','Curse','Nightmare','Toxic','Poison Powder','Poison Gas'].includes(move))notes.push('Master raid bosses take at most 0.65% of their max HP per tick from this residual effect.');
+ if(['Perish Song','Destiny Bond'].includes(move))notes.push('Instant knockouts cannot affect Master raid bosses.');
  if(move==='Sonic Boom') notes.push('Deals '+scaledBattleDamage(20)+' base fixed HP damage on a hit.');
  if(move==='Baton Pass')notes.push('Switches to a healthy reserve suited to the matchup and passes the user’s stat stages.');
  if(move==='Belly Drum')notes.push('Spends half the user’s maximum HP to raise Attack to +3.');
@@ -6507,7 +6509,7 @@ function tickStatus(actor,dt) {
   if(!actor[key] || clock<actor[key])continue;
   actor[key]+=1;
   if(activeAbility(actor)==='Magic Guard')continue;
-  const damage=Math.min(actor.hp,Math.max(1,Math.floor(actor.max*fraction)));
+  const damage=Math.min(actor.hp,Math.max(1,Math.floor(raidResidualDamage(actor,actor.max*fraction))));
   actor.hp-=damage;
   if(key==='seedAt') {
    const recipient=fieldActors().find(member=>member?.hp>0 && member.friendly!==actor.friendly);
@@ -6530,7 +6532,7 @@ function tickStatus(actor,dt) {
   actor.dot-=elapsed;
   while(actor.dot<=1e-8 && actor.hp>0) {
    const ability=activeAbility(actor);
-   const amount=actor.ailment===5?actor.max*0.01:(actor.burnPower ?? 0)*(ability==='Heatproof'?0.5:1);
+   const amount=actor.ailment===5?raidResidualDamage(actor,actor.max*0.01):(actor.burnPower ?? 0)*(ability==='Heatproof'?0.5:1);
    if(actor.ailment===5 && ability==='Poison Heal')healActor(actor,actor.max/8);
    else if(ability!=='Magic Guard') {
     const dealt=Math.min(actor.hp,Math.max(1,Math.round(amount*masterGymDamageMultiplier(actor.ailmentSource))));
@@ -7105,7 +7107,7 @@ const additionalStatusMoves={
  Grudge:timedStatus('For 4 seconds, a move that knocks out the user gets an extra 12 seconds of cooldown.','grudgeUntil',4,true),
  'Perish Song':{description:'All active Pokémon that hear the song faint after 8 seconds unless they switch out.',
   score:actor=>forcedSwitchOptions(actor,null).length && !actor.perishAt?48:0,
-  apply:()=>{for(const member of fieldActors())if(member?.hp>0 && activeAbility(member)!=='Soundproof' && !member.perishAt)member.perishAt=clock+8;}},
+  apply:()=>{for(const member of fieldActors())if(member?.hp>0 && !member.masterRaidPhase && activeAbility(member)!=='Soundproof' && !member.perishAt)member.perishAt=clock+8;}},
  Nightmare:{description:'While the target stays asleep, deals 1/16 of its max HP per second.',
   score:(_,target)=>target.ailment===2 && !target.nightmareAt?55:0,
   apply:(_,target)=>{if(target.ailment===2)target.nightmareAt=clock+1;}},
@@ -8358,7 +8360,7 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
   const dealt=Math.min(victim.hp===victim.max && defender==='Sturdy' && victim.hp>1?victim.hp-1:victim.hp,mitigated);
   victim.hp-=dealt;
   if(victim.hp<=0 && dealt>0) {
-   if(victim.destinyUntil>clock)actor.hp=0;
+   if(victim.destinyUntil>clock && !actor.masterRaidPhase)actor.hp=0;
    const slot=actor.moves.indexOf(move);
    if(victim.grudgeUntil>clock && slot>=0)actor.moveTimers[slot]+=12;
   }
@@ -9909,7 +9911,11 @@ for(const [standard,extra] of Object.entries(masterRaidExtraMoves)){
 function raidTierLabel(tier) {return tier.master?'Master Tier':'Tier '+tier.tier;}
 function masterRaidPhase(hp,max) {return hp/max>=.65?1:hp/max>=.25?2:3;}
 function isRaidBerserk(actor) {return actor?.masterRaidPhase===3;}
+function raidResidualDamage(actor,amount) {
+ return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
+}
 const updateLogEntries=[
+ {version:'0.22.52',changes:['Balanced Master raid residual damage and fixed Master room startup.']},
  {version:'0.22.51',changes:['Added Level 100 shiny Master Co-op raids with three HP-based phases.']},
  {version:'0.22.50',changes:['Master Campaign battles now escalate pressure to break recovery loops and open blocked combat lanes.']},
  {version:'0.22.49',changes:['Master Gym opponents have half-length attack cooldowns and gain half as much exhaustion.']},
