@@ -6019,8 +6019,8 @@ function unit(name,x,y,friendly,level=friendly?(ownedPokemon(name)?.level ?? 5):
  const speedFactor=clamp(0.65+stats[3]/200,0.65,1.7);
  return {name,masterGymCombatant:Boolean(master),gymRole:!friendly?selectedGym?.plan?.team[gymSlot]?.[1]:null,type:primary,level,hp,max:hp,ai:master?master.ai:friendly && !runMember?normalizeBattleAI(wildProgress.ai[name]):
   !friendly && selectedGym?normalizeBattleAI({style:gymRole(name).tank?'Defensive':'Balanced',target:'Type weakness',position:selectedGym.plan?.team[gymSlot]?.[2]}):null,
-  heldItem:master?master.heldItem:friendly && !rogueRun?wildProgress.held[name]:!friendly && selectedGym?(selectedGym.plan.team[gymSlot][4] ?? gymHeldItem(name)):null,itemUsed:false,itemTimer:4,ability:abilityFor(name,profile),abilityTimer:0,entryPending:false,entryUsed:false,flashFire:false,pace:pace*speedFactor,cooldown:cooldown/speedFactor,moves,profile,stats,
-  moveCooldowns:moves.map(skill=>moveRules(skill).cooldown),moveTimers:moves.map(()=>0),
+  heldItem:master?master.heldItem:friendly && !rogueRun?wildProgress.held[name]:!friendly && selectedGym?(selectedGym.plan.team[gymSlot][4] ?? gymHeldItem(name)):null,itemUsed:false,itemTimer:4,ability:abilityFor(name,profile),abilityTimer:0,entryPending:false,entryUsed:false,flashFire:false,pace:pace*speedFactor,cooldown:cooldown/speedFactor*(master?0.5:1),moves,profile,stats,
+  moveCooldowns:moves.map(skill=>moveRules(skill).cooldown*(master?0.5:1)),moveTimers:moves.map(()=>0),
   stages:[0,0,0,0,0,0,0,0,0,0],ailment:null,ailmentSource:null,ailmentTime:0,dot:0,damagedOpponent:false,lastDamageBy:null,
   x,y,friendly,guard:0,charge:0,gait:null,stride:0,motionTicks:0,attackX:0,attackY:0,attackStyle:'attack',attackSpan:0.36,hitSpan:0.28,hitX:0,hitY:0,moveLabel:null,labelTime:0,attack:0,hit:0,facing:friendly?1:-1,direction:friendly?2:6};
 }
@@ -8056,7 +8056,7 @@ function act(actor, opponents, dt) {
  }
  const basic=move==='Normal Attack';
  if(basic) {
-  actor.normalAttackAt=clock+0.5;
+  actor.normalAttackAt=clock+(actor.masterGymCombatant?0.25:0.5);
  }
  else beginMoveCooldown(actor,slot);
  actor.firstAction=!actor.actedSinceEntry;
@@ -8420,7 +8420,7 @@ function moveExhaustionCost(actor,slot) {
 }
 function addMoveExhaustion(actor,slot,animation,overrideCost) {
  if(actor.side==='boss')return;
- actor.exhaustion=Math.min(100,(actor.exhaustion ?? 0)+(overrideCost ?? moveExhaustionCost(actor,slot)));
+ actor.exhaustion=Math.min(100,(actor.exhaustion ?? 0)+(overrideCost ?? moveExhaustionCost(actor,slot))*(actor.masterGymCombatant?0.5:1));
  actor.exhaustionAnimationUntil=Math.max(actor.exhaustionAnimationUntil ?? 0,clock+animation);
 }
 function tickExhaustion(actor,dt) {
@@ -9829,6 +9829,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.49',changes:['Master Gym opponents have half-length attack cooldowns and gain half as much exhaustion.']},
  {version:'0.22.48',changes:['Displayed Master Collection progress and increased Master Gym Leader damage by 50%.']},
  {version:'0.22.47',changes:['Master Campaign uses your regular battle team.']},
  {version:'0.22.46',changes:['Added separate Master challenger teams, hidden leader rosters, and Master badge marks.']},
