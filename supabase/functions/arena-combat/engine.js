@@ -5483,7 +5483,8 @@ function scaledBattleDamage(damage) {
 }
 function battleDamage(actor,victim,power,multiplier,physical,element,move,critical=false) {
  if(multiplier===0) return 0;
- const masterBonus=actor.friendly!==victim.friendly?masterGymDamageMultiplier(actor):1;
+ const masterBonus=actor.friendly!==victim.friendly?
+  masterGymDamageMultiplier(actor)*(isRaidBerserk(actor)?2:1)*(isRaidBerserk(victim)?3:1):1;
  if(move==='Seismic Toss' || move==='Night Shade') return scaledBattleDamage(actor.level*masterBonus);
  if(move==='Dragon Rage') return scaledBattleDamage(40*masterBonus);
  if(move==='Sonic Boom') return scaledBattleDamage(20*masterBonus);
@@ -6355,6 +6356,7 @@ function tryBattleDash(actor,angle,distance,accept,evading=false) {
  if(actor.ingrainAt || dashChargesLeft(actor,clock)<(evading?1:2))return false;
  const threats=pendingCasts.filter(area=>area.actor!==actor && (area.roaming ||
   (area.actor.hp>0 && (area.friendlyFire || area.actor.friendly!==actor.friendly))));
+ if(arenaMap?.master)for(const meteor of arenaMap.meteors ?? [])threats.push({center:meteor,radius:meteor.radius});
  const turns=evading?[0,1,-1,2,-2,3,-3,4]:[0,1,-1];
  const endpoint=turns.map(turn=>{
   const heading=angle+turn*Math.PI/4;
@@ -6397,6 +6399,7 @@ function hazardHits(point,cast,time=0.3) {
  return inSkill(point,cast.center,cast.radius,cast.line);
 }
 function warrantsDash(actor,cast,time) {
+ if(cast.impact!==undefined)return time<=.65;
  const [type,power,,,status]=moveCatalog[cast.move] ?? [];
  if(status || !power || time>0.65)return false;
  const damage=battleDamage(cast.actor,actor,power,effectiveness(type,actor),moveRules(cast.move).category===2,type,cast.move);
@@ -6409,6 +6412,9 @@ function dodgeSkill(actor,dt) {
   (!cast.flight || (actor.x-cast.line.x)*cast.line.dx+(actor.y-cast.line.y)*cast.line.dy>=cast.travel-cast.line.radius));
  const impact=cast=>cast.flight?Math.max(0,((actor.x-cast.line.x)*cast.line.dx+
   (actor.y-cast.line.y)*cast.line.dy-cast.travel)/460):cast.roaming?0.25:cast.remaining;
+ if(actor.side!=='boss' && arenaMap?.master && arenaMap.meteors?.length){
+  for(const meteor of arenaMap.meteors)hazards.push({...meteor,center:meteor,remaining:Math.max(0,meteor.impact-clock)});
+ }
  const hazard=hazards.filter(cast=>impact(cast)<=0.9 && hazardHits(actor,cast)).sort((a,b)=>impact(a)-impact(b))[0];
  if(!hazard)return false;
  const center=hazard.line?nearestLinePoint(actor,hazard.line):hazard.roaming?roamingCenter(hazard,0.25):hazard.center;
@@ -6956,7 +6962,7 @@ function act(actor, opponents, dt) {
  }
  const basic=move==='Normal Attack';
  if(basic) {
-  actor.normalAttackAt=clock+(actor.masterGymCombatant?0.25:0.5);
+  actor.normalAttackAt=clock+(actor.masterGymCombatant || isRaidBerserk(actor)?0.25:0.5);
  }
  else beginMoveCooldown(actor,slot);
  actor.firstAction=!actor.actedSinceEntry;
@@ -6967,7 +6973,7 @@ function act(actor, opponents, dt) {
   actor.hp=Math.max(0,actor.hp-Math.max(1,Math.floor(actor.max/16)));
   return;
  }
- if(!basic)actor.charge=actor.cooldown*(priority>0 ? 0.82 : power>=100 ? 1.18 : 1);
+ if(!basic)actor.charge=actor.cooldown*(isRaidBerserk(actor)?0.5:1)*(priority>0 ? 0.82 : power>=100 ? 1.18 : 1);
  if(actor.ailment===6 && !status && onlineRandom()<1/3) {
   const damage=Math.min(actor.hp,battleDamage(actor,actor,40,1,true,null,null));
   actor.hp-=damage;
@@ -6980,9 +6986,9 @@ function act(actor, opponents, dt) {
   return;
  }
  actor.attackStyle=rules.scope!=='ally' && rules.range<=25 ? 'lunge' : 'attack';
- actor.attackSpan=(pmdMotion(actor,actor.attackStyle)?.duration ?? 21.6)/60;
+ actor.attackSpan=(pmdMotion(actor,actor.attackStyle)?.duration ?? 21.6)/(isRaidBerserk(actor)?120:60);
  actor.attack=actor.attackSpan;
- if(slot>=0)actor.moveCooldownStarts[slot]=clock+Math.max(0.58,actor.attackSpan);
+ if(slot>=0)actor.moveCooldownStarts[slot]=clock+Math.max(isRaidBerserk(actor)?0.29:0.58,actor.attackSpan);
  if(!basic)actor.exhaustionAnimationUntil=Math.max(actor.exhaustionAnimationUntil ?? 0,clock+actor.attackSpan);
  const aim=distance || 1;
  actor.attackX=rules.scope==='ally' ? 0 : (target.x-actor.x)/aim;
@@ -7499,7 +7505,7 @@ function advanceCombat(dt,realDt,sides) {
   for(let i=0;i<actor.moveTimers.length;i++) {
    if(pendingCasts.some(cast=>cast.actor===actor && cast.cooldownSlot===i))continue;
    const elapsed=Math.min(cooldownDt,Math.max(0,clock-(actor.moveCooldownStarts?.[i] ?? -Infinity)));
-   actor.moveTimers[i]=Math.max(0,actor.moveTimers[i]-elapsed);
+   actor.moveTimers[i]=Math.max(0,actor.moveTimers[i]-elapsed*(isRaidBerserk(actor)?2:1));
   }
  }
  recallCooldown=Math.max(0,recallCooldown-realDt);
@@ -8050,6 +8056,28 @@ function paint() {
   phase==='setup' ? [allies[selected],enemies[0]] :
   [playerSwitch?null:activePlayer,enemySwitch?null:activeEnemy].filter(Boolean);
  if(phase==='battle' || phase==='online-battle') for(const area of pendingCasts) drawSkillWarning(area);
+ if(arenaMap?.master && arenaMap.phase===2){
+  ctx.save();
+  ctx.fillStyle='#ff3b151c';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(const meteor of arenaMap.meteors){
+   const time=clamp(meteor.impact-onlineMatchDuration,0,1);
+   ctx.beginPath();
+   ctx.arc(meteor.x,meteor.y,meteor.radius,0,Math.PI*2);
+   ctx.fillStyle='#ff482b3b';
+   ctx.fill();
+   ctx.strokeStyle='#ff9d63';
+   ctx.lineWidth=3;
+   ctx.stroke();
+   if(time<0.35){
+    ctx.beginPath();
+    ctx.arc(meteor.x,meteor.y-time*450,12,0,Math.PI*2);
+    ctx.fillStyle='#ffe2a0';
+    ctx.fill();
+   }
+  }
+  ctx.restore();
+ }
  for(const effect of effects) drawMove(effect);
  for(const rock of arenaMap?.rocks ?? []) {
   if(rock.fall) {
@@ -8073,6 +8101,16 @@ function paint() {
  for(const effect of effects) drawImpactLabel(effect);
  drawMoveBubbles(visible);
  const battleClock=phase==='online-battle'?onlineMatchDuration:clock;
+ if(phase==='online-battle' && arenaMap?.master && arenaMap.phase===3 && battleClock<arenaMap.phaseStarted+4){
+  ctx.save();
+  ctx.fillStyle='#270909e8';
+  ctx.fillRect(0,canvas.height/2-45,canvas.width,90);
+  ctx.textAlign='center';
+  ctx.fillStyle='#ffb18c';
+  ctx.font='bold 46px system-ui';
+  ctx.fillText('BOSS BERSERK',canvas.width/2,canvas.height/2+16);
+  ctx.restore();
+ }
  if(phase==='battle' || phase==='online-battle')for(const actor of visible) {
   if(actor.hp>0 && actor.exhaustedUntil>battleClock)drawExhaustedAlert(actor);
  }
@@ -8746,7 +8784,21 @@ const megaRaidTiers={
  coop_mega_2:{tier:2,name:'Mega Gengar',species:'Gengar',arenaType:'Ghost',level:55,hp:8500,coins:65000,masterBalls:5,nature:'Timid',trait:3,evs:[4, 0, 0, 252, 0, 252],ability:'Shadow Tag',secondary:'Poison',moves:['Shadow Ball', 'Sludge Bomb', 'Sludge Wave', 'Hypnosis', 'Hex', 'Venoshock', 'Confuse Ray', 'Nasty Plot']},
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
+const masterRaidExtraMoves={
+ coop_mega:['Heat Wave','Blast Burn','Flame Charge','Overheat','Dragon Pulse','Outrage','Air Slash','Fire Fang'],
+ coop_mega_2:['Dark Pulse','Dream Eater','Night Shade','Thunderbolt','Focus Blast','Toxic','Dazzling Gleam','Shadow Punch'],
+ coop_mega_3:['Air Slash','Twister','Iron Head','Crunch','Aerial Ace','Dragon Tail','Thunderbolt','Hyper Beam'],
+};
+for(const [standard,extra] of Object.entries(masterRaidExtraMoves)){
+ const base=megaRaidTiers[standard];
+ megaRaidTiers[standard+'_master']={...base,standard,master:true,level:100,
+  hp:Math.round(base.hp*1.6),moves:[...base.moves,...extra]};
+}
+function raidTierLabel(tier) {return tier.master?'Master Tier':'Tier '+tier.tier;}
+function masterRaidPhase(hp,max) {return hp/max>=.65?1:hp/max>=.25?2:3;}
+function isRaidBerserk(actor) {return actor?.masterRaidPhase===3;}
 const updateLogEntries=[
+ {version:'0.22.51',changes:['Added Level 100 shiny Master Co-op raids with three HP-based phases.']},
  {version:'0.22.50',changes:['Master Campaign battles now escalate pressure to break recovery loops and open blocked combat lanes.']},
  {version:'0.22.49',changes:['Master Gym opponents have half-length attack cooldowns and gain half as much exhaustion.']},
  {version:'0.22.48',changes:['Displayed Master Collection progress and increased Master Gym Leader damage by 50%.']},
@@ -9045,7 +9097,7 @@ function onlineActor(name,entries,side,index,bossLevel,levelOverride,raid=null,c
  const fallback={ivs:Array(6).fill(bossLevel?23:0),evs:Array(6).fill(0),pid:0};
  savedMoves=JSON.parse(entries['pokemon-arena-moves'] ?? '{}') ?? {};
  delete loadouts[name];
- const moves=raid?legalLoadout(name,raid.moves,8):bossLevel?wildMoves(name):copy?legalLoadout(name,copy.moves ?? []):movesFor(name);
+ const moves=raid?legalLoadout(name,raid.moves,raid.master?16:8):bossLevel?wildMoves(name):copy?legalLoadout(name,copy.moves ?? []):movesFor(name);
  const actor=unit(name,0,0,side!=='boss',level,{profile:validProfile(profile)?profile:fallback,moves});
  const held=progress.held?.[name];
  const equipped=Object.entries(progress.held ?? {}).filter(([,item])=>item===held).map(([holder])=>holder);
@@ -9089,6 +9141,8 @@ function initializeOnline(match) {
   const actor=onlineActor(raid?.species ?? guardians[i],{},'boss',i,raid?.level ?? bossLevel,undefined,raid);
   if(raid) {
    actor.raidForm=raid.name;
+   actor.shiny=Boolean(raid.master);
+   actor.masterRaidPhase=raid.master?1:undefined;
    actor.hp=actor.max=actor.stats[0]=raid.hp;
    actor.raidSecondary=raid.secondary;
    for(const stat of [1,2,4,5])actor.stats[stat]=Math.round(actor.stats[stat]*(1+raid.tier*0.12));
@@ -9122,6 +9176,7 @@ function initializeOnline(match) {
  effects=[];pendingCasts=[];onlineSounds=[];onlineRecalls={};
  onlineRandomState=Number.parseInt(match.id.slice(0,8),16)>>>0;
  arenaMap=raid?megaRaidArena(raid):randomArenaMap();
+ if(raid?.master)Object.assign(arenaMap,{master:true,phase:1,phaseStarted:0,meteors:[],nextMeteor:0});
 }
 const actorReferences=['ailmentSource','lastDamageBy'];
 function saveOnlineState() {
@@ -9171,6 +9226,41 @@ function onlineSend(side,incomingId,fieldIndex) {
  placeOnline(slot,incoming);
  if(slot.transition.stage==='recall')onlineRecalls[side]=clock+recallDelay+ballDuration;
 }
+function updateMasterRaid(sides) {
+ if(!arenaMap?.master)return;
+ const boss=enemies[0];
+ if(!boss || boss.hp<=0)return;
+ const nextPhase=Math.max(arenaMap.phase,masterRaidPhase(boss.hp,boss.max));
+ if(nextPhase!==arenaMap.phase){
+  arenaMap.phase=nextPhase;
+  arenaMap.phaseStarted=clock;
+  arenaMap.nextMeteor=clock;
+  arenaMap.meteors=[];
+ }
+ boss.masterRaidPhase=nextPhase;
+ if(nextPhase!==2)return;
+ const fighters=sides[0].filter(actor=>actor.hp>0);
+ const pending=[];
+ for(const meteor of arenaMap.meteors){
+  if(meteor.impact>clock){pending.push(meteor);continue;}
+  for(const fighter of fighters){
+   if(Math.hypot(fighter.x-meteor.x,fighter.y-meteor.y)>meteor.radius+bodyRadius(fighter))continue;
+   const damage=Math.min(fighter.hp,defendDamage(fighter,Math.ceil(fighter.max*.12),clock));
+   fighter.hp-=damage;
+   recordOpponentDamage(boss,fighter,damage);
+   effects.push({tx:fighter.x,ty:fighter.y,damage,multiplier:1,color:'#ffb18c',impactOnly:true,life:.58});
+  }
+  effects.push({x:meteor.x,y:meteor.y,tx:meteor.x,ty:meteor.y,zone:true,radius:meteor.radius,color:'#ff704b',life:.58});
+ }
+ if(fighters.length && clock>=arenaMap.nextMeteor){
+  const target=fighters[Math.floor(onlineRandom()*fighters.length)];
+  const radius=70;
+  pending.push({x:target.x,y:target.y,radius,impact:clock+1},
+   {x:radius+onlineRandom()*(canvas.width-2*radius),y:radius+onlineRandom()*(canvas.height-2*radius),radius,impact:clock+1});
+  arenaMap.nextMeteor=clock+2.4;
+ }
+ arenaMap.meteors=pending;
+}
 function onlineFrame(dt,raid=false) {
  refreshBerriesAfterKnockout();
  for(const slots of trainerFields)for(const slot of slots) {
@@ -9188,6 +9278,7 @@ function onlineFrame(dt,raid=false) {
  }
  const sides=combatSides();
  if(sides.some(side=>!side.length))lastDamageClock+=dt;
+ updateMasterRaid(sides);
  advanceCombat(dt,dt,sides);
  refreshBerriesAfterKnockout();
  // Co-op guardians replace themselves. PvP players choose their reserves.
@@ -9247,10 +9338,10 @@ export function onlineView(state,side,mode) {
  const visible=[...state.allies,...state.enemies].filter(allowed).map(actor=>{
   const {name,side,onlineId,hp,max,level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary}=actor;
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary,shiny,masterRaidPhase}=actor;
   return {name,side,onlineId,hp,max,level:mode==='free_fight'?100:level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary};
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary,shiny,masterRaidPhase};
  });
  const ids=new Set(visible.map(actor=>actor.onlineId));
  const fields=state.fields.map(slots=>slots.map(slot=>{

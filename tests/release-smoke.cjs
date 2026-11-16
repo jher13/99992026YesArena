@@ -26,9 +26,9 @@ assert.equal(defendChargesLeft(defender,5),1);
 assert.equal(defendDamage(defender,40,5),20);
 assert.equal(defendDamage({hp:100,max:100,exhausted:true},40,0),60);
 const dashCode=html.slice(html.indexOf('function tryBattleDash('),html.indexOf('function battleActorId('));
-const dash=new Function('dashChargesLeft','clock','pendingCasts','canvas','clamp','movementClearance','pmdDirection','effects','actorSpriteVariant',
+const dash=new Function('dashChargesLeft','clock','pendingCasts','canvas','clamp','movementClearance','pmdDirection','effects','actorSpriteVariant','arenaMap',
  dashCode+'return tryBattleDash;')(dashChargesLeft,0,[],{width:960,height:480},
- (x,lo,hi)=>Math.max(lo,Math.min(hi,x)),()=>1,()=>0,[],()=>null);
+ (x,lo,hi)=>Math.max(lo,Math.min(hi,x)),()=>1,()=>0,[],()=>null,null);
 const dasher={x:100,y:100,motionTicks:0};
 assert(dash(dasher,0,90,point=>point.x>=185));
 assert.equal(dasher.x,190);
@@ -587,6 +587,32 @@ async function verifyPillarChase(){
  const result=simulateOnline(match,state,600,null,'host');
  assert(result.state.lastDamageClock>0,'Mewtwo and Malamar must exchange damage around a pillar');
 }
-Promise.all([verifyPendingRecovery(),verifyLoanerGear(),verifyPillarChase()]).then(()=>{
+async function verifyMasterRaids(){
+ const {simulateOnline,onlineView}=await import('../supabase/functions/arena-combat/engine.js');
+ for(const [mode,health] of [['coop_mega_master',8000],['coop_mega_2_master',13600],['coop_mega_3_master',16800]]){
+  const match={id:'b2450000-0000-0000-0000-000000000000',mode,format:1,host:'a',
+   raid_seats:[{uid:'a',pokemon:'Mewtwo',entries:{'pokemon-arena-wild-progress':JSON.stringify({owned:{Mewtwo:{level:100}}})}}]};
+  let {state}=simulateOnline(match,null,0,null,'host');
+  assert.equal(state.enemies[0].max,health);
+  assert.equal(state.enemies[0].level,100);
+  assert.equal(state.enemies[0].shiny,true);
+  assert.equal(new Set(state.enemies[0].moves).size,16);
+  assert.equal(state.arenaMap.phase,1);
+  state.enemies[0].hp=health*.65;
+  ({state}=simulateOnline(match,state,1,null,'host'));
+  assert.equal(state.arenaMap.phase,1);
+  state.enemies[0].hp=health*.64;
+  ({state}=simulateOnline(match,state,90,null,'host'));
+  assert.equal(state.arenaMap.phase,2);
+  assert(state.arenaMap.meteors.every(m=>m.impact>state.clock && m.impact<=state.clock+1));
+  assert.equal(onlineView(state,'host',mode).arenaMap.phase,2);
+  state.enemies[0].hp=health*.24;
+  ({state}=simulateOnline(match,state,1,null,'host'));
+  assert.equal(state.arenaMap.phase,3);
+  assert.equal(state.enemies[0].masterRaidPhase,3);
+  assert.equal(state.arenaMap.meteors.length,0);
+ }
+}
+Promise.all([verifyPendingRecovery(),verifyLoanerGear(),verifyPillarChase(),verifyMasterRaids()]).then(()=>{
  console.log('Manual Capture, full-bench fusion, pending-save recovery, and server loaner gear checks passed.');
 }).catch(error=>{console.error(error);process.exitCode=1;});

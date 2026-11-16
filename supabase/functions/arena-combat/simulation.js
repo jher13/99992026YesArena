@@ -23,7 +23,7 @@ function onlineActor(name,entries,side,index,bossLevel,levelOverride,raid=null,c
  const fallback={ivs:Array(6).fill(bossLevel?23:0),evs:Array(6).fill(0),pid:0};
  savedMoves=JSON.parse(entries['pokemon-arena-moves'] ?? '{}') ?? {};
  delete loadouts[name];
- const moves=raid?legalLoadout(name,raid.moves,8):bossLevel?wildMoves(name):copy?legalLoadout(name,copy.moves ?? []):movesFor(name);
+ const moves=raid?legalLoadout(name,raid.moves,raid.master?16:8):bossLevel?wildMoves(name):copy?legalLoadout(name,copy.moves ?? []):movesFor(name);
  const actor=unit(name,0,0,side!=='boss',level,{profile:validProfile(profile)?profile:fallback,moves});
  const held=progress.held?.[name];
  const equipped=Object.entries(progress.held ?? {}).filter(([,item])=>item===held).map(([holder])=>holder);
@@ -67,6 +67,8 @@ function initializeOnline(match) {
   const actor=onlineActor(raid?.species ?? guardians[i],{},'boss',i,raid?.level ?? bossLevel,undefined,raid);
   if(raid) {
    actor.raidForm=raid.name;
+   actor.shiny=Boolean(raid.master);
+   actor.masterRaidPhase=raid.master?1:undefined;
    actor.hp=actor.max=actor.stats[0]=raid.hp;
    actor.raidSecondary=raid.secondary;
    for(const stat of [1,2,4,5])actor.stats[stat]=Math.round(actor.stats[stat]*(1+raid.tier*0.12));
@@ -100,6 +102,7 @@ function initializeOnline(match) {
  effects=[];pendingCasts=[];onlineSounds=[];onlineRecalls={};
  onlineRandomState=Number.parseInt(match.id.slice(0,8),16)>>>0;
  arenaMap=raid?megaRaidArena(raid):randomArenaMap();
+ if(raid?.master)Object.assign(arenaMap,{master:true,phase:1,phaseStarted:0,meteors:[],nextMeteor:0});
 }
 const actorReferences=['ailmentSource','lastDamageBy'];
 function saveOnlineState() {
@@ -149,6 +152,41 @@ function onlineSend(side,incomingId,fieldIndex) {
  placeOnline(slot,incoming);
  if(slot.transition.stage==='recall')onlineRecalls[side]=clock+recallDelay+ballDuration;
 }
+function updateMasterRaid(sides) {
+ if(!arenaMap?.master)return;
+ const boss=enemies[0];
+ if(!boss || boss.hp<=0)return;
+ const nextPhase=Math.max(arenaMap.phase,masterRaidPhase(boss.hp,boss.max));
+ if(nextPhase!==arenaMap.phase){
+  arenaMap.phase=nextPhase;
+  arenaMap.phaseStarted=clock;
+  arenaMap.nextMeteor=clock;
+  arenaMap.meteors=[];
+ }
+ boss.masterRaidPhase=nextPhase;
+ if(nextPhase!==2)return;
+ const fighters=sides[0].filter(actor=>actor.hp>0);
+ const pending=[];
+ for(const meteor of arenaMap.meteors){
+  if(meteor.impact>clock){pending.push(meteor);continue;}
+  for(const fighter of fighters){
+   if(Math.hypot(fighter.x-meteor.x,fighter.y-meteor.y)>meteor.radius+bodyRadius(fighter))continue;
+   const damage=Math.min(fighter.hp,defendDamage(fighter,Math.ceil(fighter.max*.12),clock));
+   fighter.hp-=damage;
+   recordOpponentDamage(boss,fighter,damage);
+   effects.push({tx:fighter.x,ty:fighter.y,damage,multiplier:1,color:'#ffb18c',impactOnly:true,life:.58});
+  }
+  effects.push({x:meteor.x,y:meteor.y,tx:meteor.x,ty:meteor.y,zone:true,radius:meteor.radius,color:'#ff704b',life:.58});
+ }
+ if(fighters.length && clock>=arenaMap.nextMeteor){
+  const target=fighters[Math.floor(onlineRandom()*fighters.length)];
+  const radius=70;
+  pending.push({x:target.x,y:target.y,radius,impact:clock+1},
+   {x:radius+onlineRandom()*(canvas.width-2*radius),y:radius+onlineRandom()*(canvas.height-2*radius),radius,impact:clock+1});
+  arenaMap.nextMeteor=clock+2.4;
+ }
+ arenaMap.meteors=pending;
+}
 function onlineFrame(dt,raid=false) {
  refreshBerriesAfterKnockout();
  for(const slots of trainerFields)for(const slot of slots) {
@@ -166,6 +204,7 @@ function onlineFrame(dt,raid=false) {
  }
  const sides=combatSides();
  if(sides.some(side=>!side.length))lastDamageClock+=dt;
+ updateMasterRaid(sides);
  advanceCombat(dt,dt,sides);
  refreshBerriesAfterKnockout();
  // Co-op guardians replace themselves. PvP players choose their reserves.
@@ -225,10 +264,10 @@ export function onlineView(state,side,mode) {
  const visible=[...state.allies,...state.enemies].filter(allowed).map(actor=>{
   const {name,side,onlineId,hp,max,level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary}=actor;
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary,shiny,masterRaidPhase}=actor;
   return {name,side,onlineId,hp,max,level:mode==='free_fight'?100:level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary};
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary,shiny,masterRaidPhase};
  });
  const ids=new Set(visible.map(actor=>actor.onlineId));
  const fields=state.fields.map(slots=>slots.map(slot=>{

@@ -347,7 +347,8 @@
   const boss=data.actors.find(actor=>actor.side==='boss' && actor.raidForm?.startsWith('Mega '));
   byId('raid-boss-hud').hidden=!boss;
   if(boss){
-   byId('raid-boss-name').textContent=boss.raidForm;
+   const phaseName=['','Adapting','Meteor storm','BERSERK'][boss.masterRaidPhase];
+   byId('raid-boss-name').textContent=boss.raidForm+(phaseName?' · Phase '+boss.masterRaidPhase+' · '+phaseName:'');
    updateStageIcons(byId('raid-boss-stages'),boss);
    const ailment=battleStatusBadges[boss.ailment];
    const status=byId('raid-boss-status');
@@ -564,7 +565,7 @@
   roomInfo.append(element('span',visibility));
   if(code)roomInfo.append(element('small',code));
   const heading=element('h2',title);
-  const boss=Object.values(megaRaidTiers).find(entry=>entry.tier===tier && title.startsWith(entry.name));
+  const boss=Object.values(megaRaidTiers).find(entry=>title.startsWith(entry.name));
   if(boss) {
    const types=element('span',null,'raid-boss-types');
    for(const type of [dex[boss.species][1],boss.secondary]) {
@@ -675,7 +676,7 @@
   const token=generation;
   let match=initial, busy=false, revision='';
   const tier=megaRaidTiers[match.mode];
-  const room=raidRoom(tier?tier.name+' · Tier '+tier.tier:'Co-op Raid',
+  const room=raidRoom(tier?tier.name+' · '+raidTierLabel(tier):'Co-op Raid',
    match.public?'Public room':'Private room',async()=>{
     await raidRpc('leave',{id:match.id});if(token===generation)lobby(true,match.mode);
    },tier?.tier ?? 1,match.code);
@@ -919,8 +920,14 @@
    collectMegaRaidRewards().then(rewards=>{for(const reward of rewards)room.controls.append(element('p',reward));}).catch(()=>{});
    const tiers=element('div',null,'raid-room-actions raid-tier-buttons');
    tiers.setAttribute('aria-label','Raid tier');
+   const unlockChoices=[];
    for(const [key,tier] of Object.entries(megaRaidTiers)) {
-    const choice=element('button','Tier '+tier.tier+' · '+tier.name);
+    const choice=element('button',raidTierLabel(tier)+' · '+tier.name);
+    if(tier.master){
+     choice.disabled=true;
+     choice.title='Clear the standard '+tier.name+' raid to unlock';
+     unlockChoices.push([choice,tier.standard]);
+    }
     choice.type='button';
     choice.setAttribute('aria-pressed',String(key===raidMode));
     choice.onclick=()=>{
@@ -930,6 +937,14 @@
     };
     tiers.append(choice);
    }
+   void (async()=>{
+    const client=await cloudClient();
+    const {data,error}=await client.rpc('arena_mega_raid_clears');
+    if(!error && Array.isArray(data))for(const [choice,standard] of unlockChoices){
+     choice.disabled=!data.includes(standard);
+     if(!choice.disabled)choice.removeAttribute('title');
+    }
+   })().catch(()=>{});
    const findRoom=button('Find Room',async()=>{
     const rooms=await raidRpc('list',{});
     const search=input('Search by host, tier, or boss');
@@ -938,11 +953,11 @@
      const query=search.value.trim().toLowerCase();
      const rows=rooms.filter(row=>{
       const tier=megaRaidTiers[row.mode];
-      return (row.host+' Tier '+tier?.tier+' '+tier?.name).toLowerCase().includes(query);
+      return (row.host+' '+(tier?raidTierLabel(tier)+' '+tier.name:'')).toLowerCase().includes(query);
      });
      results.replaceChildren(...(rows.length?rows.map(row=>{
       const tier=megaRaidTiers[row.mode];
-      return button(row.host+' · Tier '+tier?.tier+' · '+tier?.name+' · '+row.players+'/6 players',
+      return button(row.host+' · '+(tier?raidTierLabel(tier)+' · '+tier.name:row.mode)+' · '+row.players+'/6 players',
        ()=>begin('join_public',{id:row.id}));
      }):[element('p','No matching public rooms.')]));
     };
@@ -981,7 +996,7 @@
   const tier=megaRaidTiers[active.mode];
   raidBattleBackdrop=tier?new Image():null;
   if(raidBattleBackdrop)raidBattleBackdrop.src=new URL('./assets/raid-tier-'+tier.tier+'.webp',multiplayerSource).href;
-  const raid=coOp?raidRoom(tier?tier.name+' · Tier '+tier.tier:title,active.code?'Private room':'Public room',leave):null;
+  const raid=coOp?raidRoom(tier?tier.name+' · '+raidTierLabel(tier):title,active.code?'Private room':'Public room',leave):null;
   if(raid)raid.controls.append(view);
   else show(title,view,button('Leave match',leave));
   let picks=[], submitting=false, sending=false;
