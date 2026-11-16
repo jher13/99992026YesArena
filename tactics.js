@@ -348,6 +348,7 @@
   return spAtk>=atk?'Caster':'Fighter';
  })();
  const combatRole=name=>specialists[name]?'Specialist':roleFor(name);
+ const roleDisplayName=role=>role==='Specialist'?'Support':role;
  const fallbackEffects={Tank:'shield',Fighter:'rally',Reaper:'execute',Caster:'sap',Carry:'volley'};
  const collectionTraits={
   'Marksmen':{role:'Carry',color:'#f6c779',tiers:[[2,{thirdShot:.25}],[4,{thirdShot:.50}],[6,{thirdShot:.80}]]},
@@ -371,6 +372,23 @@
   'Ancient Dragons':{color:'#a5a0ef',members:['Dragonite','Salamence','Garchomp','Hydreigon','Goodra','Kommo-o','Dragapult','Baxcalibur'],tiers:[[2,{health:.12,power:.10}],[4,{health:.22,power:.21}],[6,{health:.30,power:.30,regen:1}]]},
   'Steel Foundry':{color:'#bbcdd1',members:['Aggron','Magnezone','Metagross','Klinklang','Corviknight','Tinkaton'],tiers:[[2,{armor:15,spDefense:15}],[4,{armor:28,spDefense:28,health:.15}]]},
   'Aura Guardians':{color:'#9ac5ed',members:['Gallade','Gardevoir','Togekiss','Blastoise'],tiers:[[2,{mana:10,defense:10}],[3,{mana:18,defense:18}]]},
+  'Johto Partners':{families:['Chikorita','Cyndaquil','Totodile'],color:'#d9b7a0',
+   tiers:[[2,{health:.08}],[3,{health:.14,thresholdGuard:1}]]},
+  'Hoenn Partners':{families:['Treecko','Torchic','Mudkip'],color:'#83cbaa',
+   tiers:[[2,{regen:1}],[3,{regen:1,echo:1}]]},
+  'Sinnoh Partners':{families:['Turtwig','Chimchar','Piplup'],color:'#a6d4ef',
+   tiers:[[2,{startShield:.12}],[3,{startShield:.18,thresholdShield:.15}]]},
+  'Unova Partners':{families:['Snivy','Tepig','Oshawott'],color:'#d2bbe9',
+   tiers:[[2,{hitStack:.008}],[3,{hitStack:.014}]]},
+  'Kalos Partners':{families:['Chespin','Fennekin','Froakie'],color:'#e9aacc',
+   tiers:[[2,{relayMana:5}],[3,{relayMana:10,mana:8}]]},
+  'Alola Partners':{families:['Rowlet','Litten','Popplio'],color:'#efcd8b',
+   tiers:[[2,{castRefund:5}],[3,{castRefund:12}]]},
+  'Galar Partners':{families:['Grookey','Scorbunny','Sobble'],color:'#bde29f',
+   tiers:[[2,{thirdShot:.14}],[3,{thirdShot:.25,speed:.06}]]},
+  'Paldea Partners':{families:['Sprigatito','Fuecoco','Quaxly'],color:'#efaa89',
+   tiers:[[2,{vamp:.06}],[3,{vamp:.14,healthyGuard:.08}]]},
+  'Tower Duo':{members:['Lugia','Ho-Oh'],color:'#f1c873',tiers:[[2,{towerWard:.12}]]},
   'Regi-Trio':{color:'#b2c3cc',members:['Regice','Regirock','Registeel'],tiers:[[3,{health:.18,power:.18,defense:24,mana:15,regen:2}]]},
   'Kanto Partners':{color:'#91cf81',members:['Venusaur','Charizard','Blastoise'],tiers:[[3,{health:.16,power:.16,defense:12}]]},
   'Legendary Birds':{color:'#e4c268',members:['Articuno','Zapdos','Moltres'],tiers:[[3,{power:.20,mana:20,regen:1}]]},
@@ -380,7 +398,7 @@
  const playableForms=new Set([...roster.flat(),...Object.values(evolutionFamilies).flat(2)]);
  for(const trait of Object.values(collectionTraits))if(trait.members)trait.members=trait.members.filter(name=>playableForms.has(name));
  const themesFor=name=>Object.entries(collectionTraits)
-  .filter(([,trait])=>trait.role?trait.role===combatRole(name):trait.members.includes(name)).map(([label])=>label);
+  .filter(([,trait])=>trait.role?trait.role===combatRole(name):trait.families?trait.families.includes(familyOf({name})):trait.members.includes(name)).map(([label])=>label);
  const unitTraits=unit=>new Set([...themesFor(unit.name),...(unit.items ?? []).map(item=>completedItems.get(item)?.trait).filter(Boolean)]);
  const benchLimit=9;
  const attackSlowdown=3;
@@ -530,6 +548,8 @@
    if(stat==='spDefense')return '+'+value+' S.DEF';
    if(stat==='armor')return '+'+value+' DEF';
    if(stat==='defense')return '+'+value+' DEF and S.DEF';
+   if(stat==='towerWard')return 'The first Tower Duo signature shields all living allies for '+Math.round(value*100)+'% of their max HP for 5 seconds';
+   if(stat==='echo')return 'First damaging signature echoes for 35% damage';
    if(stat==='thirdShot')return '+'+Math.round(value*100)+'% damage every third basic attack';
    if(stat==='castRefund')return value+' mana retained after casting';
    if(stat==='strikeHaste')return '+'+Number((value*100).toFixed(1))+'% attack speed per basic attack, up to 5 stacks';
@@ -755,7 +775,8 @@
   const skill=element('p',null,'tactics-signature-description');
   const utility=utilitySignature(stats.moveEffect);
   const effect=stats.moveEffects.map(key=>signatureEffectText[key] ?? extraSignatureText[key]).join(' ');
-  skill.append(utility?effect:'At full mana, deals damage using '+(stats.moveSpecial?'S.ATK against S.DEF':'ATK against DEF')+'. '+effect);
+  if(!utility)skill.append(element('span','Deals damage using '+(stats.moveSpecial?'S.ATK':'ATK'),'tactics-signature-damage'));
+  if(effect && !(stats.moveEffects.length===1 && stats.moveEffects[0]==='burst'))skill.append(effect);
   if(stats.manaLockMs>1000)skill.append(' Mana lock: '+(stats.manaLockMs/1000)+'s.');
   if(stats.moveEffect==='heal')return skill;
   const powers=element('span',utility?'Shield HP ':'Move Power ','tactics-signature-power');
@@ -1177,7 +1198,7 @@
    const next=nextTier?.[0];
    const progress=next?count+' / '+next:count+' · Max';
    const needed=next?' Next tier: '+(next-count)+' more.':' Maximum tier reached.';
-   const description=(group.role?group.role+' role. ':'Members: '+group.members.join(', ')+'. ')+
+   const description=(group.role?roleDisplayName(group.role)+' role. ':group.families?'Families: '+group.families.join(', ')+'. ':'Members: '+group.members.join(', ')+'. ')+
     (tier?(type==='Weather Trio'?'Field effect: ':'Current member bonus: ')+describeBonuses(tier[1])+'.':'Inactive.')+
     (nextTier?' At '+nextTier[0]+': '+describeBonuses(nextTier[1])+'.':'');
    const tip=element('span',description+needed,'tactics-trait-tooltip');
@@ -1426,7 +1447,7 @@
   const rarity=rarities.get(familyOf(unit)) ?? 0;
   const hp=unit.bossHp ?? Math.round(((base[0]*4+180)*profile.hp*(1+rarity*.045)*(branchPaths(unit).length?1.36:1.65)**(unit.star-1)+(mods.flatHP ?? 0))*(1+(mods.health ?? 0)));
   const type=dex[unit.name][1];
-  const [move,moveType,moveSpecial]=signatures[unit.name] ?? [unit.name+' · '+type+' Technique',type,base[5]>=base[1]];
+  const [move,moveType,moveSpecial]=signatures[unit.name] ?? ['Signature Skill',type,base[5]>=base[1]];
   const moveEffects=(signatureEffects[unit.name] ?? fallbackEffects[role] ?? 'heal').split(' ');
   const moveEffect=moveEffects[0];
   const movePowers=unit.name==='Squirtle'?[150,255,450]:signaturePowerByTier[rarity];
@@ -1442,7 +1463,7 @@
    defense:Math.round(baseDefense),specialDefense:Math.round(baseSpecialDefense),
    attackSpeed,critChance:.10,critDamage:1.5
   };
-  return {...unit,...baseStats,baseStats,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),role,roleLabel:(moveSpecial?'S.ATK ':'ATK ')+role,roleRule:specialist?.rule ?? profile.rule,range:profile.range,
+  return {...unit,...baseStats,baseStats,opponent,hp,max:hp,mana:Math.min(60,mods.mana ?? 0),role,roleLabel:roleDisplayName(role),roleRule:specialist?.rule ?? profile.rule,range:profile.range,
    attack:baseStats.attack*(powerMultiplier+(mods.attackPct ?? 0)),
    specialAttack:baseStats.specialAttack*(powerMultiplier+(mods.spAttackPct ?? 0))+(mods.spAttack ?? 0),
    attackSpeed:attackSpeed*(1+(mods.speed ?? 0)),critChance:Math.min(1,baseStats.critChance+(mods.crit ?? 0)),
@@ -1670,6 +1691,24 @@
    }
   }
  }
+ function grantTowerWard(unit,units){
+  const strength=unit.gear.towerWard;
+  const battle=battleEffects.get(units);
+  if(!strength || !battle)return;
+  const side=Number(unit.opponent);
+  battle.towerWard ??= [false,false];
+  if(battle.towerWard[side])return;
+  battle.towerWard[side]=true;
+  for(const ally of units){
+   if(ally.hp<=0 || ally.opponent!==unit.opponent)continue;
+   const amount=Math.round(ally.max*strength);
+   const remaining=ally.signatureShieldUntil>ally.elapsed?ally.signatureShield:0;
+   if(amount<=remaining)continue;
+   ally.signatureShield=amount;
+   ally.signatureShieldUntil=ally.elapsed+5000;
+   ally.shieldProvider=unit;
+  }
+ }
  function tick(units,now=null){
   tickWeather(units,now);
   for(const unit of units)if(unit.hp>0)updateGear(unit,units,now);
@@ -1726,7 +1765,10 @@
     dealt+=receiveDamage(target,Math.max(1,Math.round(damage*.35)),now,critical>1,unit);
    }
    if(!utility)gearHit(unit,target,units,dealt,cast,critical>1,now);
-   if(cast)applySignature(unit,target,units,damage,now,dealt);
+   if(cast){
+    applySignature(unit,target,units,damage,now,dealt);
+    grantTowerWard(unit,units);
+   }
    if(target.hp<=0 && (unit.momentum || gear.takedownHeal))
     heal(unit,(unit.momentum?unit.max*.08:0)+(unit.max-unit.hp)*(gear.takedownHeal ?? 0));
    if(cast){
