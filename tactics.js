@@ -1,13 +1,130 @@
 (() => {
  const content=byId('tactics-content');
  const odds=[[100,0,0,0,0],[75,25,0,0,0],[55,35,10,0,0],[40,35,20,5,0],[28,34,25,11,2],[15,25,30,22,8],[10,18,28,30,14],[6,12,22,35,25],[3,7,15,35,40]];
+ // Each shop card represents a family. Paths contain its two-star and three-star forms.
+ const evolutionFamilies={
+  "Bulbasaur":[["Ivysaur","Venusaur"]],
+  "Charmander":[["Charmeleon","Charizard"]],
+  "Squirtle":[["Wartortle","Blastoise"]],
+  "Caterpie":[["Metapod","Butterfree"]],
+  "Weedle":[["Kakuna","Beedrill"]],
+  "Pidgey":[["Pidgeotto","Pidgeot"]],
+  "Pichu":[["Pikachu","Raichu"]],
+  "Nidoran♀":[["Nidorina","Nidoqueen"]],
+  "Nidoran♂":[["Nidorino","Nidoking"]],
+  "Cleffa":[["Clefairy","Clefable"]],
+  "Igglybuff":[["Jigglypuff","Wigglytuff"]],
+  "Oddish":[["Gloom","Vileplume"],["Gloom","Bellossom"]],
+  "Poliwag":[["Poliwhirl","Poliwrath"],["Poliwhirl","Politoed"]],
+  "Abra":[["Kadabra","Alakazam"]],
+  "Machop":[["Machoke","Machamp"]],
+  "Bellsprout":[["Weepinbell","Victreebel"]],
+  "Geodude":[["Graveler","Golem"]],
+  "Gastly":[["Haunter","Gengar"]],
+  "Dratini":[["Dragonair","Dragonite"]],
+  "Chikorita":[["Bayleef","Meganium"]],
+  "Cyndaquil":[["Quilava","Typhlosion"]],
+  "Totodile":[["Croconaw","Feraligatr"]],
+  "Zubat":[["Golbat","Crobat"]],
+  "Mareep":[["Flaaffy","Ampharos"]],
+  "Azurill":[["Marill","Azumarill"]],
+  "Hoppip":[["Skiploom","Jumpluff"]],
+  "Horsea":[["Seadra","Kingdra"]],
+  "Happiny":[["Chansey","Blissey"]],
+  "Larvitar":[["Pupitar","Tyranitar"]],
+  "Treecko":[["Grovyle","Sceptile"]],
+  "Torchic":[["Combusken","Blaziken"]],
+  "Mudkip":[["Marshtomp","Swampert"]],
+  "Wurmple":[["Silcoon","Beautifly"],["Cascoon","Dustox"]],
+  "Lotad":[["Lombre","Ludicolo"]],
+  "Seedot":[["Nuzleaf","Shiftry"]],
+  "Ralts":[["Kirlia","Gardevoir"],["Kirlia","Gallade"]],
+  "Slakoth":[["Vigoroth","Slaking"]],
+  "Whismur":[["Loudred","Exploud"]],
+  "Aron":[["Lairon","Aggron"]],
+  "Trapinch":[["Vibrava","Flygon"]],
+  "Spheal":[["Sealeo","Walrein"]],
+  "Bagon":[["Shelgon","Salamence"]],
+  "Beldum":[["Metang","Metagross"]],
+  "Turtwig":[["Grotle","Torterra"]],
+  "Chimchar":[["Monferno","Infernape"]],
+  "Piplup":[["Prinplup","Empoleon"]],
+  "Starly":[["Staravia","Staraptor"]],
+  "Shinx":[["Luxio","Luxray"]],
+  "Budew":[["Roselia","Roserade"]],
+  "Gible":[["Gabite","Garchomp"]],
+  "Magnemite":[["Magneton","Magnezone"]],
+  "Rhyhorn":[["Rhydon","Rhyperior"]],
+  "Elekid":[["Electabuzz","Electivire"]],
+  "Magby":[["Magmar","Magmortar"]],
+  "Togepi":[["Togetic","Togekiss"]],
+  "Swinub":[["Piloswine","Mamoswine"]],
+  "Porygon":[["Porygon2","Porygon-Z"]],
+  "Duskull":[["Dusclops","Dusknoir"]],
+  "Snivy":[["Servine","Serperior"]],
+  "Tepig":[["Pignite","Emboar"]],
+  "Oshawott":[["Dewott","Samurott"]],
+  "Lillipup":[["Herdier","Stoutland"]],
+  "Roggenrola":[["Boldore","Gigalith"]],
+  "Timburr":[["Gurdurr","Conkeldurr"]],
+  "Tympole":[["Palpitoad","Seismitoad"]],
+  "Sewaddle":[["Swadloon","Leavanny"]],
+  "Venipede":[["Whirlipede","Scolipede"]],
+  "Sandile":[["Krokorok","Krookodile"]],
+  "Gothita":[["Gothorita","Gothitelle"]],
+  "Solosis":[["Duosion","Reuniclus"]],
+  "Vanillite":[["Vanillish","Vanilluxe"]],
+  "Klink":[["Klang","Klinklang"]],
+  "Tynamo":[["Eelektrik","Eelektross"]],
+  "Litwick":[["Lampent","Chandelure"]],
+  "Axew":[["Fraxure","Haxorus"]],
+  "Deino":[["Zweilous","Hydreigon"]],
+  "Chespin":[["Quilladin","Chesnaught"]],
+  "Fennekin":[["Braixen","Delphox"]],
+  "Froakie":[["Frogadier","Greninja"]],
+  "Fletchling":[["Fletchinder","Talonflame"]],
+  "Scatterbug":[["Spewpa","Vivillon"]],
+  "Flabébé":[["Floette","Florges"]],
+  "Honedge":[["Doublade","Aegislash"]],
+  "Goomy":[["Sliggoo","Goodra"]],
+  "Rowlet":[["Dartrix","Decidueye"]],
+  "Litten":[["Torracat","Incineroar"]],
+  "Popplio":[["Brionne","Primarina"]],
+  "Grubbin":[["Charjabug","Vikavolt"]],
+  "Bounsweet":[["Steenee","Tsareena"]],
+  "Jangmo-o":[["Hakamo-o","Kommo-o"]],
+  "Cosmog":[["Cosmoem","Solgaleo"],["Cosmoem","Lunala"]],
+  "Grookey":[["Thwackey","Rillaboom"]],
+  "Scorbunny":[["Raboot","Cinderace"]],
+  "Sobble":[["Drizzile","Inteleon"]],
+  "Rookidee":[["Corvisquire","Corviknight"]],
+  "Blipbug":[["Dottler","Orbeetle"]],
+  "Hatenna":[["Hattrem","Hatterene"]],
+  "Impidimp":[["Morgrem","Grimmsnarl"]],
+  "Zigzagoon":[["Linoone","Obstagoon"]],
+  "Dreepy":[["Drakloak","Dragapult"]],
+  "Teddiursa":[["Ursaring","Ursaluna"]],
+  "Sprigatito":[["Floragato","Meowscarada"]],
+  "Fuecoco":[["Crocalor","Skeledirge"]],
+  "Quaxly":[["Quaxwell","Quaquaval"]],
+  "Pawmi":[["Pawmo","Pawmot"]],
+  "Smoliv":[["Dolliv","Arboliva"]],
+  "Nacli":[["Naclstack","Garganacl"]],
+  "Tinkatink":[["Tinkatuff","Tinkaton"]],
+  "Mankey":[["Primeape","Annihilape"]],
+  "Eevee":[["Vaporeon","Vaporeon"],["Jolteon","Jolteon"],["Flareon","Flareon"],["Espeon","Espeon"],["Umbreon","Umbreon"],["Leafeon","Leafeon"],["Glaceon","Glaceon"],["Sylveon","Sylveon"]],
+ };
  const roster=[
-  ['Bulbasaur','Charmander','Squirtle','Pikachu','Caterpie','Rattata','Pidgey','Zubat','Geodude','Sandshrew','Oddish','Abra','Machop','Gastly','Eevee'],
-  ['Ivysaur','Charmeleon','Wartortle','Raichu','Pidgeotto','Golbat','Graveler','Machoke','Kadabra','Haunter','Vulpix','Psyduck','Magnemite','Growlithe'],
-  ['Ninetales','Golduck','Magneton','Arcanine','Clefable','Scyther','Pinsir','Rhydon','Hypno','Lapras','Jolteon','Vaporeon','Flareon','Leafeon','Glaceon'],
-  ['Venusaur','Charizard','Blastoise','Alakazam','Machamp','Golem','Gengar','Snorlax','Dragonite','Tyranitar','Gardevoir','Metagross','Espeon','Umbreon','Sylveon'],
-  ['Regice','Regirock','Registeel','Articuno','Zapdos','Moltres','Mewtwo','Lugia','Ho-Oh','Rayquaza','Raikou','Entei','Suicune','Kyogre','Groudon']
+  ["Bulbasaur","Charmander","Squirtle","Pichu","Zubat","Geodude","Abra","Gastly","Machop","Oddish","Pidgey","Caterpie","Poliwag","Wurmple","Ralts","Eevee","Weedle","Scatterbug","Azurill","Igglybuff","Hoppip","Lotad","Seedot","Cleffa","Starly","Venipede","Bellsprout"],
+  ["Whismur","Gothita","Solosis","Pawmi","Rookidee","Fletchling","Lillipup","Sewaddle","Honedge","Grubbin","Nacli","Nidoran♀","Nidoran♂","Timburr","Blipbug","Tinkatink","Tympole","Mareep","Bounsweet","Hatenna","Impidimp","Smoliv","Budew","Roggenrola","Tynamo","Sandile","Zigzagoon","Trapinch"],
+  ["Klink","Litwick","Shinx","Chikorita","Duskull","Turtwig","Snivy","Tepig","Oshawott","Totodile","Swinub","Treecko","Torchic","Aron","Spheal","Piplup","Chespin","Froakie","Rowlet","Litten","Popplio","Grookey","Scorbunny","Sobble","Sprigatito","Fuecoco","Quaxly","Cyndaquil","Chimchar"],
+  ["Fennekin","Mankey","Magnemite","Rhyhorn","Porygon","Mudkip","Vanillite","Horsea","Elekid","Magby","Happiny","Axew","Togepi","Teddiursa","Flabébé","Dratini","Larvitar","Bagon","Beldum","Gible","Deino","Goomy","Jangmo-o","Dreepy","Slakoth"],
+  ["Cosmog","Regice","Regirock","Registeel","Articuno","Zapdos","Moltres","Mewtwo","Lugia","Ho-Oh","Rayquaza","Raikou","Entei","Suicune","Kyogre","Groudon"],
  ];
+ const familyByForm=new Map(Object.entries(evolutionFamilies).flatMap(([root,paths])=>
+  [root,...paths.flat()].map(name=>[name,root])));
+ const familyOf=unit=>unit.family ?? familyByForm.get(unit.name) ?? unit.name;
+ const branchPaths=unit=>evolutionFamilies[familyOf(unit)] ?? [];
  const signatures={
   'Bulbasaur':['Seed Burst','Grass',true],
   'Charmander':['Tailflame','Fire',true],
@@ -224,15 +341,38 @@
  const roles=new Map(Object.entries(roleGroups).flatMap(([role,names])=>names.map(name=>[name,role])));
  const channeledSignatures=new Set(['Glacial Aria','Lunar Chorus','Ribbon Resonance']);
  const rarities=new Map(roster.flatMap((names,index)=>names.map(name=>[name,index])));
+ const roleFor=name=>roles.get(name) ?? (()=>{
+  const [hp,atk,def,speed,spDef,spAtk]=dexStats[dex[name][0]-1];
+  if((hp+def+spDef)/3>=87 && speed<88)return 'Tank';
+  if(speed>=100)return spAtk>=atk?'Carry':'Reaper';
+  return spAtk>=atk?'Caster':'Fighter';
+ })();
+ const fallbackEffects={Tank:'shield',Fighter:'rally',Reaper:'execute',Caster:'sap',Carry:'volley'};
  const collectionTraits={
   'ILoveEevee':{color:'#d8a9dd',members:['Eevee','Vaporeon','Jolteon','Flareon','Espeon','Umbreon','Leafeon','Glaceon','Sylveon'],
    tiers:[[2,{health:.08,power:.08}],[4,{health:.14,power:.16,mana:10}],[6,{health:.22,power:.24,mana:15,regen:1}],[9,{health:.32,power:.36,mana:20,regen:2}]]},
+  'Sun Garden':{color:'#ecd76c',members:['Bellossom','Lilligant','Tsareena'],tiers:[[1,{regen:1}],[2,{health:.16,regen:2}],[3,{health:.24,regen:3}]]},
+  'Spore Garden':{color:'#ba8ad7',members:['Vileplume','Venusaur','Amoonguss','Roserade'],tiers:[[1,{spAttack:8}],[2,{spAttack:18,power:.10}],[3,{spAttack:30,power:.16}]]},
+  'Marsh Guard':{color:'#67b4cc',members:['Poliwrath','Swampert','Seismitoad'],tiers:[[1,{defense:10}],[2,{defense:24,health:.15}]]},
+  'Rain Chorus':{color:'#85c5fa',members:['Politoed','Ludicolo','Primarina'],tiers:[[1,{mana:8}],[2,{mana:16,regen:1}],[3,{mana:22,regen:2}]]},
+  'Daybreak Wings':{color:'#ffce72',members:['Beautifly','Butterfree','Vivillon','Talonflame'],tiers:[[1,{speed:.06}],[2,{speed:.16,crit:.10}]]},
+  'Night Wings':{color:'#b7a1ed',members:['Dustox','Crobat','Chandelure'],tiers:[[1,{spDefense:12}],[2,{spDefense:24,regen:1}]]},
+  'Mind Ward':{color:'#e3a1d1',members:['Gardevoir','Alakazam','Reuniclus','Hatterene'],tiers:[[1,{mana:8}],[2,{mana:16,spAttack:14}],[3,{mana:24,spAttack:22}]]},
+  'Blade Guard':{color:'#e3b599',members:['Gallade','Aegislash','Ceruledge','Tinkaton'],tiers:[[1,{attackPct:.08}],[2,{attackPct:.16,defense:15}],[3,{attackPct:.24,defense:25}]]},
+  'Solar Heralds':{color:'#ffd188',members:['Solgaleo','Groudon','Ho-Oh'],tiers:[[1,{health:.08}],[2,{health:.18,defense:20}],[3,{health:.24,defense:32}]]},
+  'Lunar Heralds':{color:'#aaaeff',members:['Lunala','Lugia','Mewtwo'],tiers:[[1,{regen:1}],[2,{regen:2,spAttack:22}],[3,{regen:3,spAttack:32}]]},
+  'Ancient Dragons':{color:'#a5a0ef',members:['Dragonite','Salamence','Garchomp','Hydreigon','Goodra','Kommo-o','Dragapult','Baxcalibur'],tiers:[[2,{health:.12,power:.10}],[4,{health:.22,power:.21}],[6,{health:.30,power:.30,regen:1}]]},
+  'Steel Foundry':{color:'#bbcdd1',members:['Aggron','Magnezone','Metagross','Klinklang','Corviknight','Tinkaton'],tiers:[[2,{armor:15,spDefense:15}],[4,{armor:28,spDefense:28,health:.15}]]},
+  'Aura Guardians':{color:'#9ac5ed',members:['Gallade','Gardevoir','Togekiss','Blastoise'],tiers:[[2,{mana:10,defense:10}],[3,{mana:18,defense:18}]]},
   'Regi-Trio':{color:'#b2c3cc',members:['Regice','Regirock','Registeel'],tiers:[[3,{health:.18,power:.18,defense:24,mana:15,regen:2}]]},
   'Kanto Partners':{color:'#91cf81',members:['Venusaur','Charizard','Blastoise'],tiers:[[3,{health:.16,power:.16,defense:12}]]},
   'Legendary Birds':{color:'#e4c268',members:['Articuno','Zapdos','Moltres'],tiers:[[3,{power:.20,mana:20,regen:1}]]},
   'Legendary Beasts':{color:'#d69775',members:['Raikou','Entei','Suicune'],tiers:[[3,{health:.18,power:.18,mana:15}]]},
   'Weather Trio':{color:'#76bcb2',members:['Kyogre','Groudon','Rayquaza'],tiers:[[1,{weather:1}],[2,{weather:2}],[3,{weather:3}]]}
  };
+ const playableForms=new Set([...roster.flat(),...Object.values(evolutionFamilies).flat(2)]);
+ for(const trait of Object.values(collectionTraits))trait.members=trait.members.filter(name=>playableForms.has(name));
+ const themesFor=name=>Object.entries(collectionTraits).filter(([,trait])=>trait.members.includes(name)).map(([label])=>label);
  const benchLimit=9;
  const attackSlowdown=3;
  const overtimeStartMs=60000;
@@ -524,7 +664,7 @@
    element('p','Draft from a shared shop, position your Pokémon, and outlast seven AI trainers.'),
    button('Start match',start));
   const guide=element('details');
-  guide.append(element('summary','How to play'),element('p','Buy Pokémon from the shop, then select one and choose a hex on your half of the board. Drag items from the left rail to equip them. Focus or hover an item to see its recipes. Lock offers you want to keep for next round. Select a Pokémon to sell it and recover its items.'));
+  guide.append(element('summary','How to play'),element('p','Buy Pokémon from the shop, then select one and choose a hex on your half of the board. Fusing copies stars up and evolves the Pokémon. Select a branching Pokémon and pick its evolution path before it fuses. Drag items from the left rail to equip them. Focus or hover an item to see its recipes. Lock offers you want to keep for next round. Select a Pokémon to sell it and recover its items.'));
   content.append(guide);
  }
  function start(){
@@ -576,11 +716,11 @@
   const art=element('div',null,'tactics-stat-art');
   art.append(idlePokemonPortrait(unit.name,null,null,true,0));
   const types=element('div',null,'tactics-stat-types');
-  for(const type of dex[unit.name].slice(1,3).filter(Boolean))types.append(element('span',type));
+  for(const type of [...dex[unit.name].slice(1,3).filter(Boolean),...themesFor(unit.name)])types.append(element('span',type));
   art.append(types);
   const title=element('header');
   title.append(element('strong',unit.name+' '+ '★'.repeat(unit.star)),
-   element('small',run.pool.has(unit.name)?'● '+cost(unit.name):'Wild'));
+   element('small',run.pool.has(familyOf(unit))?'● '+cost(familyOf(unit)):'Wild'));
   const meter=(value,max,label,style)=>{
    const row=element('div',null,'tactics-stat-meter '+style);
    const bar=element('progress');bar.max=max;bar.value=value;
@@ -704,11 +844,12 @@
   (unit.items ?? []).reduce((sum,item)=>sum+(itemBonuses(item).teamSize ?? 0),0),0);
 
  function fusionPlan(trainer,incoming){
+  const family=familyOf(incoming);
   const units=[...trainer.units,incoming];
   const returned=[];
   const upgrades=[];
   for(const star of [1,2]){
-   const group=units.filter(unit=>unit.name===incoming.name && unit.star===star);
+   const group=units.filter(unit=>familyOf(unit)===family && unit.star===star);
    if(group.length<3)continue;
    const [keeper,...used]=[...group.filter(unit=>unit.position!==null),...group.filter(unit=>unit.position===null)].slice(0,3);
    const equipped=[keeper,...used].flatMap(unit=>unit.items ?? []);
@@ -719,7 +860,11 @@
     if(index>=0)retained.splice(index,1);
     else returned.push(item);
    }
-   const upgraded={...keeper,star:star+1,items};
+   const paths=evolutionFamilies[family];
+   const branch=keeper.branch ?? used.find(unit=>unit.branch!==undefined)?.branch ?? 0;
+   const name=paths?.[branch]?.[star-1] ?? keeper.name;
+   const locked=paths && (star===2 || paths.some(path=>path[0]!==paths[0][0]));
+   const upgraded={...keeper,name,family,branch:locked?branch:keeper.branch ?? used.find(unit=>unit.branch!==undefined)?.branch,star:star+1,items};
    upgrades.push({keeper,used,upgraded});
    units[units.indexOf(keeper)]=upgraded;
    for(const unit of used)units.splice(units.indexOf(unit),1);
@@ -760,8 +905,8 @@
   if(!trainer.units.includes(unit))return false;
   const plan=salePlan(trainer,unit);
   if(plan.overflow)return false;
-  trainer.gold+=cost(unit.name)*unit.star;
-  run.pool.get(unit.name).copies+=3**(unit.star-1);
+  trainer.gold+=cost(familyOf(unit))*unit.star;
+  run.pool.get(familyOf(unit)).copies+=3**(unit.star-1);
   trainer.items.push(...(unit.items ?? []));
   trainer.units.splice(trainer.units.indexOf(unit),1);
   for(const extra of plan.displaced)extra.position=null;
@@ -797,7 +942,7 @@
    const types=[...dex[unit.name].slice(1,3),...(unit.items ?? []).map(item=>completedItems.get(item)?.type)];
    for(const type of types.filter(Boolean)){
     if(!typeMembers.has(type))typeMembers.set(type,new Set());
-    typeMembers.get(type).add(unit.name);
+    typeMembers.get(type).add(familyOf(unit));
    }
   }
   for(const [type,members] of typeMembers)counts[type]=members.size;
@@ -1109,6 +1254,9 @@
    tile.className='tactics-offer'+(name?' tier-'+cost(name):'');
    if(name){
     const preview=fusionPlan(player,{name,star:1,position:null});
+    const paths=branchPaths({name});
+    if(paths.length)tile.title=paths.map(([middle,final])=>name+' → '+middle+(middle===final?'':' → '+final)+
+     (themesFor(final).length?' · '+themesFor(final).join(' / '):'')).join('\n');
     if(preview.displaced.length)tile.title=preview.overflow
      ?'Free '+preview.overflow+' bench slot(s) before this fusion.'
      :'Fusion moves '+preview.displaced.map(unit=>unit.name).join(', ')+' to the bench.';
@@ -1149,6 +1297,24 @@
   middle.append(controls);
   const selected=run.selected;
   if(selected){
+   const paths=branchPaths(selected);
+   const family=familyOf(selected);
+   const branchLocked=selected.star>1 && paths.some(path=>path[0]!==paths[0][0]);
+   if(paths.length>1 && selected.star<3 && !branchLocked && !(selected.star===2 && family==='Eevee')){
+    const label=element('label','Evolution path ');
+    const select=element('select');
+    for(const [index,[middle,final]] of paths.entries()){
+     const traits=themesFor(final);
+     const types=dex[final].slice(1,3).filter(Boolean);
+     const option=element('option',(middle===final?final:middle+' → '+final)+' · '+[...types,...traits].join(' / '));
+     option.value=String(index);
+     select.append(option);
+    }
+    select.value=String(selected.branch ?? 0);
+    select.onchange=()=>{selected.branch=Number(select.value);};
+    label.append(select);
+    controls.append(label);
+   }
    const plan=salePlan(player,selected);
    if(plan.displaced.length){
     const detail=plan.overflow?'Free '+plan.overflow+' bench '+(plan.overflow===1?'slot':'slots')+' before selling. Select a benched Pokémon to sell or deploy it.':
@@ -1178,9 +1344,9 @@
    const unit=trainer.units.find(unit=>unit.position!==null) ?? trainer.units[0];
    if(unit && equip(trainer,unit,trainer.items[i]))trainer.items.splice(i,1);
   }
-  trainer.units.sort((a,b)=>b.star-a.star || cost(b.name)-cost(a.name));
+  trainer.units.sort((a,b)=>b.star-a.star || cost(familyOf(b))-cost(familyOf(a)));
   trainer.units.forEach((unit,i)=>{
-   const ranged=roleProfiles[roles.get(unit.name)]?.range>=3;
+   const ranged=roleProfiles[roleFor(unit.name)]?.range>=3;
    unit.position=i<teamSize(trainer)?cells[28+(ranged?14:0)+i]:null;
   });
  }
@@ -1203,15 +1369,16 @@
 
   }
   const specialist=specialists[unit.name];
-  const role=specialist?'Specialist':roles.get(unit.name);
+  const role=specialist?'Specialist':roleFor(unit.name);
   const profile=roleProfiles[role];
-  const rarity=rarities.get(unit.name) ?? 0;
-  const hp=Math.round(((base[0]*4+180)*profile.hp*(1+rarity*.045)*1.65**(unit.star-1)+(mods.flatHP ?? 0))*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
-  const [move,moveType,moveSpecial]=signatures[unit.name];
-  const moveEffects=signatureEffects[unit.name].split(' ');
+  const rarity=rarities.get(familyOf(unit)) ?? 0;
+  const hp=Math.round(((base[0]*4+180)*profile.hp*(1+rarity*.045)*(branchPaths(unit).length?1.36:1.65)**(unit.star-1)+(mods.flatHP ?? 0))*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
+  const type=dex[unit.name][1];
+  const [move,moveType,moveSpecial]=signatures[unit.name] ?? [unit.name+' · '+type+' Technique',type,base[5]>=base[1]];
+  const moveEffects=(signatureEffects[unit.name] ?? fallbackEffects[role] ?? 'heal').split(' ');
   const moveEffect=moveEffects[0];
   const movePowers=unit.name==='Squirtle'?[150,255,450]:signaturePowerByTier[rarity];
-  const attackScale=profile.attack*(1+rarity*.055)*1.5**(unit.star-1);
+  const attackScale=profile.attack*(1+rarity*.055)*(branchPaths(unit).length?1.26:1.5)**(unit.star-1);
   const powerMultiplier=1+bonus*traitPowerPerAlly+(mods.power ?? 0);
   const stage=Number(stageLabel(run.round).split('-')[0]);
   const stageSpeed=role==='Fighter'?1+Math.min(6,stage)*.05:1;
@@ -1544,7 +1711,7 @@
    if(!trainer.hp){
     trainer.eliminated=run.round;
     releaseShop(trainer);
-    for(const unit of trainer.units)run.pool.get(unit.name).copies+=3**(unit.star-1);
+    for(const unit of trainer.units)run.pool.get(familyOf(unit)).copies+=3**(unit.star-1);
     trainer.units=[];
    }
   }
