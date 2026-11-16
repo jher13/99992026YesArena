@@ -347,8 +347,15 @@
   if(speed>=100)return spAtk>=atk?'Carry':'Reaper';
   return spAtk>=atk?'Caster':'Fighter';
  })();
+ const combatRole=name=>specialists[name]?'Specialist':roleFor(name);
  const fallbackEffects={Tank:'shield',Fighter:'rally',Reaper:'execute',Caster:'sap',Carry:'volley'};
  const collectionTraits={
+  'Marksmen':{role:'Carry',color:'#f6c779',tiers:[[2,{thirdShot:.25}],[4,{thirdShot:.50}],[6,{thirdShot:.80}]]},
+  'Spellcraft':{role:'Caster',color:'#e3afff',tiers:[[2,{castRefund:8}],[4,{castRefund:15}],[6,{castRefund:24}]]},
+  'Warband':{role:'Fighter',color:'#f39f88',tiers:[[2,{strikeHaste:.035}],[4,{strikeHaste:.06}],[6,{strikeHaste:.09}]]},
+  'Bulwark':{role:'Tank',color:'#9cd1ee',tiers:[[2,{startShield:.15}],[4,{startShield:.27}],[6,{startShield:.40}]]},
+  'Ambush':{role:'Reaper',color:'#cbb4fa',tiers:[[2,{takedownHeal:.15}],[4,{takedownHeal:.26}],[6,{takedownHeal:.38}]]},
+  'Relay':{role:'Specialist',color:'#aee0a0',tiers:[[2,{relayMana:10}],[3,{relayMana:18}],[4,{relayMana:25}]]},
   'ILoveEevee':{color:'#d8a9dd',members:['Eevee','Vaporeon','Jolteon','Flareon','Espeon','Umbreon','Leafeon','Glaceon','Sylveon'],
    tiers:[[2,{health:.08,power:.08}],[4,{health:.14,power:.16,mana:10}],[6,{health:.22,power:.24,mana:15,regen:1}],[9,{health:.32,power:.36,mana:20,regen:2}]]},
   'Sun Garden':{color:'#ecd76c',members:['Bellossom','Lilligant','Tsareena'],tiers:[[1,{regen:1}],[2,{health:.16,regen:2}],[3,{health:.24,regen:3}]]},
@@ -371,13 +378,14 @@
   'Weather Trio':{color:'#76bcb2',members:['Kyogre','Groudon','Rayquaza'],tiers:[[1,{weather:1}],[2,{weather:2}],[3,{weather:3}]]}
  };
  const playableForms=new Set([...roster.flat(),...Object.values(evolutionFamilies).flat(2)]);
- for(const trait of Object.values(collectionTraits))trait.members=trait.members.filter(name=>playableForms.has(name));
- const themesFor=name=>Object.entries(collectionTraits).filter(([,trait])=>trait.members.includes(name)).map(([label])=>label);
+ for(const trait of Object.values(collectionTraits))if(trait.members)trait.members=trait.members.filter(name=>playableForms.has(name));
+ const themesFor=name=>Object.entries(collectionTraits)
+  .filter(([,trait])=>trait.role?trait.role===combatRole(name):trait.members.includes(name)).map(([label])=>label);
+ const unitTraits=unit=>new Set([...themesFor(unit.name),...(unit.items ?? []).map(item=>completedItems.get(item)?.trait).filter(Boolean)]);
  const benchLimit=9;
  const attackSlowdown=3;
  const overtimeStartMs=60000;
  const combatTicks=240*attackSlowdown, combatStepMs=115, combatDamageScale=.55;
- const traitHealthPerAlly=.06, traitPowerPerAlly=.10;
  const maxLevel=9;
  const cells=Array.from({length:56},(_,i)=>({x:i%7,y:Math.floor(i/7)}));
  const levels=[0,0,4,8,12,16,24,32,40,Infinity];
@@ -429,19 +437,20 @@
  };
  const standardGear=Object.values(recipes).map(([name])=>name).filter(name=>name!=='Mirage Goggles');
  const ordinaryComponents=Object.keys(components).slice(0,8);
- for(const [catalyst,types] of [
-  ['Crest',['Fire','Flying','Psychic','Water','Steel','Ice','Grass','Electric']],
-  ['Totem',['Fighting','Bug','Ghost','Fairy','Rock','Ground','Poison','Dragon']]
+ for(const [catalyst,emblems] of [
+  ['Crest',['Spore Garden','Daybreak Wings','Mind Ward','Rain Chorus','Steel Foundry','Night Wings','Sun Garden','Aura Guardians']],
+  ['Totem',['Warband','Marksmen','Spellcraft','Relay','Bulwark','Ambush','Bulwark','Marksmen']]
  ]){
   ordinaryComponents.forEach((item,index)=>{
-   const type=types[index];
-   recipes[recipeKey(item,catalyst)]=[type+' Emblem',{...components[item]},type];
+   const trait=emblems[index];
+   const variant=catalyst==='Totem' && index>=6?' Banner':' Emblem';
+   recipes[recipeKey(item,catalyst)]=[trait+variant,{...components[item]},trait];
   });
  }
  for(const [a,b,name] of [['Crest','Crest','Captain’s Crown'],['Totem','Totem','Captain’s Shield'],['Crest','Totem','Captain’s Banner']]){
   recipes[recipeKey(a,b)]=[name,{teamSize:1}];
  }
- const completedItems=new Map(Object.values(recipes).map(([name,stats,type])=>[name,{stats,type}]));
+ const completedItems=new Map(Object.values(recipes).map(([name,stats,trait])=>[name,{stats,trait}]));
  const augments=[
   ['Opening Guard','Each ally blocks the first damaging hit it takes.','guard'],
   ['Echo Cast','Each ally’s first signature move hits again for 35% damage.','echo'],
@@ -521,6 +530,11 @@
    if(stat==='spDefense')return '+'+value+' S.DEF';
    if(stat==='armor')return '+'+value+' DEF';
    if(stat==='defense')return '+'+value+' DEF and S.DEF';
+   if(stat==='thirdShot')return '+'+Math.round(value*100)+'% damage every third basic attack';
+   if(stat==='castRefund')return value+' mana retained after casting';
+   if(stat==='strikeHaste')return '+'+Number((value*100).toFixed(1))+'% attack speed per basic attack, up to 5 stacks';
+   if(stat==='takedownHeal')return 'Recover '+Math.round(value*100)+'% missing HP on a knockout';
+   if(stat==='relayMana')return 'On cast, grant '+value+' mana to the lowest-mana ally who can gain mana';
    if(stat==='health')return '+'+Math.round(value*100)+'% max HP';
    if(stat==='power')return '+'+Math.round(value*100)+'% attack power';
    if(stat==='regen')return value+' mana per second';
@@ -532,9 +546,9 @@
   const icon=element('span',null,'tactics-item-slot');
   if(item)icon.append(tacticsItemArt(item));
   if(item){
-   const type=completedItems.get(item)?.type;
+   const trait=completedItems.get(item)?.trait;
    const bonuses=describeBonuses(itemBonuses(item));
-   let description=item+(bonuses?' · '+bonuses:' · Fusion catalyst')+(type?' · Adds the '+type+' trait.':'');
+   let description=item+(bonuses?' · '+bonuses:' · Fusion catalyst')+(trait?' · Adds the '+trait+' trait.':'');
    if(Object.hasOwn(components,item)){
     const combinations=Object.keys(components).map(partner=>{
      const [result]=recipes[recipeKey(item,partner)];
@@ -741,7 +755,7 @@
   const skill=element('p',null,'tactics-signature-description');
   const utility=utilitySignature(stats.moveEffect);
   const effect=stats.moveEffects.map(key=>signatureEffectText[key] ?? extraSignatureText[key]).join(' ');
-  skill.append(utility?effect:'At full mana, deals '+stats.moveType+' damage using '+(stats.moveSpecial?'S.ATK against S.DEF':'ATK against DEF')+'. '+effect);
+  skill.append(utility?effect:'At full mana, deals damage using '+(stats.moveSpecial?'S.ATK against S.DEF':'ATK against DEF')+'. '+effect);
   if(stats.manaLockMs>1000)skill.append(' Mana lock: '+(stats.manaLockMs/1000)+'s.');
   if(stats.moveEffect==='heal')return skill;
   const powers=element('span',utility?'Shield HP ':'Move Power ','tactics-signature-power');
@@ -759,7 +773,7 @@
   const art=element('div',null,'tactics-stat-art');
   art.append(idlePokemonPortrait(unit.name,null,unit.raidForm?spriteVariants(unit.name).mega?.[unit.raidForm]?.[0]:null,true,0));
   const types=element('div',null,'tactics-stat-types');
-  for(const type of [...dex[unit.name].slice(1,3).filter(Boolean),...themesFor(unit.name)])types.append(element('span',type));
+  for(const type of unitTraits(unit))types.append(element('span',type));
   art.append(types);
   const title=element('header');
   title.append(element('strong',(unit.raidForm ?? unit.name)+' '+ '★'.repeat(unit.star)),
@@ -978,19 +992,12 @@
   unit.position=position;run.selected=null;render();
  }
  function traits(units){
-  const counts={};
-  const species=new Set(units.map(unit=>unit.name));
-  const typeMembers=new Map();
-  for(const unit of units){
-   const types=[...dex[unit.name].slice(1,3),...(unit.items ?? []).map(item=>completedItems.get(item)?.type)];
-   for(const type of types.filter(Boolean)){
-    if(!typeMembers.has(type))typeMembers.set(type,new Set());
-    typeMembers.get(type).add(familyOf(unit));
-   }
+  const members=new Map();
+  for(const unit of units)for(const trait of unitTraits(unit)){
+   if(!members.has(trait))members.set(trait,new Set());
+   members.get(trait).add(trait==='ILoveEevee'?unit.name:familyOf(unit));
   }
-  for(const [type,members] of typeMembers)counts[type]=members.size;
-  for(const [label,trait] of Object.entries(collectionTraits))counts[label]=trait.members.filter(name=>species.has(name)).length;
-  return counts;
+  return Object.fromEntries([...members].map(([trait,keys])=>[trait,keys.size]));
  }
  const battlerCanvases=new WeakMap();
  function battlerSprite(unit){
@@ -1162,23 +1169,17 @@
   const types=Object.entries(traits(field(inspected))).filter(([,count])=>count>0).sort((a,b)=>b[1]-a[1]);
   for(const [type,count] of types){
    const group=collectionTraits[type];
-   const tier=group?.tiers.findLast(([threshold])=>count>=threshold);
-   const active=group?Boolean(tier):count>=2;
-   const entry=element('div',null,'tactics-trait'+(active?' is-active':''));
+   const tier=group.tiers.findLast(([threshold])=>count>=threshold);
+   const entry=element('div',null,'tactics-trait'+(tier?' is-active':''));
    const badge=element('span',type,'home-type-badge');
-   badge.style.setProperty('--type-color',group?.color ?? moveColors[type] ?? '#b7c7dd');
-   const strength=Math.max(0,count-1);
-   const bonus=amount=>Math.round(100*amount*strength);
-   const nextTier=group?.tiers.find(([threshold])=>threshold>count);
-   const next=group?nextTier?.[0]:count<2?2:count<maxLevel?count+1:null;
+   badge.style.setProperty('--type-color',group.color);
+   const nextTier=group.tiers.find(([threshold])=>threshold>count);
+   const next=nextTier?.[0];
    const progress=next?count+' / '+next:count+' · Max';
    const needed=next?' Next tier: '+(next-count)+' more.':' Maximum tier reached.';
-   const description=group?
-    'Members: '+group.members.join(', ')+'. '+(tier?(type==='Weather Trio'?'Field effect: ':'Current member bonus: ')+describeBonuses(tier[1])+'.':'Inactive.')+
-     (nextTier?' At '+nextTier[0]+': '+describeBonuses(nextTier[1])+'.':''):
-    (active?type+' Pokémon gain +'+bonus(traitHealthPerAlly)+'% max HP and +'+bonus(traitPowerPerAlly)+'% attack power.':
-     'Inactive. Deploy 2 '+type+' Pokémon to gain +6% max HP and +10% attack power.')+
-    ' Only the strongest active type bonus applies to a Pokémon.';
+   const description=(group.role?group.role+' role. ':'Members: '+group.members.join(', ')+'. ')+
+    (tier?(type==='Weather Trio'?'Field effect: ':'Current member bonus: ')+describeBonuses(tier[1])+'.':'Inactive.')+
+    (nextTier?' At '+nextTier[0]+': '+describeBonuses(nextTier[1])+'.':'');
    const tip=element('span',description+needed,'tactics-trait-tooltip');
    entry.tabIndex=0;
    entry.setAttribute('aria-label',type+' trait. '+tip.textContent);
@@ -1307,7 +1308,7 @@
      :'Fusion moves '+preview.displaced.map(unit=>unit.name).join(', ')+' to the bench.';
    }
    if(name){
-    const types=dex[name].slice(1,3).filter(Boolean);
+    const types=themesFor(name);
     const art=element('span',null,'tactics-offer-art');
     art.style.setProperty('--offer-type',moveColors[types[0]] ?? '#72958a');
     const labels=element('span',null,'tactics-offer-types');
@@ -1358,7 +1359,7 @@
     const select=element('select');
     for(const [index,[middle,final]] of paths.entries()){
      const traits=themesFor(final);
-     const types=dex[final].slice(1,3).filter(Boolean);
+     const types=themesFor(middle).filter(trait=>!traits.includes(trait));
      const option=element('option',(middle===final?final:middle+' → '+final)+' · '+[...types,...traits].join(' / '));
      option.value=String(index);
      select.append(option);
@@ -1413,27 +1414,24 @@
  }
  function fighter(unit,opponent,types,trainer){
   const base=dexStats[dex[unit.name][0]-1];
-  const bonus=Math.max(0,...[...dex[unit.name].slice(1,3),...(unit.items ?? []).map(item=>completedItems.get(item)?.type)].map(t=>(types[t] ?? 0)-1));
   const mods=itemMods(unit,trainer);
-  for(const [label,group] of Object.entries(collectionTraits)){
-   if(!group.members.includes(unit.name))continue;
-   const tier=group.tiers.findLast(([threshold])=>types[label]>=threshold);
+  for(const label of unitTraits(unit)){
+   const tier=collectionTraits[label].tiers.findLast(([threshold])=>types[label]>=threshold);
    if(!tier)continue;
    for(const [stat,value] of Object.entries(tier[1]))mods[stat]=(mods[stat] ?? 0)+value;
-
   }
   const specialist=specialists[unit.name];
-  const role=specialist?'Specialist':roleFor(unit.name);
+  const role=combatRole(unit.name);
   const profile=roleProfiles[role];
   const rarity=rarities.get(familyOf(unit)) ?? 0;
-  const hp=unit.bossHp ?? Math.round(((base[0]*4+180)*profile.hp*(1+rarity*.045)*(branchPaths(unit).length?1.36:1.65)**(unit.star-1)+(mods.flatHP ?? 0))*(1+bonus*traitHealthPerAlly+(mods.health ?? 0)));
+  const hp=unit.bossHp ?? Math.round(((base[0]*4+180)*profile.hp*(1+rarity*.045)*(branchPaths(unit).length?1.36:1.65)**(unit.star-1)+(mods.flatHP ?? 0))*(1+(mods.health ?? 0)));
   const type=dex[unit.name][1];
   const [move,moveType,moveSpecial]=signatures[unit.name] ?? [unit.name+' · '+type+' Technique',type,base[5]>=base[1]];
   const moveEffects=(signatureEffects[unit.name] ?? fallbackEffects[role] ?? 'heal').split(' ');
   const moveEffect=moveEffects[0];
   const movePowers=unit.name==='Squirtle'?[150,255,450]:signaturePowerByTier[rarity];
   const attackScale=profile.attack*(1+rarity*.055)*(branchPaths(unit).length?1.26:1.5)**(unit.star-1);
-  const powerMultiplier=1+bonus*traitPowerPerAlly+(mods.power ?? 0);
+  const powerMultiplier=1+(mods.power ?? 0);
   const {stage}=stageRound(run.round);
   const stageSpeed=role==='Fighter'?1+Math.min(6,stage)*.05:1;
   const attackSpeed=stageSpeed*Math.max(2.3,Math.min(5.4,(2.75+base[3]*.013)*profile.speed+rarity*.055))/attackSlowdown;
@@ -1602,13 +1600,6 @@
   }
   return null;
  }
- function elementalMultiplier(type,types){
-  const row=typeChart[type] ?? {};
-  return types.reduce((multiplier,defense)=>{
-   const factor=row[defense] ?? 1;
-   return multiplier*(factor>1?1.5:factor || 1);
-  },1);
- }
  function chooseTarget(unit,units){
   const targets=units.filter(other=>other.hp>0 && other.opponent!==unit.opponent);
   const isBackline=target=>target.role==='Carry' || target.role==='Caster';
@@ -1704,8 +1695,6 @@
     }
     continue;
    }
-   const type=cast?unit.moveType:dex[unit.name][1];
-   const match=elementalMultiplier(type,dex[target.name].slice(1,3));
    const special=cast?unit.moveSpecial:unit.role==='Carry' && unit.moveSpecial;
    const gear=unit.gear;
    const stackBonus=unit.gearStacks*(gear.hitStack ?? 0);
@@ -1722,7 +1711,9 @@
    const execute=cast && unit.moveEffects.includes('execute') && target.hp<target.max/2?1+[.25,.40,.60][unit.star-1]:1;
    const weaken=unit.weakenUntil>unit.elapsed?1-unit.weakenAmount:1;
    const overtime=1+Math.max(0,unit.elapsed-overtimeStartMs)/15000;
-   const damage=utility?0:Math.max(1,Math.round(overtime*execute*weaken*combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*match*critical*amp*100/(100+defense)));
+   if(!cast)unit.basicHits=(unit.basicHits ?? 0)+1;
+   const thirdShot=!cast && unit.basicHits%3===0?1+(gear.thirdShot ?? 0):1;
+   const damage=utility?0:Math.max(1,Math.round(overtime*execute*weaken*combatDamageScale*offense*(cast?1.8+unit.movePowers[unit.star-1]/120:1)*thirdShot*critical*amp*100/(100+defense)));
    if(now!==null){
     setBattlerMotion(unit,target.position,cast?'cast':unit.range>1?'attack':'lunge',now);
     if(cast)unit.lastCast={started:now,move:unit.move,from:unit.position,to:utility?unit.position:target.position};
@@ -1736,15 +1727,21 @@
    }
    if(!utility)gearHit(unit,target,units,dealt,cast,critical>1,now);
    if(cast)applySignature(unit,target,units,damage,now,dealt);
-   if(target.hp<=0 && unit.momentum)heal(unit,unit.max*.08);
+   if(target.hp<=0 && (unit.momentum || gear.takedownHeal))
+    heal(unit,(unit.momentum?unit.max*.08:0)+(unit.max-unit.hp)*(gear.takedownHeal ?? 0));
    if(cast){
-    unit.mana=unit.overcharge?10:0;
+    if(gear.relayMana){
+     const ally=units.filter(other=>other!==unit && other.hp>0 && other.opponent===unit.opponent && other.manaLock<=0)
+      .sort((a,b)=>a.mana-b.mana)[0];
+     if(ally)gainMana(ally,gear.relayMana);
+    }
+    unit.mana=Math.min(60,(unit.overcharge?10:0)+(gear.castRefund ?? 0));
     unit.overcharge=false;
     unit.manaLock=unit.manaLockMs;
    }else gainMana(unit,unit.manaOnHit+(gear.hitMana ?? 0)+(critical>1?(gear.critMana ?? 0):0));
    const rally=unit.rallyUntil>unit.elapsed?[.15,.25,.40][unit.star-1]:0;
    const frost=unit.frostUntil>unit.elapsed?.75:1;
-   unit.wait+=1000*(1-(unit.signatureRush ?? 0))/(frost*unit.attackSpeed*(1+rally+Math.floor(unit.elapsed/1000)*(gear.rampSpeed ?? 0)));
+   unit.wait+=1000*(1-(unit.signatureRush ?? 0))/(frost*unit.attackSpeed*(1+rally+Math.min(5,unit.basicHits ?? 0)*(gear.strikeHaste ?? 0)+Math.floor(unit.elapsed/1000)*(gear.rampSpeed ?? 0)));
    unit.signatureRush=0;
   }
  }

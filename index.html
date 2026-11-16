@@ -9365,6 +9365,7 @@ const megaRaidTiers={
  coop_mega_3:{tier:3,name:'Mega Rayquaza',species:'Rayquaza',arenaType:'Dragon',level:70,hp:10500,coins:100000,masterBalls:10,nature:'Jolly',trait:1,evs:[4, 252, 0, 252, 0, 0],ability:'Delta Stream',secondary:'Flying',moves:['Dragon Ascent', 'Dragon Claw', 'Dragon Dance', 'Extreme Speed', 'Earthquake', 'Hurricane', 'Dragon Pulse', 'Outrage']},
 };
 const updateLogEntries=[
+ {version:'0.22.22',changes:['Replaced Tactics elemental matchups and synergies with six combat-role traits.']},
  {version:'0.22.21',changes:['Reworked Tactics into 18 stages with standalone carousels and Mega boss rewards.']},
  {version:'0.22.20',changes:['Added a family-based Fight Tactics roster, branching star evolutions, and form-specific traits.']},
  {version:'0.22.19',changes:['Added equal PvP loaner gear, pending-save recovery, fusion-aware drafts, and manual Capture protection.']},
@@ -9613,4 +9614,4 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.21"></script><script src="./multiplayer.js?v=0.22.19"></script></html>
+<script src="./tactics.js?v=0.22.22"></script><script src="./multiplayer.js?v=0.22.19"></script></html>

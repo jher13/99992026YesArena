@@ -114,7 +114,9 @@ assert.equal(a.traits([gallade])['Blade Guard'],1);
 assert.equal(fuseFamily('Wurmple',1,1).name,'Cascoon');
 assert.equal(fuseFamily('Eevee',2,1).name,'Jolteon');
 assert.equal(fuseFamily('Mewtwo',2,0).name,'Mewtwo');
-assert.equal(a.traits([{name:'Charmander'},{name:'Charmeleon'}]).Fire,1);
+assert.equal(a.traits([{name:'Charmander'},{name:'Charmeleon'}]).Warband,1);
+assert.equal(a.traits([{name:'Charmander'},{name:'Charmeleon'}]).Fire,undefined);
+assert.equal(a.traits([{name:'Squirtle',items:['Marksmen Emblem']}]).Marksmen,1);
 
 assert.equal(a.stageLabel(1),'1-1');
 assert.equal(a.stageLabel(4),'1-4');
