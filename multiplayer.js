@@ -551,13 +551,21 @@
    if(token===generation) await view();
   } catch(error){if(token===generation)show(title,element('p',error.message));}
  }
- function raidRoom(title,visibility,leave,tier=1,code) {
+ function raidBackdropUrl(tier) {
+  const variant=tier.master?'-master':'';
+  return new URL('./assets/raid-tier-'+tier.tier+variant+'.webp',multiplayerSource).href;
+ }
+ function setRaidRoomBackdrop(root,tier) {
+  root.dataset.tier=String(tier?.tier ?? 1);
+  root.style.backgroundImage=tier?('url("'+raidBackdropUrl(tier)+'")'):'';
+ }
+ function raidRoom(title,visibility,leave,tier,code) {
   phase='raid-lobby';
   showScreen('raid-lobby');
   if(dialog.open)dialog.close();
   const root=byId('raid-lobby');
   root.classList.remove('has-room-chat');
-  root.dataset.tier=String(tier);
+  setRaidRoomBackdrop(root,tier);
   const top=element('div',null,'raid-room-top');
   const actions=element('div',null,'raid-room-actions');
   actions.append(button('Settings',()=>byId('toolbar-settings').click()),button(leave?'Leave room':'Main menu',leave ?? openMenu));
@@ -679,7 +687,7 @@
   const room=raidRoom(tier?tier.name+' · '+raidTierLabel(tier):'Co-op Raid',
    match.public?'Public room':'Private room',async()=>{
     await raidRpc('leave',{id:match.id});if(token===generation)lobby(true,match.mode);
-   },tier?.tier ?? 1,match.code);
+   },tier,match.code);
   const status=element('p');
   const actions=element('div',null,'raid-left-actions');
   room.controls.append(status,actions);
@@ -916,7 +924,7 @@
   }
   const find=button(coop?'Auto Match':'Find match',()=>begin('queue'));
   if(coop){
-   const room=raidRoom('Co-op Raids','Raid selection',undefined,megaRaidTiers[raidMode].tier);
+   const room=raidRoom('Co-op Raids','Raid selection',undefined,megaRaidTiers[raidMode]);
    collectMegaRaidRewards().then(rewards=>{for(const reward of rewards)room.controls.append(element('p',reward));}).catch(()=>{});
    const tiers=element('div',null,'raid-room-actions raid-tier-buttons');
    tiers.setAttribute('aria-label','Raid tier');
@@ -932,7 +940,7 @@
     choice.setAttribute('aria-pressed',String(key===raidMode));
     choice.onclick=()=>{
      raidMode=key;
-     room.root.dataset.tier=String(tier.tier);
+     setRaidRoomBackdrop(room.root,tier);
      for(const node of tiers.children)node.setAttribute('aria-pressed',String(node===choice));
     };
     tiers.append(choice);
@@ -995,8 +1003,8 @@
   const coOp=isCoop(active.mode);
   const tier=megaRaidTiers[active.mode];
   raidBattleBackdrop=tier?new Image():null;
-  if(raidBattleBackdrop)raidBattleBackdrop.src=new URL('./assets/raid-tier-'+tier.tier+'.webp',multiplayerSource).href;
-  const raid=coOp?raidRoom(tier?tier.name+' · '+raidTierLabel(tier):title,active.code?'Private room':'Public room',leave):null;
+  if(raidBattleBackdrop)raidBattleBackdrop.src=raidBackdropUrl(tier);
+  const raid=coOp?raidRoom(tier?tier.name+' · '+raidTierLabel(tier):title,active.code?'Private room':'Public room',leave,tier,active.code):null;
   if(raid)raid.controls.append(view);
   else show(title,view,button('Leave match',leave));
   let picks=[], submitting=false, sending=false;
