@@ -11,7 +11,7 @@
  window.isPvpVersionContext=()=>pvpVersionContext;
  window.isCompletedRaid=()=>Boolean(active?.result && isCoop(active.mode));
  let arenaActors=new Map(), rosterRows=new Map(), displayedTurn=-1, recallSlotOnline=null;
- let frameAge=0, playbackClock=null, playbackDelay=0.25, snapshotArrival=0, arrivalGaps=[], visualSnapshots=[], soundsPlayed=new Set(), battleSnapshot=null;
+ let frameAge=0, playbackClock=null, playbackDelay=0.32, snapshotArrival=0, arrivalGaps=[], visualSnapshots=[], soundsPlayed=new Set(), battleSnapshot=null;
  const commands={Attack:'a',Select:'s',Ranged:'r',Backline:'d',Melee:'m','Mid-Range':'c',Auto:'z',
   Aggressive:'q',Balanced:'w',Defensive:'e'};
  for(let i=1;i<=6;i++){commands['Ally '+i]=String(i);commands['Enemy '+i]='ctrl+'+i;}
@@ -232,7 +232,7 @@
    lastDpsRender=-1;renderBattleDps(0,[]);
    selectedUnit=null;commandMode=null;
    arenaActors=new Map();rosterRows=new Map();soundsPlayed=new Set();displayedTurn=-1;
-   recallSlotOnline=null;battleSnapshot=null;playbackClock=null;playbackDelay=0.25;snapshotArrival=0;arrivalGaps=[];visualSnapshots=[];trainerFields=[[],[]];trainerPanels=null;
+   recallSlotOnline=null;battleSnapshot=null;playbackClock=null;playbackDelay=0.32;snapshotArrival=0;arrivalGaps=[];visualSnapshots=[];trainerFields=[[],[]];trainerPanels=null;
    phase='online-battle';speed=1;
    const mega=Object.hasOwn(megaRaidTiers,match.mode);
    setArenaDimensions(mega?megaRaidArenaSize:undefined);
@@ -289,7 +289,8 @@
     arrivalGaps.push(Math.max(arrived-snapshotArrival,snapshotInterval));
     if(arrivalGaps.length>16)arrivalGaps.shift();
     const gaps=[...arrivalGaps].sort((a,b)=>a-b);
-    const desired=clamp(gaps[Math.ceil(gaps.length*0.9)-1]+0.06,0.16,0.65);
+    const typicalGap=gaps[Math.ceil(gaps.length*0.9)-1];
+    const desired=clamp(Math.max(typicalGap+0.12,(arrived-snapshotArrival)+0.06),0.24,0.95);
     playbackDelay+=(desired-playbackDelay)*(desired>playbackDelay?0.65:0.06);
    }
    snapshotArrival=arrived;
@@ -442,7 +443,7 @@
    const latest=battleSnapshot.clock;
    const age=Math.max(0,performance.now()/1000-snapshotArrival);
    const target=latest+Math.min(age,playbackDelay)-playbackDelay;
-   const rate=clamp(1+(target-playbackClock)*1.5,0.75,1.20);
+   const rate=clamp(1+(target-playbackClock)*1.5,0.65,1.35);
    playbackClock=active?.result?latest:Math.min(latest,playbackClock+dt*rate);
   }
   for(const actor of arenaActors.values()) {
@@ -488,9 +489,11 @@
   originalMenu();
   pvpVersionContext=false;
  };
- let closeBattleChannel=null;
+ let closeBattleChannel=null, resumeMatchPolling=null;
+ window.addEventListener('online',()=>resumeMatchPolling?.());
  const stop=()=>{
   generation++;
+  resumeMatchPolling=null;
   clearTimeout(timer);
   closeBattleChannel?.();
   closeBattleChannel=null;
@@ -1156,9 +1159,16 @@
    if(dialog.open)dialog.close();
   }
   render();
-  let retryCount=0, retryButton=null;
+  let retryCount=0, retryButton=null, polling=false;
+  function resumePolling(){
+   if(polling || token!==generation || active.result)return;
+   clearTimeout(timer);
+   void poll();
+  }
+  resumeMatchPolling=resumePolling;
   async function poll() {
-   if(token!==generation || active.result)return;
+   if(polling || token!==generation || active.result)return;
+   polling=true;
    if(retryButton)retryButton.disabled=true;
    const began=performance.now();
    try {
@@ -1190,19 +1200,20 @@
     const message=onlineRetryMessage(error,navigator.onLine);
     const target=phase==='online-battle'?byId('status'):view;
     target.replaceChildren(element('span',message+' Waiting for a fresh match snapshot.'));
-    const delay=Math.min(8000,(active.started?400:2000)*2**Math.min(4,retryCount-1));
+    const delay=Math.min(active.started?2500:8000,(active.started?200:2000)*2**Math.min(4,retryCount-1));
     timer=setTimeout(poll,delay);
     if(retryCount>=3){
      retryButton=button('Request fresh snapshot',()=>{
       retryButton.disabled=true;
-      clearTimeout(timer);
-      poll();
+      resumePolling();
      });
      target.append(retryButton);
     }
+   } finally {
+    polling=false;
    }
   }
-  if(!active.result)timer=setTimeout(poll,850);
+  if(!active.result)timer=setTimeout(poll,active.started?0:850);
  }
  async function friends() {
   const rows=await rpc('friends');

@@ -8829,6 +8829,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.54',changes:['Smoothed online battle playback and shortened reconnect delays.']},
  {version:'0.22.53',changes:['Updated PFT rewards and pacing, added battle EV controls, and unlocked 3× speed at 34 badges and Lucky Coin at 68 Master badges.','Added Shell Bell to PvP loaners and restored charge times for Explosion, Misty Explosion, and Self-Destruct.']},
  {version:'0.22.52',changes:['Balanced Master raid residual damage and fixed Master room startup.']},
  {version:'0.22.51',changes:['Added Level 100 shiny Master Co-op raids with three HP-based phases.']},
