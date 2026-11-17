@@ -9943,6 +9943,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.53',changes:['Updated PFT rewards and pacing, added battle EV controls, and unlocked 3× speed at 34 badges and Lucky Coin at 68 Master badges.','Added Shell Bell to PvP loaners and restored charge times for Explosion, Misty Explosion, and Self-Destruct.']},
  {version:'0.22.52',changes:['Balanced Master raid residual damage and fixed Master room startup.']},
  {version:'0.22.51',changes:['Added Level 100 shiny Master Co-op raids with three HP-based phases.']},
  {version:'0.22.50',changes:['Master Campaign battles now escalate pressure to break recovery loops and open blocked combat lanes.']},
@@ -10154,6 +10155,8 @@ async function checkGameVersion() {
  }catch {}
  finally {clientVersionCheckPending=false;}
 }
+window.addEventListener('focus',()=>{void checkGameVersion();});
+setInterval(()=>{if(!document.hidden)void checkGameVersion();},60000);
 for(const subtitle of document.querySelectorAll?.('[data-game-subtitle]') ?? [])
  subtitle.textContent='AUTO BATTLER ver: '+updateLogEntries[0].version;
 const visibleUpdates=updateLogEntries.slice(0,5);
@@ -10222,4 +10225,4 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.31-rewards"></script><script src="./multiplayer.js?v=0.22.51-raid-art-2"></script></html>
+<script src="./tactics.js?v=0.22.53"></script><script src="./multiplayer.js?v=0.22.51-raid-art-2"></script></html>
