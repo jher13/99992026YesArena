@@ -826,6 +826,19 @@ function applyTrainingItem(profile,stat,{field,delta}) {
  values[stat]=next;
  return change;
 }
+function battleEVToggle(profile,copy=false) {
+ const label=element('label',null,'battle-ev-toggle');
+ const toggle=element('input');
+ toggle.type='checkbox';
+ toggle.checked=profile.disableBattleEVs===true;
+ toggle.onchange=()=>{
+  profile.disableBattleEVs=toggle.checked;
+  if(copy)saveWildProgress();
+  else playerStorage.setItem(profileStorage,JSON.stringify(profiles));
+ };
+ label.append(toggle,element('span','Disable battle EV gains'));
+ return label;
+}
 function vitaminControls(name,field,selection) {
  const group=element('fieldset',null,'training-items');
  group.append(element('legend',field==='evs'?'EV training':'IV training'));
@@ -833,16 +846,7 @@ function vitaminControls(name,field,selection) {
  if(field==='evs'){
   const total=profile.evs.reduce((sum,value)=>sum+value,0);
   group.append(element('small',total+' / 510 EVs','training-total'));
-  const label=element('label','Disable battle EV gains ');
-  const toggle=element('input');
-  toggle.type='checkbox';
-  toggle.checked=profile.disableBattleEVs===true;
-  toggle.onchange=()=>{
-   profile.disableBattleEVs=toggle.checked;
-   playerStorage.setItem(profileStorage,JSON.stringify(profiles));
-  };
-  label.append(toggle);
-  group.append(label);
+  group.append(battleEVToggle(profile));
  }
  let rows=0;
  for(const [item,rule] of Object.entries(trainingItems)) {
@@ -1183,6 +1187,9 @@ badges,element('p',height/10+' m · '+weight/10+' kg'),
  summary.append(info,chart);
  body.append(summary,individualTable(name,profile));
  if(copy){
+  const training=element('fieldset',null,'training-items');
+  training.append(element('legend','EV training'),battleEVToggle(profile,true));
+  body.append(training);
   panel.replaceChildren(title,body);
   drawStats(chart,chartValues);
   return;
@@ -2012,7 +2019,7 @@ function arenaMoveGeometry(move,rules) {
  const selfCentered=move==='Earthquake' || Boolean(blast) || !shape && rules.scope==='area' && [9,12,14].includes(rules.target);
  const radius=shape==='vortex'?38:move==='Earthquake'?rules.radius*2:shape==='landing'?42:rules.radius*(blast?.radius ?? 1);
  const range=shape==='beam'?(heavyArenaBeams.has(move)?Math.hypot(canvas.width,canvas.height):rules.range*2):shape==='wave'?210:shape==='dash'?90:shape==='arc'?26:selfCentered?radius:rules.range;
- const warning=move==='Hyper Beam'?2:castWindup;
+ const warning=blast?.charge ?? (move==='Hyper Beam'?2:castWindup);
  return {shape,selfCentered,radius,range,warning};
 }
 function skillDescription(move) {
