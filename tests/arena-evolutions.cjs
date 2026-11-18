@@ -62,7 +62,7 @@ for(const [id,[parent]] of Object.entries(evo)){
  paths++;
  if(evo[id][2]===0 && !Object.values(ctx.stoneEvolutions[name]??{}).includes(target))special++;
 }
-assert.equal(paths,474);assert.equal(special,111);checks++;
+assert.equal(paths,513);assert.equal(special,142);checks++;
 // Inkay needs no hardware gesture; over-level and capped Pokémon can evolve immediately.
 let c=reset('Inkay',29);assert(!ctx.arenaEvolutionReady(c,rule('Inkay','Malamar')));ctx.gainWildExperience('Inkay',ctx.experienceNeeded(29));assert(ctx.ownedPokemon('Malamar'));checks++;
 assert.equal(ctx.canHoldEvolutionItem('Inkay',undefined),false);assert.equal(ctx.stoneTarget('Inkay',undefined),null);checks++;
@@ -108,6 +108,15 @@ c=reset('Inkay',100);const panel=ctx.arenaEvolutionControls('Inkay');assert.equa
 ctx.phase='battle';c=reset('Inkay',100);const inBattle=ctx.arenaEvolutionControls('Inkay').all().find(n=>n.textContent==='Evolve into Malamar');assert(inBattle.disabled);ctx.phase='menu';checks++;
 c=reset('Kadabra',100);const uiCopy={level:100,xp:0,profile:profile(),moves:[]};ctx.wildProgress.copies.Kadabra=[uiCopy];
 const copyButton=ctx.arenaEvolutionControls('Kadabra',uiCopy).all().find(n=>n.textContent==='Evolve into Alakazam');copyButton.onclick();copyButton.onclick();assert.equal(ctx.wildProgress.items['Linking Cord'],1);assert.equal(ctx.profileFor('Kadabra').pid,c.profile.pid);assert.equal(ctx.profileFor('Alakazam').pid,uiCopy.profile.pid);checks++;
+// Evolving a regional individual must not overwrite the original form.
+c=reset('Alolan Vulpix',100,{shiny:true,disableBattleEVs:true});ctx.wildProgress.items['Ice Stone']=1;
+ctx.wildProgress.owned.Ninetales={level:70,xp:9};ctx.profiles[dex.Ninetales[0]]=profile({pid:777});
+ctx.evolveArenaIndividual(c,rule('Alolan Vulpix','Alolan Ninetales'));
+assert.equal(ctx.profileFor('Ninetales').pid,777);assert.equal(ctx.ownedPokemon('Ninetales').level,70);
+assert.equal(ctx.profileFor('Alolan Ninetales').pid,c.profile.pid);assert(ctx.profileFor('Alolan Ninetales').shiny);assert(ctx.profileFor('Alolan Ninetales').disableBattleEVs);checks++;
+c=reset('Girafarig',32,{},['Tackle']);assert(!ctx.arenaEvolutionReady(c,rule('Girafarig','Farigiraf')));c.moves=['Twin Beam'];assert(ctx.arenaEvolutionReady(c,rule('Girafarig','Farigiraf')));checks++;
+c=reset('Bisharp',52,{evolutionProgress:{wins:4,casts:{Dark:10}}});assert(!ctx.arenaEvolutionReady(c,rule('Bisharp','Kingambit')));
+c.profile.evolutionProgress.wins=5;c.profile.evolutionProgress.casts.Dark=9;assert(!ctx.arenaEvolutionReady(c,rule('Bisharp','Kingambit')));c.profile.evolutionProgress.casts.Dark=10;assert(ctx.arenaEvolutionReady(c,rule('Bisharp','Kingambit')));checks++;
 assert.match(html,/actor\.lastUsedMove=move;\s*if\(!basic\)recordArenaEvolutionCast\(actor,move\);/);assert.match(html,/recordArenaEvolutionBattle\(result>0\)/);checks++;
 console.log(JSON.stringify({checks,evolutionRoutes:paths,arenaAdaptations:special,missingRoutes:0}));
 // Newly available forms use the existing offline icon sheet and must survive real combat simulation.

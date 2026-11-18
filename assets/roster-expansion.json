@@ -1,0 +1,832 @@
+{
+  "version": "0.22.69",
+  "source": "https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv/",
+  "species": [
+    {
+      "id": 981,
+      "dex": 981,
+      "name": "Farigiraf",
+      "api": 981,
+      "region": null,
+      "slug": "farigiraf"
+    },
+    {
+      "id": 982,
+      "dex": 982,
+      "name": "Dudunsparce",
+      "api": 982,
+      "region": null,
+      "slug": "dudunsparce-two-segment"
+    },
+    {
+      "id": 983,
+      "dex": 983,
+      "name": "Kingambit",
+      "api": 983,
+      "region": null,
+      "slug": "kingambit"
+    },
+    {
+      "id": 984,
+      "dex": 984,
+      "name": "Great Tusk",
+      "api": 984,
+      "region": null,
+      "slug": "great-tusk"
+    },
+    {
+      "id": 985,
+      "dex": 985,
+      "name": "Scream Tail",
+      "api": 985,
+      "region": null,
+      "slug": "scream-tail"
+    },
+    {
+      "id": 986,
+      "dex": 986,
+      "name": "Brute Bonnet",
+      "api": 986,
+      "region": null,
+      "slug": "brute-bonnet"
+    },
+    {
+      "id": 987,
+      "dex": 987,
+      "name": "Flutter Mane",
+      "api": 987,
+      "region": null,
+      "slug": "flutter-mane"
+    },
+    {
+      "id": 988,
+      "dex": 988,
+      "name": "Slither Wing",
+      "api": 988,
+      "region": null,
+      "slug": "slither-wing"
+    },
+    {
+      "id": 989,
+      "dex": 989,
+      "name": "Sandy Shocks",
+      "api": 989,
+      "region": null,
+      "slug": "sandy-shocks"
+    },
+    {
+      "id": 990,
+      "dex": 990,
+      "name": "Iron Treads",
+      "api": 990,
+      "region": null,
+      "slug": "iron-treads"
+    },
+    {
+      "id": 991,
+      "dex": 991,
+      "name": "Iron Bundle",
+      "api": 991,
+      "region": null,
+      "slug": "iron-bundle"
+    },
+    {
+      "id": 992,
+      "dex": 992,
+      "name": "Iron Hands",
+      "api": 992,
+      "region": null,
+      "slug": "iron-hands"
+    },
+    {
+      "id": 993,
+      "dex": 993,
+      "name": "Iron Jugulis",
+      "api": 993,
+      "region": null,
+      "slug": "iron-jugulis"
+    },
+    {
+      "id": 994,
+      "dex": 994,
+      "name": "Iron Moth",
+      "api": 994,
+      "region": null,
+      "slug": "iron-moth"
+    },
+    {
+      "id": 995,
+      "dex": 995,
+      "name": "Iron Thorns",
+      "api": 995,
+      "region": null,
+      "slug": "iron-thorns"
+    },
+    {
+      "id": 996,
+      "dex": 996,
+      "name": "Frigibax",
+      "api": 996,
+      "region": null,
+      "slug": "frigibax"
+    },
+    {
+      "id": 997,
+      "dex": 997,
+      "name": "Arctibax",
+      "api": 997,
+      "region": null,
+      "slug": "arctibax"
+    },
+    {
+      "id": 998,
+      "dex": 998,
+      "name": "Baxcalibur",
+      "api": 998,
+      "region": null,
+      "slug": "baxcalibur"
+    },
+    {
+      "id": 999,
+      "dex": 999,
+      "name": "Gimmighoul",
+      "api": 999,
+      "region": null,
+      "slug": "gimmighoul"
+    },
+    {
+      "id": 1000,
+      "dex": 1000,
+      "name": "Gholdengo",
+      "api": 1000,
+      "region": null,
+      "slug": "gholdengo"
+    },
+    {
+      "id": 1001,
+      "dex": 1001,
+      "name": "Wo-Chien",
+      "api": 1001,
+      "region": null,
+      "slug": "wo-chien"
+    },
+    {
+      "id": 1002,
+      "dex": 1002,
+      "name": "Chien-Pao",
+      "api": 1002,
+      "region": null,
+      "slug": "chien-pao"
+    },
+    {
+      "id": 1003,
+      "dex": 1003,
+      "name": "Ting-Lu",
+      "api": 1003,
+      "region": null,
+      "slug": "ting-lu"
+    },
+    {
+      "id": 1004,
+      "dex": 1004,
+      "name": "Chi-Yu",
+      "api": 1004,
+      "region": null,
+      "slug": "chi-yu"
+    },
+    {
+      "id": 1005,
+      "dex": 1005,
+      "name": "Roaring Moon",
+      "api": 1005,
+      "region": null,
+      "slug": "roaring-moon"
+    },
+    {
+      "id": 1006,
+      "dex": 1006,
+      "name": "Iron Valiant",
+      "api": 1006,
+      "region": null,
+      "slug": "iron-valiant"
+    },
+    {
+      "id": 1007,
+      "dex": 1007,
+      "name": "Koraidon",
+      "api": 1007,
+      "region": null,
+      "slug": "koraidon"
+    },
+    {
+      "id": 1008,
+      "dex": 1008,
+      "name": "Miraidon",
+      "api": 1008,
+      "region": null,
+      "slug": "miraidon"
+    },
+    {
+      "id": 1009,
+      "dex": 1009,
+      "name": "Walking Wake",
+      "api": 1009,
+      "region": null,
+      "slug": "walking-wake"
+    },
+    {
+      "id": 1010,
+      "dex": 1010,
+      "name": "Iron Leaves",
+      "api": 1010,
+      "region": null,
+      "slug": "iron-leaves"
+    },
+    {
+      "id": 1011,
+      "dex": 1011,
+      "name": "Dipplin",
+      "api": 1011,
+      "region": null,
+      "slug": "dipplin"
+    },
+    {
+      "id": 1012,
+      "dex": 1012,
+      "name": "Poltchageist",
+      "api": 1012,
+      "region": null,
+      "slug": "poltchageist"
+    },
+    {
+      "id": 1013,
+      "dex": 1013,
+      "name": "Sinistcha",
+      "api": 1013,
+      "region": null,
+      "slug": "sinistcha"
+    },
+    {
+      "id": 1014,
+      "dex": 1014,
+      "name": "Okidogi",
+      "api": 1014,
+      "region": null,
+      "slug": "okidogi"
+    },
+    {
+      "id": 1015,
+      "dex": 1015,
+      "name": "Munkidori",
+      "api": 1015,
+      "region": null,
+      "slug": "munkidori"
+    },
+    {
+      "id": 1016,
+      "dex": 1016,
+      "name": "Fezandipiti",
+      "api": 1016,
+      "region": null,
+      "slug": "fezandipiti"
+    },
+    {
+      "id": 1017,
+      "dex": 1017,
+      "name": "Ogerpon",
+      "api": 1017,
+      "region": null,
+      "slug": "ogerpon"
+    },
+    {
+      "id": 1018,
+      "dex": 1018,
+      "name": "Archaludon",
+      "api": 1018,
+      "region": null,
+      "slug": "archaludon"
+    },
+    {
+      "id": 1019,
+      "dex": 1019,
+      "name": "Hydrapple",
+      "api": 1019,
+      "region": null,
+      "slug": "hydrapple"
+    },
+    {
+      "id": 1020,
+      "dex": 1020,
+      "name": "Gouging Fire",
+      "api": 1020,
+      "region": null,
+      "slug": "gouging-fire"
+    },
+    {
+      "id": 1021,
+      "dex": 1021,
+      "name": "Raging Bolt",
+      "api": 1021,
+      "region": null,
+      "slug": "raging-bolt"
+    },
+    {
+      "id": 1022,
+      "dex": 1022,
+      "name": "Iron Boulder",
+      "api": 1022,
+      "region": null,
+      "slug": "iron-boulder"
+    },
+    {
+      "id": 1023,
+      "dex": 1023,
+      "name": "Iron Crown",
+      "api": 1023,
+      "region": null,
+      "slug": "iron-crown"
+    },
+    {
+      "id": 1024,
+      "dex": 1024,
+      "name": "Terapagos",
+      "api": 1024,
+      "region": null,
+      "slug": "terapagos"
+    },
+    {
+      "id": 1025,
+      "dex": 1025,
+      "name": "Pecharunt",
+      "api": 1025,
+      "region": null,
+      "slug": "pecharunt"
+    },
+    {
+      "id": 1026,
+      "dex": 19,
+      "name": "Alolan Rattata",
+      "api": 10091,
+      "region": "alola",
+      "slug": "rattata-alola"
+    },
+    {
+      "id": 1027,
+      "dex": 20,
+      "name": "Alolan Raticate",
+      "api": 10092,
+      "region": "alola",
+      "slug": "raticate-alola"
+    },
+    {
+      "id": 1028,
+      "dex": 26,
+      "name": "Alolan Raichu",
+      "api": 10100,
+      "region": "alola",
+      "slug": "raichu-alola"
+    },
+    {
+      "id": 1029,
+      "dex": 27,
+      "name": "Alolan Sandshrew",
+      "api": 10101,
+      "region": "alola",
+      "slug": "sandshrew-alola"
+    },
+    {
+      "id": 1030,
+      "dex": 28,
+      "name": "Alolan Sandslash",
+      "api": 10102,
+      "region": "alola",
+      "slug": "sandslash-alola"
+    },
+    {
+      "id": 1031,
+      "dex": 37,
+      "name": "Alolan Vulpix",
+      "api": 10103,
+      "region": "alola",
+      "slug": "vulpix-alola"
+    },
+    {
+      "id": 1032,
+      "dex": 38,
+      "name": "Alolan Ninetales",
+      "api": 10104,
+      "region": "alola",
+      "slug": "ninetales-alola"
+    },
+    {
+      "id": 1033,
+      "dex": 50,
+      "name": "Alolan Diglett",
+      "api": 10105,
+      "region": "alola",
+      "slug": "diglett-alola"
+    },
+    {
+      "id": 1034,
+      "dex": 51,
+      "name": "Alolan Dugtrio",
+      "api": 10106,
+      "region": "alola",
+      "slug": "dugtrio-alola"
+    },
+    {
+      "id": 1035,
+      "dex": 52,
+      "name": "Alolan Meowth",
+      "api": 10107,
+      "region": "alola",
+      "slug": "meowth-alola"
+    },
+    {
+      "id": 1036,
+      "dex": 53,
+      "name": "Alolan Persian",
+      "api": 10108,
+      "region": "alola",
+      "slug": "persian-alola"
+    },
+    {
+      "id": 1037,
+      "dex": 74,
+      "name": "Alolan Geodude",
+      "api": 10109,
+      "region": "alola",
+      "slug": "geodude-alola"
+    },
+    {
+      "id": 1038,
+      "dex": 75,
+      "name": "Alolan Graveler",
+      "api": 10110,
+      "region": "alola",
+      "slug": "graveler-alola"
+    },
+    {
+      "id": 1039,
+      "dex": 76,
+      "name": "Alolan Golem",
+      "api": 10111,
+      "region": "alola",
+      "slug": "golem-alola"
+    },
+    {
+      "id": 1040,
+      "dex": 88,
+      "name": "Alolan Grimer",
+      "api": 10112,
+      "region": "alola",
+      "slug": "grimer-alola"
+    },
+    {
+      "id": 1041,
+      "dex": 89,
+      "name": "Alolan Muk",
+      "api": 10113,
+      "region": "alola",
+      "slug": "muk-alola"
+    },
+    {
+      "id": 1042,
+      "dex": 103,
+      "name": "Alolan Exeggutor",
+      "api": 10114,
+      "region": "alola",
+      "slug": "exeggutor-alola"
+    },
+    {
+      "id": 1043,
+      "dex": 105,
+      "name": "Alolan Marowak",
+      "api": 10115,
+      "region": "alola",
+      "slug": "marowak-alola"
+    },
+    {
+      "id": 1044,
+      "dex": 52,
+      "name": "Galarian Meowth",
+      "api": 10161,
+      "region": "galar",
+      "slug": "meowth-galar"
+    },
+    {
+      "id": 1045,
+      "dex": 77,
+      "name": "Galarian Ponyta",
+      "api": 10162,
+      "region": "galar",
+      "slug": "ponyta-galar"
+    },
+    {
+      "id": 1046,
+      "dex": 78,
+      "name": "Galarian Rapidash",
+      "api": 10163,
+      "region": "galar",
+      "slug": "rapidash-galar"
+    },
+    {
+      "id": 1047,
+      "dex": 79,
+      "name": "Galarian Slowpoke",
+      "api": 10164,
+      "region": "galar",
+      "slug": "slowpoke-galar"
+    },
+    {
+      "id": 1048,
+      "dex": 80,
+      "name": "Galarian Slowbro",
+      "api": 10165,
+      "region": "galar",
+      "slug": "slowbro-galar"
+    },
+    {
+      "id": 1049,
+      "dex": 83,
+      "name": "Galarian Farfetch’d",
+      "api": 10166,
+      "region": "galar",
+      "slug": "farfetchd-galar"
+    },
+    {
+      "id": 1050,
+      "dex": 110,
+      "name": "Galarian Weezing",
+      "api": 10167,
+      "region": "galar",
+      "slug": "weezing-galar"
+    },
+    {
+      "id": 1051,
+      "dex": 122,
+      "name": "Galarian Mr. Mime",
+      "api": 10168,
+      "region": "galar",
+      "slug": "mr-mime-galar"
+    },
+    {
+      "id": 1052,
+      "dex": 144,
+      "name": "Galarian Articuno",
+      "api": 10169,
+      "region": "galar",
+      "slug": "articuno-galar"
+    },
+    {
+      "id": 1053,
+      "dex": 145,
+      "name": "Galarian Zapdos",
+      "api": 10170,
+      "region": "galar",
+      "slug": "zapdos-galar"
+    },
+    {
+      "id": 1054,
+      "dex": 146,
+      "name": "Galarian Moltres",
+      "api": 10171,
+      "region": "galar",
+      "slug": "moltres-galar"
+    },
+    {
+      "id": 1055,
+      "dex": 199,
+      "name": "Galarian Slowking",
+      "api": 10172,
+      "region": "galar",
+      "slug": "slowking-galar"
+    },
+    {
+      "id": 1056,
+      "dex": 222,
+      "name": "Galarian Corsola",
+      "api": 10173,
+      "region": "galar",
+      "slug": "corsola-galar"
+    },
+    {
+      "id": 1057,
+      "dex": 263,
+      "name": "Galarian Zigzagoon",
+      "api": 10174,
+      "region": "galar",
+      "slug": "zigzagoon-galar"
+    },
+    {
+      "id": 1058,
+      "dex": 264,
+      "name": "Galarian Linoone",
+      "api": 10175,
+      "region": "galar",
+      "slug": "linoone-galar"
+    },
+    {
+      "id": 1059,
+      "dex": 554,
+      "name": "Galarian Darumaka",
+      "api": 10176,
+      "region": "galar",
+      "slug": "darumaka-galar"
+    },
+    {
+      "id": 1060,
+      "dex": 555,
+      "name": "Galarian Darmanitan",
+      "api": 10177,
+      "region": "galar",
+      "slug": "darmanitan-galar-standard"
+    },
+    {
+      "id": 1061,
+      "dex": 562,
+      "name": "Galarian Yamask",
+      "api": 10179,
+      "region": "galar",
+      "slug": "yamask-galar"
+    },
+    {
+      "id": 1062,
+      "dex": 618,
+      "name": "Galarian Stunfisk",
+      "api": 10180,
+      "region": "galar",
+      "slug": "stunfisk-galar"
+    },
+    {
+      "id": 1063,
+      "dex": 58,
+      "name": "Hisuian Growlithe",
+      "api": 10229,
+      "region": "hisui",
+      "slug": "growlithe-hisui"
+    },
+    {
+      "id": 1064,
+      "dex": 59,
+      "name": "Hisuian Arcanine",
+      "api": 10230,
+      "region": "hisui",
+      "slug": "arcanine-hisui"
+    },
+    {
+      "id": 1065,
+      "dex": 100,
+      "name": "Hisuian Voltorb",
+      "api": 10231,
+      "region": "hisui",
+      "slug": "voltorb-hisui"
+    },
+    {
+      "id": 1066,
+      "dex": 101,
+      "name": "Hisuian Electrode",
+      "api": 10232,
+      "region": "hisui",
+      "slug": "electrode-hisui"
+    },
+    {
+      "id": 1067,
+      "dex": 157,
+      "name": "Hisuian Typhlosion",
+      "api": 10233,
+      "region": "hisui",
+      "slug": "typhlosion-hisui"
+    },
+    {
+      "id": 1068,
+      "dex": 211,
+      "name": "Hisuian Qwilfish",
+      "api": 10234,
+      "region": "hisui",
+      "slug": "qwilfish-hisui"
+    },
+    {
+      "id": 1069,
+      "dex": 215,
+      "name": "Hisuian Sneasel",
+      "api": 10235,
+      "region": "hisui",
+      "slug": "sneasel-hisui"
+    },
+    {
+      "id": 1070,
+      "dex": 503,
+      "name": "Hisuian Samurott",
+      "api": 10236,
+      "region": "hisui",
+      "slug": "samurott-hisui"
+    },
+    {
+      "id": 1071,
+      "dex": 549,
+      "name": "Hisuian Lilligant",
+      "api": 10237,
+      "region": "hisui",
+      "slug": "lilligant-hisui"
+    },
+    {
+      "id": 1072,
+      "dex": 570,
+      "name": "Hisuian Zorua",
+      "api": 10238,
+      "region": "hisui",
+      "slug": "zorua-hisui"
+    },
+    {
+      "id": 1073,
+      "dex": 571,
+      "name": "Hisuian Zoroark",
+      "api": 10239,
+      "region": "hisui",
+      "slug": "zoroark-hisui"
+    },
+    {
+      "id": 1074,
+      "dex": 628,
+      "name": "Hisuian Braviary",
+      "api": 10240,
+      "region": "hisui",
+      "slug": "braviary-hisui"
+    },
+    {
+      "id": 1075,
+      "dex": 705,
+      "name": "Hisuian Sliggoo",
+      "api": 10241,
+      "region": "hisui",
+      "slug": "sliggoo-hisui"
+    },
+    {
+      "id": 1076,
+      "dex": 706,
+      "name": "Hisuian Goodra",
+      "api": 10242,
+      "region": "hisui",
+      "slug": "goodra-hisui"
+    },
+    {
+      "id": 1077,
+      "dex": 713,
+      "name": "Hisuian Avalugg",
+      "api": 10243,
+      "region": "hisui",
+      "slug": "avalugg-hisui"
+    },
+    {
+      "id": 1078,
+      "dex": 724,
+      "name": "Hisuian Decidueye",
+      "api": 10244,
+      "region": "hisui",
+      "slug": "decidueye-hisui"
+    },
+    {
+      "id": 1079,
+      "dex": 550,
+      "name": "White-Striped Basculin",
+      "api": 10247,
+      "region": "hisui",
+      "slug": "basculin-white-striped"
+    },
+    {
+      "id": 1080,
+      "dex": 128,
+      "name": "Paldean Tauros (Combat Breed)",
+      "api": 10250,
+      "region": "paldea",
+      "slug": "tauros-paldea-combat-breed"
+    },
+    {
+      "id": 1081,
+      "dex": 128,
+      "name": "Paldean Tauros (Blaze Breed)",
+      "api": 10251,
+      "region": "paldea",
+      "slug": "tauros-paldea-blaze-breed"
+    },
+    {
+      "id": 1082,
+      "dex": 128,
+      "name": "Paldean Tauros (Aqua Breed)",
+      "api": 10252,
+      "region": "paldea",
+      "slug": "tauros-paldea-aqua-breed"
+    },
+    {
+      "id": 1083,
+      "dex": 194,
+      "name": "Paldean Wooper",
+      "api": 10253,
+      "region": "paldea",
+      "slug": "wooper-paldea"
+    }
+  ],
+  "nationalSpecies": 1025,
+  "regionalForms": 58
+}

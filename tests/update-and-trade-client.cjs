@@ -92,7 +92,7 @@ async function cloudChecks(){
 }
 async function hubChecks(){
  const d=dom();d.byId('home-dialog').append(d.byId('home-dialog-content'));
- const gameDex=JSON.parse(html.match(/^const dex = (.+);$/m)[1]);
+ const gameDex=JSON.parse(html.match(/^const dex\s*=\s*(.+);$/m)[1]);
  const profile={pid:2,ivs:Array(6).fill(31),evs:Array(6).fill(0),abilityOverride:'Good as Gold'};
  const copyProfile={pid:10,ivs:[20,30,17,22,25,31],evs:[4,0,0,0,4,252],abilityOverride:'Pressure',shiny:true};
  const sample={name:'Bulbasaur',number:1,generation:1,types:['Grass','Poison'],level:50,nature:'Adamant',personality:'Resilient',shiny:false,iv_total:186,ivs:profile.ivs,evs:profile.evs};
@@ -107,7 +107,7 @@ async function hubChecks(){
   pokemonPortrait:()=>new Node('canvas'),idlePokemonPortrait:()=>new Node('canvas'),spriteVariants:()=>({shiny:'shiny'}),
   dimensions:()=>[7,69],abilityFor:(_,p)=>p.abilityOverride,hiddenAbilityFor:()=>null,
   profileFor:()=>{throw Error('A Hub preview must never read or activate a local PC profile');},confirm:()=>true,console});
- vm.runInContext(html.match(/^const dexStats = .+;$/m)[0],ctx);
+ vm.runInContext(html.match(/^const dexStats\s*=\s*.+;$/m)[0],ctx);
  vm.runInContext(html.slice(html.indexOf('const natureNames=['),html.indexOf('const profileStorage=')),ctx);
  vm.runInContext(html.slice(html.indexOf('function natureOf('),html.indexOf('function isAvailablePokemon(')),ctx);
  vm.runInContext(html.slice(html.indexOf('function drawStats('),html.indexOf('function addEVs(')),ctx);

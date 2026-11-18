@@ -1,0 +1,895 @@
+{
+  "repository": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/",
+  "licenses": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/LICENSE.md",
+  "fallback": "https://github.com/PokeAPI/sprites",
+  "credits": [
+    {
+      "name": "Farigiraf",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0981/",
+      "record": "2023-11-02 01:42:06.719264\t<@!276369635304275968>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop\n2023-11-27 23:48:37.460535\t<@!276369635304275968>\tCUR\tPMDCollab_2\tIdle,Walk,Attack,Charge,Shoot,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Dudunsparce",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0982/",
+      "record": "2024-12-24 08:56:03.707127\t<@!608107243329814529>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Shake,SpAttack,Swing,Double,Rotate,Hop\n2025-01-04 14:07:35.874090\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Attack,Charge,Shoot,Shake,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Kingambit",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0983/",
+      "record": "2023-09-07 05:29:16.979946\t<@!276369635304275968>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop\n2023-09-25 04:19:11.250106\t<@!276369635304275968>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Great Tusk",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0984/",
+      "record": "2024-11-15 22:01:57.865730\t<@!350050109741858829>\tCUR\tCC_BY-NC_4\tIdle,Walk,Attack,Strike,SpAttack,RearUp,Rotate,Hop\n2024-11-22 20:28:10.757087\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tSleep,Hurt,Charge,Shoot,Swing,Double"
+    },
+    {
+      "name": "Scream Tail",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0985/",
+      "record": "2024-11-15 04:03:48.532854\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Bite,Withdraw,Swing,Double,Rotate,Hop\n2024-11-16 04:31:28.224328\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tAttack,Withdraw,Swing"
+    },
+    {
+      "name": "Flutter Mane",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0987/",
+      "record": "2023-01-06 04:06:09.182512\t<@!544245909639397378>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop\n2023-06-13 06:30:06.391017\t<@!544245909639397378>\tCUR\tPMDCollab_2\tIdle,Walk,Attack,Charge,Shoot,SpAttack,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Slither Wing",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0988/",
+      "record": "2024-08-07 03:39:44.415129\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Rotate\n2024-11-16 04:23:56.288533\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Shake,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Sandy Shocks",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0989/",
+      "record": "2025-02-19 19:41:18.656665\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Shake,Slam,Dance,Rumble,Emit,Swing,Double,Rotate,Hop\n2025-02-19 20:32:41.912967\t<@!350050109741858829>\tCUR\tCC_BY-NC_4\tIdle,Walk,Shoot,Shake,Slam,Rotate,Hop"
+    },
+    {
+      "name": "Iron Treads",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0990/",
+      "record": "2024-11-07 01:48:30.985277\t<@!350050109741858829>\tCUR\tCC_BY-NC_4\tIdle,Sleep,Rotate"
+    },
+    {
+      "name": "Iron Bundle",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0991/",
+      "record": "2023-01-06 18:51:08.781364\t<@!702275233125630042>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop\n2023-04-22 20:47:13.227025\t<@!702275233125630042>\tCUR\tPMDCollab_1\tSleep"
+    },
+    {
+      "name": "Iron Hands",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0992/",
+      "record": "2024-07-19 01:33:21.790246\t<@!608107243329814529>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop\n2024-08-03 21:19:18.878911\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Iron Moth",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0994/",
+      "record": "2025-10-30 04:52:36.874711\t<@!608107243329814529>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,RearUp,Swing,Double,Rotate,Hop\n2025-10-30 06:08:16.639400\t<@!608107243329814529>\tCUR\tCC_BY-NC_4\tWalk,Shoot\n2025-10-30 06:50:19.315378\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,RearUp,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Iron Thorns",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0995/",
+      "record": "2025-02-17 01:58:51.864305\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Frigibax",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0996/",
+      "record": "2024-09-12 04:09:16.588937\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Rumble,SpAttack,Swing,Double,Rotate,Hop\n2024-09-13 04:04:11.491744\t<@!608107243329814529>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,SpAttack,Swing,Double,Rotate,Hop\n2024-09-13 04:14:24.292864\t<@!656696412087648257>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,SpAttack,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Arctibax",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0997/",
+      "record": "2024-06-27 09:02:11.944852\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Scratch,Twirl,Swing,Double,Rotate,Hop\n2024-06-27 14:32:39.433342\t<@!608107243329814529>\tCUR\tCC_BY-NC_4\t\"\n2024-07-02 13:53:46.049999\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Hurt,Attack,Charge,Shoot,Scratch,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Baxcalibur",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0998/",
+      "record": "2024-06-28 07:50:25.485265\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop\n2024-06-28 08:01:57.576704\t<@!608107243329814529>\tCUR\tCC_BY-NC_4\t\"\n2024-06-30 02:56:38.767609\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tShoot"
+    },
+    {
+      "name": "Gholdengo",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1000/",
+      "record": "2023-12-20 07:14:25.821047\t<@!544245909639397378>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop\n2023-12-20 07:19:12.017915\t<@!350050109741858829>\tCUR\tPMDCollab_2\t\"\n2024-01-13 02:14:15.827006\t<@!544245909639397378>\tCUR\tPMDCollab_2\tAttack,Shoot,SpAttack"
+    },
+    {
+      "name": "Ting-Lu",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1003/",
+      "record": "2025-05-13 04:06:48.693550\t<@!350050109741858829>\tCUR\tCC_BY-NC_4\tIdle,Rotate"
+    },
+    {
+      "name": "Chi-Yu",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1004/",
+      "record": "2025-05-05 08:57:06.040522\t<@!608107243329814529>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Swing,Double,Rotate,Hop\n2025-05-05 11:08:21.156289\t<@!272761782269902848>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Roaring Moon",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1005/",
+      "record": "2025-03-31 01:13:11.116023\tFERMRACK\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,RearUp,Swing,Double,Rotate,Hop,Hover\n2025-04-03 22:51:58.888810\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tSleep,Charge,Shoot,Hover\n2025-04-03 23:29:42.920940\t<@!608107243329814529>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,RearUp,Swing,Double,Rotate,Hop,Hover"
+    },
+    {
+      "name": "Iron Valiant",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1006/",
+      "record": "2024-08-16 01:39:41.226130\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Strike,Slice,Twirl,SpAttack,Swing,Double,Rotate,Hop,Cringe"
+    },
+    {
+      "name": "Koraidon",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1007/",
+      "record": "2025-03-08 09:06:53.176147\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Sound,Rumble,RearUp,Swing,Double,Rotate,Hop\n2025-04-22 02:52:10.992049\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Hurt,Attack,Shoot,RearUp,Swing,Double,Hop"
+    },
+    {
+      "name": "Walking Wake",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1009/",
+      "record": "2025-02-21 02:38:08.772999\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,SpAttack,Swing,Double,Rotate,Hop,QuickStrike\n2025-02-21 02:39:02.429161\t<@!350050109741858829>\tCUR\tCC_BY-NC_4\tIdle,Walk,Attack,Charge,Shoot,SpAttack,Swing,Double,Rotate,Hop,QuickStrike\n2025-02-21 02:40:31.522825\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tWalk"
+    },
+    {
+      "name": "Iron Leaves",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1010/",
+      "record": "2026-01-25 18:31:13.875940\t<@!608107243329814529>\tCUR\tCC_BY-NC_4\tIdle,Walk,Hurt,Rotate,EventSleep,Float,Laying,Cringe\n2026-02-26 02:37:18.566926\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,RearUp,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint\n2026-03-17 01:14:34.571258\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Attack,Charge,Shoot,Strike,Swing,Double,Hop,Sink,LostBalance"
+    },
+    {
+      "name": "Dipplin",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1011/",
+      "record": "2024-09-20 02:39:05.670338\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Shake,Appeal,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Poltchageist",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1012/",
+      "record": "2026-06-19 05:32:01.026567\t<@!1116961261331152986>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Swing,Double,Rotate,Hop,Cringe\n2026-06-19 07:12:42.498618\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Swing,Double,Rotate,Hop,Cringe\n2026-06-20 18:10:31.045080\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tShoot,Hop"
+    },
+    {
+      "name": "Sinistcha",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1013/",
+      "record": "2026-06-19 05:48:11.789275\t<@!1116961261331152986>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop,Cringe\n2026-06-19 07:12:49.019751\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop,Cringe\n2026-06-20 18:09:24.657025\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tHurt"
+    },
+    {
+      "name": "Munkidori",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1015/",
+      "record": "2023-11-12 01:33:56.103544\t<@!702275233125630042>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Fezandipiti",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1016/",
+      "record": "2026-03-22 18:54:43.611824\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Strike,Twirl,Swing,Double,Rotate,Hop,Hover,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint\n2026-03-23 15:14:15.046200\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tHurt,Attack,Hop,Hover"
+    },
+    {
+      "name": "Ogerpon",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1017/",
+      "record": "2023-11-17 15:47:21.893866\t<@!544245909639397378>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Appeal,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Archaludon",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1018/",
+      "record": "2024-03-08 04:13:33.774842\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop\n2024-03-17 08:26:33.594668\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop\n2025-07-06 16:36:27.409913\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Hurt,Attack,Charge,Shoot,Slam,RearUp,Swing,Double,Rotate,Hop\n2025-07-06 22:45:32.477977\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tHurt,Attack,Shoot,Slam\n2025-07-06 22:45:40.974644\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tHurt,Attack,Shoot,Slam\n2025-07-14 01:32:48.492700\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tHurt"
+    },
+    {
+      "name": "Hydrapple",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1019/",
+      "record": "2024-09-14 04:24:05.438064\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Emit,SpAttack,Swing,Double,Rotate,Hop\n2024-10-27 07:01:31.312963\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Hurt,Attack,Charge,Shoot,SpAttack,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Gouging Fire",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1020/",
+      "record": "2024-12-21 22:01:03.164971\t<@!350050109741858829>\tCUR\tCC_BY-NC_4\tIdle,Rotate"
+    },
+    {
+      "name": "Raging Bolt",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1021/",
+      "record": "2024-10-11 04:15:22.877603\t<@!653416391201783856>\tCUR\tCC_BY-NC_4\tIdle,Swing,Double,Rotate\n2024-10-11 04:37:46.092535\t<@!608107243329814529>\tCUR\tCC_BY-NC_4\tIdle,Sleep,Swing,Double,Rotate\n2024-10-18 20:36:51.115446\t<@!330751862590406656>\tCUR\tCC_BY-NC_4\tIdle,Sleep,Swing,Double,Rotate"
+    },
+    {
+      "name": "Terapagos",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1024/",
+      "record": "2024-02-20 02:55:13.511061\t<@!350050109741858829>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,Swing,Double,Rotate,Hop\n2024-02-22 01:38:52.268678\t<@!350050109741858829>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Pecharunt",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/1025/",
+      "record": "2024-01-13 18:34:00.755764\t<@!350050109741858829>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Charge,Shoot,Twirl,Swing,Rotate\n2024-01-19 03:35:37.857375\t<@!350050109741858829>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Charge,Swing,Rotate"
+    },
+    {
+      "name": "Alolan Rattata",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0019/0001/",
+      "record": "2022-09-24 17:55:25.132115\t<@!319945906600411179>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,TailWhip,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Alolan Rattata",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0019/0001/0001/",
+      "record": "2022-10-02 00:12:50.987945\t<@!576876006636519434>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,TailWhip,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Alolan Raticate",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0020/0001/",
+      "record": "2022-08-29 03:14:09.838515\t<@!319945906600411179>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,TailWhip,Swing,Double,Rotate,Hop\n2022-10-03 16:21:38.762630\t<@!319945906600411179>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,TailWhip,Swing,Double,Rotate,Hop\n2023-01-02 23:28:43.788182\t<@!576876006636519434>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,TailWhip,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Alolan Raticate",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0020/0001/0001/",
+      "record": "2022-10-04 18:00:17.101400\t<@!576876006636519434>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,TailWhip,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Alolan Raichu",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0026/0001/",
+      "record": "2023-01-18 22:16:13.333024\t<@!544245909639397378>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Shock,Swing,Double,Rotate,Hop,Pose"
+    },
+    {
+      "name": "Alolan Raichu",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0026/0001/0001/",
+      "record": "2023-01-19 04:55:56.375896\t<@!576876006636519434>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Shock,Swing,Double,Rotate,Hop,Pose"
+    },
+    {
+      "name": "Alolan Sandshrew",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0027/0001/",
+      "record": "2025-02-26 02:32:12.368463\t<@!276369635304275968>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Withdraw,Swing,Double,Rotate,Hop,Cringe\n2025-03-06 06:48:58.736596\t<@!276369635304275968>\tCUR\tCC_BY-NC_4\tAttack,Charge,Hop\n2025-07-06 17:01:33.045978\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Strike,Withdraw,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint\n2025-07-06 17:01:39.565084\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Strike,Withdraw,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Alolan Sandshrew",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0027/0001/0001/",
+      "record": "2025-03-11 02:18:25.620852\t<@!276369635304275968>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Withdraw,Swing,Double,Rotate,Hop,Cringe"
+    },
+    {
+      "name": "Alolan Sandslash",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0028/0001/",
+      "record": "2024-07-19 08:24:16.969811\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Withdraw,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Alolan Sandslash",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0028/0001/0001/",
+      "record": "2025-02-06 23:43:18.632547\t<@!1327394227922931878>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Withdraw,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Alolan Vulpix",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0037/0001/",
+      "record": "2021-03-26 13:38:05.351803\t<@!319945906600411179>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Appeal,SpAttack,RearUp,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,Faint,HitGround\n2022-12-09 07:46:26.427264\t<@!544245909639397378>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,RearUp,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Alolan Vulpix",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0037/0001/0001/",
+      "record": "2021-04-04 12:03:29.317050\t<@!117780585635643396>\tOLD\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Appeal,SpAttack,RearUp,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,Faint,HitGround\n2022-12-09 21:19:12.565446\t<@!544245909639397378>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,RearUp,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Alolan Ninetales",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0038/0001/",
+      "record": "2021-03-26 13:37:38.618666\t<@!319945906600411179>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Appeal,SpAttack,RearUp,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,EventSleep,Wake,Laying\n2023-04-25 08:33:11.243169\t<@!544245909639397378>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,RearUp,Swing,Double,Rotate,Hop,EventSleep,Wake,Laying"
+    },
+    {
+      "name": "Alolan Ninetales",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0038/0001/0001/",
+      "record": "2021-04-04 12:03:25.181324\t<@!117780585635643396>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Appeal,SpAttack,RearUp,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,EventSleep,Wake,Laying"
+    },
+    {
+      "name": "Alolan Diglett",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0050/0001/",
+      "record": "2021-09-17 00:59:32.454354\t<@!237286997645983744>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Twirl,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,Wiggle,DigIn,DigOut,Special0"
+    },
+    {
+      "name": "Alolan Diglett",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0050/0001/0001/",
+      "record": "2021-10-03 22:08:39.604927\t<@!593113130213572610>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Twirl,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,Wiggle,DigIn,DigOut,Special0"
+    },
+    {
+      "name": "Alolan Dugtrio",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0051/0001/",
+      "record": "2023-09-02 17:53:21.251276\t<@!319945906600411179>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Alolan Dugtrio",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0051/0001/0001/",
+      "record": "2023-09-17 01:30:54.463786\t<@!576876006636519434>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Alolan Meowth",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0052/0001/",
+      "record": "2022-10-03 16:25:45.388694\t<@!576876006636519434>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,MultiStrike,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint\n2022-10-05 15:43:35.917772\t<@!576876006636519434>\tCUR\tPMDCollab_1\tHurt,Tumble,TumbleBack\n2024-01-07 10:14:09.140788\t<@!576876006636519434>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,MultiStrike,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint\n2024-01-10 22:08:42.759982\t<@!576876006636519434>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,MultiStrike,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Alolan Meowth",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0052/0001/0001/",
+      "record": "2022-10-08 00:42:44.862837\t<@!576876006636519434>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,MultiStrike,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint\n2024-01-10 04:44:33.850836\t<@!576876006636519434>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,MultiStrike,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Alolan Persian",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0053/0001/",
+      "record": "2022-08-22 00:49:38.415967\t<@!872983950732165181>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Alolan Persian",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0053/0001/0001/",
+      "record": "2022-09-21 22:48:21.797608\t<@!576876006636519434>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Alolan Geodude",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0074/0001/",
+      "record": "2021-11-14 16:33:09.228129\t<@!319945906600411179>\tCUR\tPMDCollab_1\tWalk,Attack,Punch,Shoot,Twirl,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate"
+    },
+    {
+      "name": "Alolan Geodude",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0074/0001/0001/",
+      "record": "2021-12-12 06:21:38.102380\t<@!593113130213572610>\tCUR\tPMDCollab_1\tWalk,Attack,Punch,Shoot,Twirl,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate"
+    },
+    {
+      "name": "Alolan Graveler",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0075/0001/",
+      "record": "2021-11-14 16:32:57.624749\t<@!319945906600411179>\tCUR\tPMDCollab_1\tWalk,Attack,Slam,SpAttack,Rumble,Shoot,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate"
+    },
+    {
+      "name": "Alolan Graveler",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0075/0001/0001/",
+      "record": "2021-12-12 06:21:47.073128\t<@!593113130213572610>\tCUR\tPMDCollab_1\tWalk,Attack,Slam,SpAttack,Rumble,Shoot,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate"
+    },
+    {
+      "name": "Alolan Golem",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0076/0001/",
+      "record": "2021-11-19 06:00:22.701648\t<@!319945906600411179>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Withdraw,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,Fainted,StandingUp"
+    },
+    {
+      "name": "Alolan Golem",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0076/0001/0001/",
+      "record": "2021-12-12 06:21:56.356700\t<@!593113130213572610>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Withdraw,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,Fainted,StandingUp"
+    },
+    {
+      "name": "Alolan Grimer",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0088/0001/",
+      "record": "2021-11-15 16:06:33.474421\t<@!237286997645983744>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Twirl,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,Pose"
+    },
+    {
+      "name": "Alolan Grimer",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0088/0001/0001/",
+      "record": "2021-12-12 23:58:57.752962\t<@!593113130213572610>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Twirl,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,Pose"
+    },
+    {
+      "name": "Alolan Muk",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0089/0001/",
+      "record": "2021-11-14 16:33:17.871962\t<@!319945906600411179>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Twirl,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,Pain"
+    },
+    {
+      "name": "Alolan Muk",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0089/0001/0001/",
+      "record": "2021-12-12 23:59:08.551598\t<@!593113130213572610>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Twirl,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,Pain"
+    },
+    {
+      "name": "Alolan Exeggutor",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0103/0001/",
+      "record": "2023-11-15 02:06:20.682461\t<@!544245909639397378>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Shake,Dance,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Alolan Exeggutor",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0103/0001/0001/",
+      "record": "2023-11-15 19:48:04.823991\t<@!576876006636519434>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Shake,Dance,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Alolan Marowak",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0105/0001/",
+      "record": "2021-10-02 03:22:26.097772\t<@!356635814668664832>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Punch,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate"
+    },
+    {
+      "name": "Alolan Marowak",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0105/0001/0001/",
+      "record": "2021-10-04 08:44:53.210847\t<@!356635814668664832>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Punch,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate"
+    },
+    {
+      "name": "Galarian Meowth",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0052/0002/",
+      "record": "2025-11-09 17:19:33.893289\t<@!185431200783925249>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop,Cringe\n2025-11-09 17:23:27.877908\t<@!330751862590406656>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop,Cringe\n2025-11-09 17:23:48.854599\t<@!350050109741858829>\tCUR\tCC_BY-NC_4\tIdle,Walk,Attack,Shoot,Swing,Double,Rotate,Hop\n2025-11-12 06:09:32.337986\t<@!330751862590406656>\tCUR\tCC_BY-NC_4\tCharge,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Ponyta",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0077/0001/",
+      "record": "2022-08-23 18:15:50.360635\tJHONY_REX\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,RearUp,Rotate\n2022-08-25 13:52:11.253507\t<@!215638650434617345>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,RearUp,Swing,Double,Rotate,Hop\n2023-04-09 15:50:55.738215\t<@!544245909639397378>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,RearUp,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Galarian Ponyta",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0077/0001/0001/",
+      "record": "2022-08-26 12:55:37.361457\t<@!215638650434617345>\tOLD\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,RearUp,Swing,Double,Rotate,Hop\n2023-04-10 22:58:24.349701\t<@!544245909639397378>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,RearUp,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Galarian Rapidash",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0078/0001/",
+      "record": "2023-07-04 22:55:39.804962\tJHONY_REX\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,RearUp,Swing,Double,Rotate,Hop\n2023-07-23 20:05:01.391201\t<@!544245909639397378>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,RearUp,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Rapidash",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0078/0001/0001/",
+      "record": "2024-02-09 18:13:48.314351\t<@!232091727094218752>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,RearUp,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Slowpoke",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0079/0001/",
+      "record": "2024-06-21 18:20:58.050987\t<@!203640888558223361>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Slowpoke",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0079/0001/0001/",
+      "record": "2024-07-13 23:49:19.948072\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Slowbro",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0080/0001/",
+      "record": "2024-12-24 08:01:59.974608\t<@!872983950732165181>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop\n2024-12-27 04:22:09.108937\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Charge,Shoot,SpAttack,Swing,Hop"
+    },
+    {
+      "name": "Galarian Slowbro",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0080/0001/0001/",
+      "record": "2025-01-31 23:12:40.714092\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Farfetch’d",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0083/0001/",
+      "record": "2021-04-29 02:07:47.715040\t<@!702275233125630042>\tCUR\tPMDCollab_1\tAttack,Charge,Double,Hop,Hurt,Idle,Rotate,Sleep,Strike,Swing,Walk\n2021-05-02 18:19:19.893597\t<@!702275233125630042>\tCUR\tPMDCollab_1\tAttack,Charge,Cringe,DeepBreath,Double,Eat,EventSleep,Faint,Float,Head,HitGround,Hop,Hurt,Idle,Laying,LeapForth,LookUp,LostBalance,Nod,Pain,Pose,Pull,Rotate,Sink,Sit,Sleep,Strike,Swing,Trip,Tumble,TumbleBack,Wake,Walk"
+    },
+    {
+      "name": "Galarian Farfetch’d",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0083/0001/0001/",
+      "record": "2021-07-19 22:38:04.332843\t<@!593113130213572610>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Twirl,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,Faint,HitGround"
+    },
+    {
+      "name": "Galarian Weezing",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0110/0001/",
+      "record": "2024-12-24 04:48:58.400133\tJHONY_REX\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Gas,Swing,Double,Rotate,Hop\n2024-12-31 08:55:12.859513\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop\n2024-12-31 19:16:54.251470\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tDouble"
+    },
+    {
+      "name": "Galarian Weezing",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0110/0001/0001/",
+      "record": "2025-01-31 23:16:17.386335\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Gas,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Mr. Mime",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0122/0001/",
+      "record": "2024-12-24 09:31:47.513225\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Kick,Twirl,Swing,Double,Rotate,Hop\n2024-12-24 19:53:14.004148\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tWalk,Hop\n2024-12-24 19:53:24.617290\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tWalk,Hop"
+    },
+    {
+      "name": "Galarian Mr. Mime",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0122/0001/0001/",
+      "record": "2025-01-31 23:17:10.281753\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Kick,Twirl,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Articuno",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0144/0001/",
+      "record": "2024-12-21 22:21:55.056603\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,SpAttack,RearUp,Swing,Double,Rotate,Hop\n2025-02-01 21:41:25.939807\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,SpAttack,RearUp,Swing,Double,Rotate,Hop\n2025-02-03 02:36:10.233014\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tSleep"
+    },
+    {
+      "name": "Galarian Articuno",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0144/0001/0001/",
+      "record": "2025-02-01 20:10:17.894265\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,SpAttack,RearUp,Swing,Double,Rotate,Hop\n2025-02-03 05:23:19.695094\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,SpAttack,RearUp,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Zapdos",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0145/0001/",
+      "record": "2023-01-27 18:44:50.234038\tJHONY_REX\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Emit,SpAttack,Swing,Double,Rotate,Hop\n2023-03-31 07:43:28.424436\t<@!330751862590406656>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Emit,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Zapdos",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0145/0001/0001/",
+      "record": "2023-04-27 19:25:45.213146\t<@!593113130213572610>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Emit,SpAttack,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Moltres",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0146/0001/",
+      "record": "2021-11-17 00:25:52.720661\tJHONY_REX\tCUR\tPMDCollab_1\tWalk,Attack,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,Cringe"
+    },
+    {
+      "name": "Galarian Moltres",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0146/0001/0001/",
+      "record": "2021-12-12 20:31:35.151943\t<@!593113130213572610>\tCUR\tPMDCollab_1\tWalk,Attack,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate,Cringe\n2024-04-23 17:22:47.752746\t<@!593113130213572610>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Swing,Double,Rotate,Hop,Cringe"
+    },
+    {
+      "name": "Galarian Slowking",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0199/0001/",
+      "record": "2025-02-25 06:07:28.829991\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,RearUp,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Slowking",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0199/0001/0001/",
+      "record": "2025-03-29 07:55:23.005592\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,RearUp,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Corsola",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0222/0001/",
+      "record": "2021-03-28 22:19:36.906173\t<@!702275233125630042>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Shake,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate"
+    },
+    {
+      "name": "Galarian Corsola",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0222/0001/0001/",
+      "record": "2022-03-25 09:44:13.226512\t<@!593113130213572610>\tCUR\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Shake,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate"
+    },
+    {
+      "name": "Galarian Zigzagoon",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0263/0001/",
+      "record": "2021-03-19 01:36:35.021473\t<@!702275233125630042>\tOLD\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate\n2024-02-24 07:02:24.524155\t<@!402958234371227648>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,TailWhip,RearUp,Swing,Double,Rotate,Hop\n2024-02-26 02:05:18.913334\t<@!402958234371227648>\tCUR\tCC_BY-NC_4\tIdle,Walk,Attack,RearUp,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Zigzagoon",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0263/0001/0001/",
+      "record": "2021-10-17 02:33:47.648603\t<@!356635814668664832>\tOLD\tPMDCollab_1\tWalk,Attack,Strike,Shoot,Sleep,Hurt,Idle,Swing,Double,Hop,Charge,Rotate\n2024-02-25 17:55:47.051840\t<@!402958234371227648>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,TailWhip,RearUp,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Linoone",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0264/0001/",
+      "record": "2024-09-09 17:22:14.305435\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,RearUp,Swing,Double,Rotate,Hop\n2024-09-10 15:01:13.771279\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,RearUp,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Linoone",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0264/0001/0001/",
+      "record": "2024-09-10 08:05:20.777650\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,RearUp,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Darumaka",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0554/0001/",
+      "record": "2024-07-10 09:59:18.930397\t<@!402958234371227648>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Strike,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Darmanitan",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0555/0002/",
+      "record": "2026-03-17 01:03:10.746191\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Rumble,Emit,Swing,Double,Rotate,Hop\n2026-03-17 01:06:14.665515\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Rumble,Emit,Swing,Double,Rotate,Hop\n2026-05-27 04:08:45.251094\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tAttack,Strike"
+    },
+    {
+      "name": "Galarian Darmanitan",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0555/0002/0001/",
+      "record": "2026-03-23 23:13:26.744988\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Rumble,Emit,Swing,Double,Rotate,Hop\n2026-05-27 04:41:46.870750\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tAttack,Strike"
+    },
+    {
+      "name": "Galarian Yamask",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0562/0001/",
+      "record": "2025-07-26 00:23:09.219636\t<@!823932975916777512>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Galarian Yamask",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0562/0001/0001/",
+      "record": "2025-08-24 02:54:57.162088\t<@!823932975916777512>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Growlithe",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0058/0001/",
+      "record": "2023-07-23 03:09:15.656012\t<@!544245909639397378>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Rumble,SpAttack,Swing,Double,Rotate,Hop\n2024-01-13 16:27:03.889345\t<@!544245909639397378>\tCUR\tPMDCollab_2\tEventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Hisuian Growlithe",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0058/0001/0001/",
+      "record": "2023-07-26 00:04:41.230156\t<@!576876006636519434>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Rumble,SpAttack,Swing,Double,Rotate,Hop\n2024-01-14 19:33:33.449506\t<@!544245909639397378>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Rumble,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Hisuian Arcanine",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0059/0001/",
+      "record": "2023-08-04 01:31:15.681332\t<@!544245909639397378>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Rumble,SpAttack,Swing,Double,Rotate,Hop,QuickStrike\n2023-12-11 01:59:15.846659\t<@!356635814668664832>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Rumble,Swing,Rotate,Hop,QuickStrike"
+    },
+    {
+      "name": "Hisuian Arcanine",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0059/0001/0001/",
+      "record": "2023-12-20 00:02:39.678439\t<@!356635814668664832>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Rumble,SpAttack,Swing,Double,Rotate,Hop,QuickStrike"
+    },
+    {
+      "name": "Hisuian Voltorb",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0100/0001/",
+      "record": "2022-06-30 04:39:01.743908\t<@!662304890143375391>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,RearUp,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint\n2023-03-13 02:50:43.454011\t<@!662304890143375391>\tCUR\tPMDCollab_1\tEventSleep,Wake,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Hisuian Voltorb",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0100/0001/0001/",
+      "record": "2022-07-08 00:35:14.884269\t<@!237286997645983744>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,RearUp,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint\n2023-04-21 19:42:20.136168\t<@!237286997645983744>\tCUR\tPMDCollab_1\tEventSleep,Wake,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Hisuian Electrode",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0101/0001/",
+      "record": "2024-08-30 22:50:41.330707\t<@!624279546845200394>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,RearUp,Swing,Double,Rotate,Hop\n2024-08-30 23:36:28.645632\t<@!276428982683959296>\tCUR\tCC_BY-NC_4\tIdle,Walk,Twirl,Rotate,Hop\n2024-08-30 23:54:08.822490\t<@!255885525204992000>\tCUR\tCC_BY-NC_4\tIdle,Walk,Attack,Charge,Twirl,Swing,Double,Rotate,Hop\n2024-09-01 22:28:34.194789\t<@!624279546845200394>\tCUR\tCC_BY-NC_4\tHurt"
+    },
+    {
+      "name": "Hisuian Electrode",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0101/0001/0001/",
+      "record": "2025-02-05 19:33:53.083069\t<@!1327394227922931878>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,RearUp,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Typhlosion",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0157/0001/",
+      "record": "2023-07-16 15:25:42.900168\t<@!330751862590406656>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,Swing,Double,Rotate,Hop\n2024-07-31 01:44:12.222459\t<@!157796074457661440>\tCUR\tCC_BY-NC_4\tEventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Hisuian Typhlosion",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0157/0001/0001/",
+      "record": "2023-07-16 22:12:22.973151\t<@!330751862590406656>\tOLD\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,Swing,Double,Rotate,Hop\n2024-08-03 17:37:26.785379\t<@!157796074457661440>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Hisuian Qwilfish",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0211/0001/",
+      "record": "2022-05-23 06:12:36.436278\t<@!702275233125630042>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Withdraw,Swing,Double,Rotate,Hop\n2026-01-04 03:35:11.918634\t<@!488809643838144543>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Withdraw,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Qwilfish",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0211/0001/0001/",
+      "record": "2022-07-08 00:35:39.513419\t<@!237286997645983744>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Withdraw,Swing,Double,Rotate,Hop\n2026-01-16 20:58:12.385069\t<@!488809643838144543>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Withdraw,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Sneasel",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0215/0001/",
+      "record": "2022-09-14 15:17:45.959673\t<@!576876006636519434>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,MultiScratch,Twirl,Swing,Double,Rotate,Hop\n2022-09-18 02:23:44.585093\t<@!576876006636519434>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Attack,Charge,Shoot,MultiScratch,Hop\n2022-09-24 16:16:32.945184\t<@!576876006636519434>\tCUR\tPMDCollab_1\tWalk,Sleep,MultiScratch,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint,Fainted\n2023-04-04 20:45:14.107055\t<@!576876006636519434>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,MultiScratch,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint,Fainted"
+    },
+    {
+      "name": "Hisuian Sneasel",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0215/0001/0001/",
+      "record": "2022-09-19 01:12:40.881541\t<@!576876006636519434>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,MultiScratch,Twirl,Swing,Double,Rotate,Hop\n2022-09-25 03:52:42.107691\t<@!576876006636519434>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,MultiScratch,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint,Fainted\n2023-04-04 21:25:44.069152\t<@!576876006636519434>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,MultiScratch,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint,Fainted"
+    },
+    {
+      "name": "Hisuian Samurott",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0503/0001/",
+      "record": "2024-08-07 10:57:01.420853\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Samurott",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0503/0001/0001/",
+      "record": "2024-09-30 04:53:27.847238\t<@!157796074457661440>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Lilligant",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0549/0001/",
+      "record": "2025-05-05 09:13:25.777926\tGUSTAVOMUSINTG\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,Swing,Double,Rotate,Hop\n2025-05-13 06:10:41.817887\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Charge,Shoot,Strike,Double,Hop"
+    },
+    {
+      "name": "Hisuian Lilligant",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0549/0001/0001/",
+      "record": "2025-05-17 15:10:59.249748\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Zorua",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0570/0001/",
+      "record": "2022-03-23 15:59:17.736152\t<@!779213287576436746>\tCUR\tPMDCollab_1\tAttack,Charge,Cringe,DeepBreath,Double,Eat,EventSleep,Faint,Float,Head,HitGround,Hop,Hurt,Idle,Laying,LeapForth,LookUp,LostBalance,Nod,Pain,Pose,Pull,Rotate,Shoot,Sink,Sit,Sleep,Swing,Trip,Tumble,TumbleBack,Wake,Walk\n2022-04-23 04:25:48.661523\t<@!779213287576436746>\tCUR\tPMDCollab_1\tCharge,Eat,Idle,Laying,Nod,Pose,Shoot\n2022-06-11 19:31:15.208226\t<@!779213287576436746>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,SpAttack,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint\n2022-06-15 08:17:30.086513\t<@!779213287576436746>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Hisuian Zorua",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0570/0001/0001/",
+      "record": "2022-05-16 17:23:00.975444\t<@!593113130213572610>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,SpAttack,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint\n2022-06-16 03:35:12.871854\t<@!365627932888268800>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,SpAttack,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Hisuian Zoroark",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0571/0001/",
+      "record": "2022-07-30 05:33:55.477794\t<@!544245909639397378>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Twirl,Swing,Double,Rotate,Hop\n2024-02-10 17:48:08.442286\t<@!157796074457661440>\tCUR\tPMDCollab_2\tEat,Pull,Head,Cringe\n2024-07-06 15:33:20.015489\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Hisuian Zoroark",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0571/0001/0001/",
+      "record": "2025-02-24 23:19:32.002594\t<@!157796074457661440>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Hisuian Braviary",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0628/0001/",
+      "record": "2024-11-15 03:38:42.257048\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Attack,Charge,Shoot,Strike,FlapAround,Swing,Double,Rotate,Hop\n2024-12-22 04:12:37.225797\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,FlapAround,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Braviary",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0628/0001/0001/",
+      "record": "2025-02-01 20:01:49.384176\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,FlapAround,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Sliggoo",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0705/0001/",
+      "record": "2024-01-04 02:02:17.598513\t<@!356635814668664832>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Withdraw,Swing,Double,Rotate,Hop,Cringe"
+    },
+    {
+      "name": "Hisuian Sliggoo",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0705/0001/0001/",
+      "record": "2024-01-05 01:50:54.426287\t<@!356635814668664832>\tCUR\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Withdraw,Swing,Double,Rotate,Hop,Cringe"
+    },
+    {
+      "name": "Hisuian Goodra",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0706/0001/",
+      "record": "2022-05-29 05:51:38.272638\t<@!356635814668664832>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Swing,Double,Rotate,Hop\n2022-10-20 05:09:32.653470\t<@!356635814668664832>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop\n2022-10-21 20:44:29.057806\t<@!356635814668664832>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Goodra",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0706/0001/0001/",
+      "record": "2022-05-29 11:10:42.494771\t<@!356635814668664832>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Swing,Double,Rotate,Hop\n2022-10-23 21:58:35.533025\t<@!356635814668664832>\tCUR\tPMDCollab_1\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Avalugg",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0713/0001/",
+      "record": "2026-04-25 18:54:54.669095\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Rumble,Emit,Swing,Double,Rotate,Hop\n2026-05-27 04:23:17.355894\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Emit,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Avalugg",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0713/0001/0001/",
+      "record": "2026-05-27 14:30:31.220246\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Rumble,Emit,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Decidueye",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0724/0001/",
+      "record": "2024-12-27 03:52:50.360814\t<@!544245909639397378>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Kick,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Hisuian Decidueye",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0724/0001/0001/",
+      "record": "2025-02-01 20:01:35.533387\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Kick,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "White-Striped Basculin",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0550/0002/",
+      "record": "2024-10-24 02:09:40.070090\t<@!872983950732165181>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Bite,Swing,Double,Rotate,Hop\n2024-11-17 02:56:02.072234\t<@!229131140903075840>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Bite,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "White-Striped Basculin",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0550/0002/0001/",
+      "record": "2024-11-30 08:56:26.180853\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Bite,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Paldean Tauros (Combat Breed)",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0128/0001/",
+      "record": "2024-02-05 08:11:17.214699\t<@!608107243329814529>\tOLD\tPMDCollab_2\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Stomp,Twirl,Swing,Double,Rotate,Hop\n2024-06-27 06:50:41.492478\t<@!360948625901223950>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Stomp,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Paldean Tauros (Combat Breed)",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0128/0001/0001/",
+      "record": "2024-07-13 23:49:00.286684\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Stomp,Twirl,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Paldean Tauros (Blaze Breed)",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0128/0002/",
+      "record": "2024-06-27 06:50:54.781484\t<@!360948625901223950>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Stomp,Twirl,Swing,Double,Rotate,Hop\n2024-06-30 22:50:06.411278\t<@!360948625901223950>\tCUR\tCC_BY-NC_4\tStomp"
+    },
+    {
+      "name": "Paldean Tauros (Blaze Breed)",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0128/0002/0001/",
+      "record": "2024-07-13 23:49:16.531738\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Stomp,Twirl,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Paldean Tauros (Aqua Breed)",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0128/0003/",
+      "record": "2025-01-08 06:21:47.313322\t<@!702275233125630042>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Stomp,Twirl,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Paldean Tauros (Aqua Breed)",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0128/0003/0001/",
+      "record": "2025-03-25 23:03:41.611239\t<@!356635814668664832>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Stomp,Twirl,Swing,Double,Rotate,Hop"
+    },
+    {
+      "name": "Paldean Wooper",
+      "shiny": false,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0194/0002/",
+      "record": "2024-03-16 01:27:37.940685\t<@!402958234371227648>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    },
+    {
+      "name": "Paldean Wooper",
+      "shiny": true,
+      "source": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/0194/0002/0001/",
+      "record": "2024-03-16 19:30:15.655697\t<@!402958234371227648>\tCUR\tCC_BY-NC_4\tIdle,Walk,Sleep,Hurt,Attack,Charge,Shoot,Strike,Twirl,Swing,Double,Rotate,Hop,EventSleep,Wake,Eat,Tumble,Pose,Pull,Pain,Float,DeepBreath,Nod,Sit,LookUp,Sink,Trip,Laying,LeapForth,Head,Cringe,LostBalance,TumbleBack,HitGround,Faint"
+    }
+  ]
+}

@@ -88,7 +88,7 @@ for(const file of ['index.html','local-test/PokeArena_Local_Test.html']){
  }
 }
 for(const file of ['cloud.js','multiplayer.js','tactics.js'])new vm.Script(read(file),{filename:file});
-const data=html.split('\n').filter(line=>/^const (dex|dexStats|typeChart) =/.test(line)).join('\n');
+const data=html.split('\n').filter(line=>/^const (dex|dexStats|typeChart)\s*=/.test(line)).join('\n');
 class Node {
  constructor(tag,text,classes=''){this.tagName=tag;this.textContent=text;this.className=classes;this.children=[];this.style={setProperty(){}};this.dataset={};}
  append(...children){this.children.push(...children);}
@@ -661,6 +661,6 @@ async function verifyMasterRaids(){
 }
 Promise.all([verifyPendingRecovery(),verifyLoanerGear(),verifyOpenArenaChase(),verifyMasterRaids(),verifyRaidRetry()]).then(()=>{
  console.log('Manual Capture, full-bench fusion, pending-save recovery, and server loaner gear checks passed.');
- for(const file of ['ability-adaptations.cjs','remaining-abilities.cjs','update-and-trade-client.cjs','arena-evolutions.cjs','arena-tactics.cjs','arena-maps.cjs','regional-progression-client.cjs','regional-contracts.cjs'])
+ for(const file of ['ability-adaptations.cjs','remaining-abilities.cjs','update-and-trade-client.cjs','arena-evolutions.cjs','arena-tactics.cjs','arena-maps.cjs','regional-progression-client.cjs','regional-contracts.cjs','roster-expansion.cjs'])
   require('node:child_process').execFileSync(process.execPath,[path.join(__dirname,file)],{stdio:'inherit'});
 }).catch(error=>{console.error(error);process.exitCode=1;});

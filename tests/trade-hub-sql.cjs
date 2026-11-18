@@ -39,7 +39,9 @@ let db;
   grant execute on function public.arena_write_save(jsonb,timestamptz) to authenticated;
  `);
  await db.exec(fs.readFileSync(path.join(__dirname,'fixtures/trade-save-validation.sql'),'utf8'));
- await db.exec(migration);checks++;
+ await db.exec(migration);
+ await db.exec(fs.readFileSync(path.join(root,'supabase/migrations/20261118020000_regional_progression.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(root,'supabase/migrations/20261118030000_complete_pokedex.sql'),'utf8'));checks++;
  for(let i=0;i<3;i++){
   await db.query('insert into auth.users values($1)',[ids[i]]);
   await db.query('insert into arena_private.players values($1,$2)',[ids[i],['Nifty','Brock','Misty'][i]]);
