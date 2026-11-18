@@ -920,6 +920,12 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 @media(max-width:900px){.market-pc-picker{grid-template-columns:1fr}.market-pc-status .detail-summary{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}}
 @media(max-width:440px){.market-pc-status .detail-summary{grid-template-columns:1fr}.market-pc-picker .box-label{align-items:start;flex-direction:column}.market-pc-picker .pc-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.market-pc-generation{flex-basis:85px}.market-pc-picker .stat-chart{max-width:340px;justify-self:center}}
 
+
+.arena-evolution-controls{margin:18px 0;padding:10px;border:1px solid #b5cbb9;border-radius:7px;background:#eaf3e7;color:#253d36}
+.arena-evolution-controls>summary{cursor:pointer;font-size:13px;font-weight:700}.arena-evolution-controls>label{display:grid;gap:6px;margin:12px 0 8px;font-size:12px}.arena-evolution-controls select{width:100%;min-width:0;padding:6px;background:#fff;color:#253d36;border:1px solid #9db5a3;border-radius:5px}
+.arena-evolution-controls>small{display:block;font-size:11px;line-height:1.6}.arena-evolution-route{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;padding:12px 0;border-bottom:1px solid #c5d8ca;font-size:12px}.arena-evolution-route:last-child{border-bottom:0}.arena-evolution-route strong{grid-column:1}.arena-evolution-route ul{grid-column:1;margin:0;padding:0;list-style:none;line-height:1.7}.arena-evolution-route button{grid-column:2;grid-row:1/span 2;align-self:center;padding:8px;font-size:12px}.arena-evolution-route .is-ready{color:#316b27}.arena-evolution-route .is-pending{color:#52675d}.arena-evolution-route small{grid-column:1/-1;line-height:1.6}
+@media(max-width:460px){.arena-evolution-route{grid-template-columns:1fr}.arena-evolution-route button{grid-column:1;grid-row:auto;justify-self:start}}
+
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -1618,7 +1624,7 @@ function individualTable(name,profile) {
  return table;
 }
 function isAvailablePokemon(name) {
- return Object.hasOwn(dex,name) && Boolean(pmdData.motions[dex[name][0]]);
+ return Object.hasOwn(dex,name) && Boolean(pmdData.motions[dex[name][0]] || iconBounds[dex[name][0]-1]);
 }
 const dexNames = Object.keys(dex).filter(isAvailablePokemon).sort((a,b)=>dex[a][0]-dex[b][0]);
 for(const [index,name] of team.entries()) {
@@ -2230,7 +2236,7 @@ function openGambits(name,ai,onClose) {
  document.body.append(dialog);
  dialog.showModal();
 }
-function pcCollectionControls(name) {
+function pcCollectionControls(name,preferredCopy=null) {
  const section=element('fieldset',null,'pc-copy');
  section.append(element('legend','Copies:'));
  const copies=wildProgress.copies[name] ?? [];
@@ -2326,7 +2332,7 @@ function pcCollectionControls(name) {
   inspected=null;save();
  };
  actions.append(release);
- selectCopy(-1);
+ selectCopy(preferredCopy?copies.indexOf(preferredCopy):-1);
  return section;
 }
 function renderDetail(trainingSelection) {
@@ -2388,7 +2394,7 @@ badges,element('p',height/10+' m · '+weight/10+' kg'),
  chart.setAttribute('aria-label',['HP','Attack','Defense','Speed','Special Defense','Special Attack']
   .map((label,i)=>label+' '+chartValues[i]).join(', '));
  summary.append(info,chart);
- body.append(summary,individualTable(name,profile));
+ body.append(summary,individualTable(name,profile),arenaEvolutionControls(name,copy));
  if(copy){
   const training=element('fieldset',null,'training-items');
   training.append(element('legend','EV training'),battleEVToggle(profile,true));
@@ -3075,7 +3081,7 @@ function equipHeldItem(name,item) {
  if(!item) delete wildProgress.held[name];
  else {
   if(!Object.hasOwn(heldItems,item) || freeHeldCopies(item,name)<=0 ||
-   (evolutionStones.includes(item) && !stoneTarget(name,item))) return false;
+   (evolutionStones.includes(item) && !canHoldEvolutionItem(name,item))) return false;
   wildProgress.held[name]=item;
  }
  saveWildProgress();
@@ -3088,7 +3094,7 @@ function heldItemPicker(name) {
  empty.value='';
  select.append(empty);
  for(const item of Object.keys(heldItems)) {
-  if(!wildProgress.items[item] || (evolutionStones.includes(item) && !stoneTarget(name,item))) continue;
+  if(!wildProgress.items[item] || (evolutionStones.includes(item) && !canHoldEvolutionItem(name,item))) continue;
   const free=freeHeldCopies(item,name);
   const option=element('option',item+' · '+free+' available');
   option.value=item;
@@ -3825,6 +3831,160 @@ for(const [id,[parent,,level]] of Object.entries(evolutionData)) {
  const name=speciesById[id];
  if(parent && level && isAvailablePokemon(name)) (levelEvolutions[parent] ??=[]).push({name,level});
 }
+// Arena evolution rules: portable training goals replace hardware, time and trade requirements.
+const arenaEvolutionSpecs={"Alakazam":{"item":"Linking Cord"},"Machamp":{"item":"Linking Cord"},"Golem":{"item":"Linking Cord"},"Politoed":{"item":"Linking Cord"},"Slowking":{"item":"Linking Cord"},"Steelix":{"item":"Linking Cord"},"Scizor":{"item":"Linking Cord"},"Kingdra":{"item":"Linking Cord"},"Porygon2":{"item":"Linking Cord"},"Porygon-Z":{"item":"Linking Cord"},"Rhyperior":{"item":"Linking Cord"},"Electivire":{"item":"Linking Cord"},"Magmortar":{"item":"Linking Cord"},"Dusknoir":{"item":"Linking Cord"},"Gigalith":{"item":"Linking Cord"},"Conkeldurr":{"item":"Linking Cord"},"Escavalier":{"item":"Linking Cord"},"Accelgor":{"item":"Linking Cord"},"Aromatisse":{"item":"Linking Cord"},"Slurpuff":{"item":"Linking Cord"},"Trevenant":{"item":"Linking Cord"},"Gourgeist":{"item":"Linking Cord"},"Huntail":{"item":"Linking Cord"},"Gorebyss":{"item":"Linking Cord"},"Silcoon":{"level":7},"Cascoon":{"level":7},"Spewpa":{"level":9},"Vivillon":{"level":12},"Oinkologne":{"level":18},"Floette":{"level":19},"Wormadam":{"level":20},"Mothim":{"level":20},"Vespiquen":{"level":21},"Meowstic":{"level":25},"Gastrodon":{"level":30},"Malamar":{"level":30},"Toxtricity":{"level":30},"Salazzle":{"level":33},"Sawsbuck":{"level":34},"Pikachu":{"level":15,"wins":3},"Clefairy":{"level":15,"wins":3},"Jigglypuff":{"level":15,"wins":3},"Marill":{"level":15,"wins":3},"Togetic":{"level":20,"wins":3},"Roselia":{"level":20,"wins":3},"Chimecho":{"level":20,"wins":3},"Swoobat":{"level":20,"wins":3},"Lopunny":{"level":25,"wins":3},"Lucario":{"level":25,"wins":3},"Espeon":{"level":25,"wins":3},"Umbreon":{"level":25,"wins":3},"Crobat":{"level":30,"wins":3},"Snorlax":{"level":30,"wins":3},"Leavanny":{"level":30,"wins":3},"Polteageist":{"level":30,"wins":3},"Alcremie":{"level":30,"wins":3},"Blissey":{"level":35,"wins":3},"Frosmoth":{"level":35,"wins":3},"Milotic":{"level":40,"wins":3},"Silvally":{"level":50,"wins":3},"Sylveon":{"level":25,"wins":3,"knowsType":"Fairy"},"Mr. Mime":{"level":20,"move":"Mimic"},"Sudowoodo":{"level":20,"move":"Mimic"},"Ambipom":{"level":32,"move":"Double Hit"},"Lickilicky":{"level":33,"move":"Rollout"},"Tangrowth":{"level":34,"move":"Ancient Power"},"Yanmega":{"level":33,"move":"Ancient Power"},"Mamoswine":{"level":33,"move":"Ancient Power"},"Tsareena":{"level":29,"move":"Stomp"},"Naganadel":{"level":40,"move":"Dragon Pulse"},"Grapploct":{"level":35,"move":"Taunt"},"Hitmonlee":{"level":20,"stat":"attack"},"Hitmonchan":{"level":20,"stat":"defense"},"Hitmontop":{"level":20,"stat":"equal"},"Mantine":{"level":20,"teammate":"Remoraid"},"Pangoro":{"level":32,"teamType":"Dark"},"Shedinja":{"level":20,"bonus":true,"ball":0},"Weavile":{"level":35,"castsType":"Dark","casts":10},"Gliscor":{"level":35,"castsType":"Flying","casts":10},"Goodra":{"level":50,"castsType":"Water","casts":10},"Lurantis":{"level":34,"castsType":"Grass","casts":10},"Wyrdeer":{"level":31,"castsType":"Psychic","casts":10,"path":"Hisui training"},"Basculegion":{"level":35,"castsType":"Water","casts":10,"path":"Hisui training"},"Sneasler":{"level":35,"castsType":"Fighting","casts":10,"path":"Hisui training"},"Overqwil":{"level":35,"castsType":"Dark","casts":10,"path":"Hisui training"},"Annihilape":{"level":35,"castsType":"Ghost","casts":10},"Houndstone":{"level":30,"castsType":"Ghost","casts":10},"Ursaluna":{"level":40,"castsType":"Ground","casts":10,"path":"Hisui training"},"Urshifu":{"level":50,"castsType":"Fighting","casts":10},"Armarouge":{"level":30,"castsType":"Fire","casts":10},"Ceruledge":{"level":30,"castsType":"Fire","casts":10},"Melmetal":{"level":40,"castsType":"Steel","casts":20,"wins":3},"Gumshoos":{"level":20,"wins":3},"Lycanroc":{"level":25,"wins":3},"Pawmot":{"level":25,"wins":3},"Brambleghast":{"level":25,"wins":3},"Rabsca":{"level":25,"wins":3},"Perrserker":{"level":28,"wins":3,"path":"Galar training"},"Obstagoon":{"level":30,"wins":3,"path":"Galar training"},"Cursola":{"level":35,"wins":3,"path":"Galar training"},"Sirfetch’d":{"level":35,"wins":3,"path":"Galar training"},"Runerigus":{"level":35,"wins":3,"path":"Galar training"},"Kleavor":{"level":35,"wins":3,"path":"Hisui training"},"Tyrantrum":{"level":39,"wins":3},"Aurorus":{"level":39,"wins":3},"Mr. Rime":{"level":42,"wins":3,"path":"Galar training"},"Clodsire":{"level":20,"wins":3,"path":"Paldea training"},"Maushold":{"level":25,"wins":1},"Palafin":{"level":38,"wins":3,"teammates":2},"Flapple":{"level":20,"item":"Leaf Stone"},"Appletun":{"level":20,"item":"Sun Stone"}};
+const arenaEvolutionRoutes={};
+for(const [id,[parent,,level]] of Object.entries(evolutionData)) {
+ if(!parent)continue;
+ const source=speciesById[parent],name=speciesById[id];
+ const item=Object.entries(stoneEvolutions[source] ?? {}).find(([,target])=>target===name)?.[0];
+ const special=arenaEvolutionSpecs[name];
+ if(!level && !item && !special)continue;
+ (arenaEvolutionRoutes[source] ??=[]).push({name,level:level||0,...(item?{item}:{}),...special});
+}
+function arenaEvolutionContext(name,copy=null) {
+ const entry=copy ?? ownedPokemon(name);
+ if(!entry || copy && !(wildProgress.copies[name] ?? []).includes(copy))return null;
+ return {name,copy,entry,profile:copy?.profile ?? profileFor(name),moves:copy?(copy.moves ?? []):movesFor(name)};
+}
+function arenaEvolutionProgress(profile) {
+ const saved=profile.evolutionProgress;
+ const whole=value=>Number.isFinite(value)?Math.max(0,Math.min(99999,Math.floor(value))):0;
+ return {wins:whole(saved?.wins),casts:Object.fromEntries(Object.keys(typeChart).map(type=>[type,whole(saved?.casts?.[type])]))};
+}
+function arenaEvolutionChecks(context,rule) {
+ if(!context)return [];
+ const {name,entry,profile,moves,copy}=context,progress=arenaEvolutionProgress(profile),checks=[];
+ const add=(text,met)=>checks.push({text,met:Boolean(met)});
+ if(rule.level)add('Lv. '+rule.level+' ('+entry.level+'/'+rule.level+')',entry.level>=rule.level);
+ if(rule.wins)add('Win '+rule.wins+' battles while participating ('+Math.min(progress.wins,rule.wins)+'/'+rule.wins+')',progress.wins>=rule.wins);
+ if(rule.item)add('Use 1 '+rule.item+' ('+Math.max(0,freeHeldCopies(rule.item,copy?undefined:name))+' available)',freeHeldCopies(rule.item,copy?undefined:name)>0);
+ if(rule.move)add('Equip '+rule.move,moves.includes(rule.move));
+ if(rule.knowsType)add('Equip a '+rule.knowsType+' move',moves.some(move=>moveCatalog[move]?.[0]===rule.knowsType));
+ if(rule.castsType)add('Use '+rule.casts+' '+rule.castsType+' skills ('+Math.min(progress.casts[rule.castsType]??0,rule.casts)+'/'+rule.casts+')',(progress.casts[rule.castsType]??0)>=rule.casts);
+ if(rule.teammate)add('Have '+rule.teammate+' on the battle team',team.includes(rule.teammate));
+ if(rule.teamType)add('Have another '+rule.teamType+' Pokémon on the battle team',team.some(member=>member!==name && dex[member].slice(1,3).includes(rule.teamType)));
+ if(rule.teammates)add('Have '+rule.teammates+' other Pokémon on the battle team',team.filter(member=>member!==name).length>=rule.teammates);
+ if(rule.stat){const stats=calculatedStats(name,profile,entry.level),atk=stats[1],def=stats[2];
+  add('ATK '+(rule.stat==='attack'?'>':rule.stat==='defense'?'<':'=')+' DEF ('+atk+' / '+def+')',rule.stat==='attack'?atk>def:rule.stat==='defense'?atk<def:atk===def);
+ }
+ if(rule.ball!==undefined)add('Use 1 '+ballTypes[rule.ball].name,(wildProgress.balls[rule.ball]??0)>0);
+ return checks;
+}
+function arenaEvolutionReady(context,rule) {
+ return Boolean(context && isAvailablePokemon(rule.name) && arenaEvolutionChecks(context,rule).every(check=>check.met));
+}
+function canHoldEvolutionItem(name,item) {
+ return Boolean(item) && (arenaEvolutionRoutes[name] ?? []).some(rule=>rule.item===item && isAvailablePokemon(rule.name));
+}
+function chooseArenaEvolution(context,allowItems=false) {
+ if(!context || context.profile.evolutionPath==='hold')return null;
+ const rules=(arenaEvolutionRoutes[context.name] ?? []).filter(rule=>!rule.bonus && isAvailablePokemon(rule.name));
+ const path=context.profile.evolutionPath;
+ if(!allowItems && !path && rules.some(rule=>rule.item && rule.item===wildProgress.held[context.name]))return null;
+ const ready=rules.filter(rule=>(!path || rule.name===path) && (!rule.item || allowItems && !context.copy && wildProgress.held[context.name]===rule.item) && arenaEvolutionReady(context,rule));
+ if(path)return ready[0] ?? null;
+ const held=ready.filter(rule=>rule.item && wildProgress.held[context.name]===rule.item);
+ return held.length===1?held[0]:ready.length===1?ready[0]:null;
+}
+function recordArenaEvolutionCast(actor,move) {
+ if(!actor.friendly || rogueRun || !(selectedWild || selectedTrainer || selectedGym) || move==='Normal Attack')return;
+ const type=moveCatalog[move]?.[0];if(!Object.hasOwn(typeChart,type))return;
+ actor.evolutionCasts ??={};actor.evolutionCasts[type]=Math.min(99999,(actor.evolutionCasts[type]??0)+1);
+}
+function recordArenaEvolutionBattle(won) {
+ if(rogueRun || !(selectedWild || selectedTrainer || selectedGym))return;
+ for(const actor of allies) {
+  if(!actor.enteredBattle || actor.arenaEvolutionRecorded)continue;
+  const name=actor.originalName ?? actor.name,context=arenaEvolutionContext(name);
+  const identity=actor.originalProfile ?? actor.profile;
+  if(!context || context.profile!==identity)continue;
+  actor.arenaEvolutionRecorded=true;
+  const progress=arenaEvolutionProgress(context.profile);if(won)progress.wins=Math.min(99999,progress.wins+1);
+  for(const [type,count] of Object.entries(actor.evolutionCasts ?? {}))if(Object.hasOwn(typeChart,type))progress.casts[type]=Math.min(99999,(progress.casts[type]??0)+Math.max(0,Math.floor(count)||0));
+  context.profile.evolutionProgress=progress;
+ }
+ playerStorage.setItem(profileStorage,JSON.stringify(profiles));saveWildProgress();
+}
+function arenaShedinjaBonus(source,level,profile,target) {
+ if(source!=='Nincada' || target!=='Ninjask' || level<20 || !(wildProgress.balls[0]>0))return '';
+ const shell=structuredClone(profile);delete shell.trade_id;delete shell.evolutionPath;delete shell.evolutionProgress;
+ shell.pid=rollProfile().pid;if(shell.pid===profile.pid)shell.pid=(shell.pid+1)>>>0;
+ wildProgress.balls[0]--;addCaughtPokemon('Shedinja',level,shell);
+ return ' A Shedinja joined your PC; 1 '+ballTypes[0].name+' was used.';
+}
+function evolveArenaIndividual(context,rule) {
+ if(!arenaEvolutionReady(context,rule) || rule.bonus)throw Error('This Pokémon has not met the evolution requirements.');
+ const {name,copy,entry,profile}=context;
+ if(copy && !(wildProgress.copies[name] ?? []).includes(copy) || !copy && profileFor(name)!==profile)throw Error('That PC copy changed. Select it again.');
+ const original=structuredClone(profile),level=entry.level;
+ let incoming=null,message;
+ if(!copy)message=evolveOwnedPokemon(name,rule.name,rule.item ?? null);
+ else {
+  const copies=wildProgress.copies[name],index=copies.indexOf(copy);
+  const evolvedProfile=structuredClone(profile);delete evolvedProfile.evolutionPath;
+  incoming={level:entry.level,xp:entry.xp,profile:evolvedProfile,moves:legalLoadout(rule.name,copy.moves ?? []),ai:normalizeBattleAI(copy.ai)};
+  if(rule.item)wildProgress.items[rule.item]--;
+  copies.splice(index,1);
+  if(ownedPokemon(rule.name))(wildProgress.copies[rule.name] ??=[]).push(incoming);
+  else {
+   wildProgress.owned[rule.name]={level:incoming.level,xp:incoming.xp};profiles[dex[rule.name][0]]=incoming.profile;
+   loadouts[rule.name]=incoming.moves;wildProgress.ai[rule.name]=incoming.ai;
+   if(copy.held && copy.held!==rule.item && !evolutionStones.includes(copy.held) && freeHeldCopies(copy.held,rule.name)>0)wildProgress.held[rule.name]=copy.held;
+   incoming=null;
+  }
+  registerPokemon(rule.name);evolutionScenes.push([name,rule.name]);message=name+' evolved into '+rule.name+'!';
+ }
+ message+=arenaShedinjaBonus(name,level,original,rule.name);
+ playerStorage.setItem(profileStorage,JSON.stringify(profiles));saveTeam();saveWildProgress();
+ return {name:rule.name,copy:incoming,message};
+}
+function tryArenaEvolution(name,allowItems=false) {
+ const context=arenaEvolutionContext(name);
+ if(context && !allowItems && !context.profile.evolutionPath && canHoldEvolutionItem(name,wildProgress.held[name]))return [];
+ const rule=chooseArenaEvolution(context,allowItems);
+ if(rule)return [evolveArenaIndividual(context,rule).message];
+ const ready=(arenaEvolutionRoutes[name] ?? []).filter(rule=>!rule.bonus && (!rule.item || allowItems && wildProgress.held[name]===rule.item) && arenaEvolutionReady(context,rule));
+ return context && !context.profile.evolutionPath && ready.length>1?[name+' has evolution paths ready. Choose a path in the PC.']:[];
+}
+function arenaEvolutionControls(name,copy=null) {
+ const context=arenaEvolutionContext(name,copy),rules=(arenaEvolutionRoutes[name] ?? []).filter(rule=>isAvailablePokemon(rule.name));
+ if(!context || !rules.length)return element('span');
+ const section=element('details',null,'arena-evolution-controls');
+ const ready=rules.filter(rule=>!rule.bonus && arenaEvolutionReady(context,rule)).length;
+ section.append(element('summary','Evolution'+(ready?' · '+ready+' path'+(ready===1?'':'s')+' ready':'')));
+ const readOnly=phase!=='menu' || window.isArenaMarketBusy?.();
+ const preference=element('label','Automatic evolution path'),select=element('select');select.setAttribute('aria-label','Evolution path for '+name);
+ for(const [value,label] of [['','Automatic when one path is ready'],['hold','Keep current form'],...rules.filter(rule=>!rule.bonus).map(rule=>[rule.name,rule.name+(rule.path?' · '+rule.path:'')])]){
+  const option=element('option',label);option.value=value;select.append(option);
+ }
+ select.value=context.profile.evolutionPath ?? '';select.disabled=readOnly;
+ select.onchange=()=>{
+  if(select.value)context.profile.evolutionPath=select.value;else delete context.profile.evolutionPath;
+  playerStorage.setItem(profileStorage,JSON.stringify(profiles));saveWildProgress();
+ };
+ preference.append(select);section.append(preference,element('small','Requirements are Arena adaptations. Training stays with this individual. Choose a path before leveling to reserve that evolution. Battle training counts participation in Pokébattle, Trainer Battles and Campaign.'));
+ for(const rule of rules) {
+  const row=element('div',null,'arena-evolution-route');
+  if(rule.bonus){row.append(element('strong','Bonus: '+rule.name),element('small','Evolve Nincada into Ninjask at Lv. 20+ with a spare Poké Ball to receive Shedinja too.'));section.append(row);continue;}
+  const title=element('strong',rule.name+(rule.path?' · '+rule.path:'')),checks=arenaEvolutionChecks(context,rule);
+  const details=element('ul');for(const check of checks){const requirement=element('li',(check.met?'✓ ':'○ ')+check.text);requirement.className=check.met?'is-ready':'is-pending';details.append(requirement);}
+  const use=element('button','Evolve into '+rule.name);use.type='button';use.disabled=readOnly || !arenaEvolutionReady(context,rule);
+  use.onclick=()=>{
+   if(use.disabled)return;use.disabled=true;
+   try {
+    const current=arenaEvolutionContext(name,copy);if(!current || current.profile!==context.profile)throw Error('That PC copy changed. Select it again.');
+    const result=evolveArenaIndividual(current,rule);inspected=result.name;renderMenu();
+    if(result.copy){byId('pc-copies').replaceChildren(pcCollectionControls(result.name,result.copy));renderPokemonDetail(result.name,result.copy,(wildProgress.copies[result.name] ?? []).indexOf(result.copy)+2);}
+    showPassBattleNotice(result.message);playEvolutionScenes();
+   }catch(error){section.append(element('p',error.message));use.disabled=false;}
+  };
+  row.append(title,details,use);section.append(row);
+ }
+ return section;
+}
+// End Arena evolution rules.
+
 function experienceNeeded(level) {
  const factor=level<40 ? 0.32+(level-1)*0.18/39 :
   level<80 ? 0.50+(level-40)*0.30/40 :
@@ -3842,13 +4002,15 @@ function experienceNeeded(level) {
 }
 const evolutionScenes=[];
 function stoneTarget(name,item) {
- const target=stoneEvolutions[name]?.[item];
- return target && isAvailablePokemon(target)?target:null;
+ if(!item)return null;
+ const context=arenaEvolutionContext(name);
+ const rules=(arenaEvolutionRoutes[name] ?? []).filter(rule=>rule.item===item && isAvailablePokemon(rule.name));
+ return rules.find(rule=>rule.name===context?.profile.evolutionPath)?.name ?? (rules.length===1?rules[0].name:null);
 }
 function evolveOwnedPokemon(name,evolved,stone=null) {
  const sourceId=dex[name][0],targetId=dex[evolved][0];
  const entry=ownedPokemon(name);
- const profile={...profileFor(name)};
+ const profile=structuredClone(profileFor(name));delete profile.evolutionPath;
  const moves=legalLoadout(evolved,movesFor(name));
  const ai=wildProgress.ai[name];
  const held=wildProgress.held[name];
@@ -3862,14 +4024,14 @@ function evolveOwnedPokemon(name,evolved,stone=null) {
  delete wildProgress.ai[name];delete savedMoves[name];delete loadouts[name];
  wildProgress.owned[evolved]=entry;profiles[targetId]=profile;loadouts[evolved]=moves;
  wildProgress.ai[evolved]=normalizeBattleAI(ai);
- if(!stone && held && !evolutionStones.includes(held))wildProgress.held[evolved]=held;
+ if(held && held!==stone && !evolutionStones.includes(held))wildProgress.held[evolved]=held;
  const remaining=wildProgress.copies[name]?.shift();
  if(remaining) {
   wildProgress.owned[name]={level:remaining.level,xp:remaining.xp};
   profiles[sourceId]=remaining.profile;
   wildProgress.ai[name]=normalizeBattleAI(remaining.ai);
   if(remaining.moves?.length)loadouts[name]=legalLoadout(name,remaining.moves);
-  if(remaining.held && (!evolutionStones.includes(remaining.held) || stoneTarget(name,remaining.held)) && freeHeldCopies(remaining.held,name)>0)wildProgress.held[name]=remaining.held;
+  if(remaining.held && (!evolutionStones.includes(remaining.held) || canHoldEvolutionItem(name,remaining.held)) && freeHeldCopies(remaining.held,name)>0)wildProgress.held[name]=remaining.held;
  }
  const slot=team.indexOf(name);
  if(slot>=0) {
@@ -3882,10 +4044,13 @@ function evolveOwnedPokemon(name,evolved,stone=null) {
  return name+' evolved into '+evolved+'!';
 }
 function evolveStoneHolders() {
- const eligible=new Set(allies.filter(actor=>actor.enteredBattle).map(actor=>actor.originalName ?? actor.name));
- const pending=[...eligible].map(name=>[name,wildProgress.held[name]]).filter(([name,item])=>stoneTarget(name,item));
- return pending.flatMap(([name,item])=>wildProgress.held[name]===item && wildProgress.items[item]>0?
-  [evolveOwnedPokemon(name,stoneTarget(name,item),item)]:[]);
+ const messages=[];
+ for(const actor of allies){
+  if(!actor.enteredBattle)continue;
+  const name=actor.originalName ?? actor.name,context=arenaEvolutionContext(name),identity=actor.originalProfile ?? actor.profile;
+  if(context && context.profile===identity)messages.push(...tryArenaEvolution(name,true));
+ }
+ return messages;
 }
 function playEvolutionScenes(done=()=>{}) {
  const scene=evolutionScenes.shift();
@@ -3955,6 +4120,7 @@ function battleExperience(name,xp) {
 }
 function gainWildExperience(name,xp) {
  const entry=ownedPokemon(name);
+ if(!entry)return [];
  entry.xp+=xp;
  const oldLevel=entry.level;
  while(entry.level<100 && entry.xp>=experienceNeeded(entry.level)) {
@@ -3964,10 +4130,7 @@ function gainWildExperience(name,xp) {
  if(entry.level===100) entry.xp=0;
  const messages=[];
  if(entry.level>oldLevel) messages.push(name+' reached Lv. '+entry.level+'.');
- if(entry.level>oldLevel && !stoneTarget(name,wildProgress.held[name])) {
-  const rule=(levelEvolutions[dex[name][0]] ?? []).find(rule=>entry.level>=rule.level);
-  if(rule)messages.push(evolveOwnedPokemon(name,rule.name));
- }
+ messages.push(...tryArenaEvolution(name));
  saveWildProgress();
  return messages;
 }
@@ -9080,6 +9243,7 @@ function act(actor, opponents, dt) {
  actor.attackX=rules.scope==='ally' ? 0 : (target.x-actor.x)/aim;
  actor.attackY=rules.scope==='ally' ? 0 : (target.y-actor.y)/aim;
  actor.lastUsedMove=move;
+ if(!basic)recordArenaEvolutionCast(actor,move);
  actor.moveLabel=basic?null:move;
  actor.labelTime=basic?0:0.95;
  const color=moveColors[element] ?? '#f6e7af';
@@ -9747,6 +9911,7 @@ function advance(dt,realDt=dt) {
  if(!playerReserve || !enemyReserve || timedOut) {
   const result=timedOut && requiresClear?-1:timedOut?compareTeamHP(allies,enemies):Number(Boolean(playerReserve))-Number(Boolean(enemyReserve));
   phase=result>0?'win':result<0?'loss':'draw';
+  recordArenaEvolutionBattle(result>0);
   const passNote=rogueRun || selectedWild || selectedTrainer || selectedGym
    ?recordBattlePass({battles:1,wins:result>0?1:0,trainerWins:selectedTrainer && result>0?1:0}):'';
   if(passNote)showPassBattleNotice(passNote+' · '+battlePassProgressText());
@@ -10946,6 +11111,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.65',changes:['Added Arena evolution requirements, per-Pokémon training progress, branching path choices and direct PC-copy evolution.','Restored missing level evolutions, added Linking Cord and move-mastery adaptations, fixed Cosmoem branching and enabled existing offline icons for forms without animation sheets.']},
  {version:'0.22.64',changes:['Added PC storage boxes, per-copy search and filters, and a side-by-side Pokémon status preview to Trading Hub Sell and Request selectors.']},
  {version:'0.22.63',changes:['Auto-updates wait for automatic wild and Trainer battle sessions, including results, captures and evolution.','Added the Trading Hub: searchable auctions, PC copy escrow, reserved bids, Buy now, exact-match asynchronous requests and completion notifications.']},
  {version:'0.22.62',changes:['Added Arena adaptations for the remaining 123 abilities, with working descriptions, temporary forms, team auras, items and reactions.','Fixed release smoke tests for the separate Legendary auto-capture settings and updated online-retry timing.']},

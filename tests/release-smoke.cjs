@@ -418,9 +418,9 @@ const levelCode=html.slice(html.indexOf('function experienceNeeded('),html.index
 const candyActions=html.slice(html.indexOf('function useExperienceCandy('),html.indexOf('let selectedWild='));
 const candyInventory={vitamins:{'Rare Candy':2,'EXP Candy 100':1,'EXP Candy 250':1,'EXP Candy 500':1},held:{Pikachu:'Lucky Egg'}};
 const pika={level:20,xp:30};
-const candy=new Function('wildProgress','ownedPokemon','stoneTarget','levelEvolutions','dex','saveWildProgress',
+const candy=new Function('wildProgress','ownedPokemon','stoneTarget','levelEvolutions','dex','saveWildProgress','tryArenaEvolution',
  candyCode+levelCode+candyActions+'return {useExperienceCandy,battleExperience,experienceCandyName,experienceCandyXP,gainWildExperience}')(
- candyInventory,()=>pika,()=>null,{}, {Pikachu:[25]},()=>{});
+ candyInventory,()=>pika,()=>null,{}, {Pikachu:[25]},()=>{},()=>[]);
 assert.equal(candy.battleExperience('Pikachu',100),200);
 candy.useExperienceCandy('Pikachu','EXP Candy 100');
 assert.deepEqual(pika,{level:20,xp:130});
@@ -660,6 +660,6 @@ async function verifyMasterRaids(){
 }
 Promise.all([verifyPendingRecovery(),verifyLoanerGear(),verifyPillarChase(),verifyMasterRaids(),verifyRaidRetry()]).then(()=>{
  console.log('Manual Capture, full-bench fusion, pending-save recovery, and server loaner gear checks passed.');
- for(const file of ['ability-adaptations.cjs','remaining-abilities.cjs','update-and-trade-client.cjs'])
+ for(const file of ['ability-adaptations.cjs','remaining-abilities.cjs','update-and-trade-client.cjs','arena-evolutions.cjs'])
   require('node:child_process').execFileSync(process.execPath,[path.join(__dirname,file)],{stdio:'inherit'});
 }).catch(error=>{console.error(error);process.exitCode=1;});

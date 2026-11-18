@@ -1,10 +1,11 @@
 {
   "name": "pokearena",
-  "version": "0.22.64",
+  "version": "0.22.65",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node tests/release-smoke.cjs && node tests/trade-hub-sql.cjs",
+    "test:evolution": "node tests/arena-evolutions.cjs",
     "test:trade": "node tests/update-and-trade-client.cjs && node tests/trade-hub-sql.cjs"
   },
   "devDependencies": {

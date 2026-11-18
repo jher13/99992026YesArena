@@ -157,6 +157,18 @@ let db;
  // Coin transfers and reserved bids conserve the three accounts' total balance.
  const balances=await db.query("select sum(((save_data->'entries'->>'pokemon-arena-wild-progress')::jsonb->>'coins')::bigint)::int total from public.arena_saves");
  assert.equal(balances.rows[0].total,30000);checks++;
+ // A traded Pokémon can evolve while preserving ownership and its per-individual training.
+ await who(0);const evolutionSave=await stored(0),evolutionDocument=evolutionSave.save_data;
+ const evolutionProgress=JSON.parse(evolutionDocument.entries['pokemon-arena-wild-progress']);
+ const evolutionProfiles=JSON.parse(evolutionDocument.entries['pokemon-arena-profiles']);
+ const originalTradeId=evolutionProfiles[4].trade_id;
+ evolutionProfiles[5]={...evolutionProfiles[4],evolutionProgress:{wins:3,casts:{Fire:10}}};delete evolutionProfiles[4];
+ evolutionProgress.owned.Charmeleon=evolutionProgress.owned.Charmander;delete evolutionProgress.owned.Charmander;delete evolutionProgress.copies.Charmander;
+ evolutionDocument.entries['pokemon-arena-team']=JSON.stringify(JSON.parse(evolutionDocument.entries['pokemon-arena-team']).map(name=>name==='Charmander'?'Charmeleon':name));
+ evolutionDocument.entries['pokemon-arena-profiles']=JSON.stringify(evolutionProfiles);
+ evolutionDocument.entries['pokemon-arena-wild-progress']=JSON.stringify(evolutionProgress);
+ const evolvedWrite=(await db.query('select public.arena_write_save($1,$2) data',[evolutionDocument,evolutionSave.stamp])).rows[0].data;
+ assert.equal(evolvedWrite.status,'ok');assert((await inventory(0)).some(row=>row.selector.name==='Charmeleon'&&row.profile.trade_id===originalTradeId&&row.profile.evolutionProgress.wins===3));checks++;
  console.log(checks+' PostgreSQL trade checks passed: escrow, bids/refunds, Buy now, request matching, offline delivery, replay, filters and ownership guards.');
  await db.close();
 })().catch(async error=>{console.error(error.message);if(db)try{console.error((await db.query('select reason,details from arena_private.market_security_events order by id desc limit 3')).rows);await db.close();}catch{};if(error.where)console.error(error.where);if(error.detail)console.error(error.detail);process.exitCode=1;});
