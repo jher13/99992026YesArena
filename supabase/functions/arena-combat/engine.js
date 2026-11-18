@@ -2676,6 +2676,10 @@ function autoCaptureChoice(result){
 }
 function renderAutoOptions(container,onChange) {
  container.replaceChildren();
+ container.classList.add('wild-auto-options');
+ const automation=element('div',null,'auto-options-row');
+ const standardBalls=element('div',null,'auto-options-row auto-options-balls');
+ const rareBalls=element('div',null,'auto-options-row auto-options-balls');
  for(const [key,text] of [['autoCapture','Auto capture'],['autoRepeat','Auto repeat']]) {
   const label=element('label');
   const control=element('input');
@@ -2687,10 +2691,10 @@ function renderAutoOptions(container,onChange) {
    onChange?.();
   };
   label.append(control,element('span',text));
-  container.append(label);
+  automation.append(label);
  }
- const addSelect=(caption,key,options)=>{
-  const label=element('label',caption+' ');
+ const addSelect=(row,caption,key,options)=>{
+  const label=element('label',caption);
   const select=element('select');
   for(const [value,text] of options){
    const option=element('option',text);
@@ -2704,32 +2708,29 @@ function renderAutoOptions(container,onChange) {
    onChange?.();
   };
   label.append(select);
-  container.append(label);
+  row.append(label);
  };
- if(wildProgress.autoCapture){
-  addSelect('Preferred ball','autoCaptureBall',ballTypes.map(({name},index)=>[index,name]));
-  addSelect('Fallback','autoCaptureFallback',[['none','Ask me'],['standard','First stocked standard ball'],['any','First stocked eligible ball']]);
-  const reserve=element('label');
-  const checkbox=element('input');
-  checkbox.type='checkbox';checkbox.checked=wildProgress.reservePremiumBalls;
-  checkbox.onchange=()=>{
-   wildProgress.reservePremiumBalls=checkbox.checked;
-   saveWildProgress();
-   onChange?.();
-  };
-  reserve.append(checkbox,element('span','Reserve Ultra, Event, and Master Balls for rare encounters'));
-  container.append(reserve);
-  const rareLabel=element('label');
-  const rareToggle=element('input');
-  rareToggle.type='checkbox';rareToggle.checked=wildProgress.autoCaptureRare;
-  rareToggle.onchange=()=>{
-   wildProgress.autoCaptureRare=rareToggle.checked;saveWildProgress();onChange?.();
-  };
-  rareLabel.append(rareToggle,element('span','Auto capture Legendary / Mythical Pokémon'));
-  container.append(rareLabel);
-  addSelect('Legendary / Mythical preferred ball','autoCaptureRareBall',ballTypes.map(({name},index)=>[index,name]));
-  addSelect('Legendary / Mythical fallback ball','autoCaptureRareFallback',[[-1,'Ask me'],...ballTypes.map(({name},index)=>[index,name])]);
- }
+ addSelect(standardBalls,'Preferred ball','autoCaptureBall',ballTypes.map(({name},index)=>[index,name]));
+ addSelect(standardBalls,'Fallback','autoCaptureFallback',[['none','Ask me'],['standard','First stocked standard ball'],['any','First stocked eligible ball']]);
+ const reserve=element('label',null,'auto-options-row');
+ const checkbox=element('input');
+ checkbox.type='checkbox';checkbox.checked=wildProgress.reservePremiumBalls;
+ checkbox.onchange=()=>{
+  wildProgress.reservePremiumBalls=checkbox.checked;
+  saveWildProgress();
+  onChange?.();
+ };
+ reserve.append(checkbox,element('span','Reserve Ultra, Event, and Master Balls for rare encounters'));
+ const rareLabel=element('label',null,'auto-options-row');
+ const rareToggle=element('input');
+ rareToggle.type='checkbox';rareToggle.checked=wildProgress.autoCaptureRare;
+ rareToggle.onchange=()=>{
+  wildProgress.autoCaptureRare=rareToggle.checked;saveWildProgress();onChange?.();
+ };
+ rareLabel.append(rareToggle,element('span','Auto capture Legendary / Mythical Pokémon'));
+ addSelect(rareBalls,'Legendary / Mythical preferred ball','autoCaptureRareBall',ballTypes.map(({name},index)=>[index,name]));
+ addSelect(rareBalls,'Legendary / Mythical fallback ball','autoCaptureRareFallback',[[-1,'Ask me'],...ballTypes.map(({name},index)=>[index,name])]);
+ container.append(automation,standardBalls,reserve,rareLabel,rareBalls);
 }
 function openWildRegions() {
  cancelWildRepeat();
@@ -8884,6 +8885,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.57',changes:['Organized Auto Capture settings into separate rows on Pokébattle selection and results, including Legendary and Mythical ball preferences.']},
  {version:'0.22.56',changes:['Added capsule rerolls and clear ability comparison colors, aligned the capsule button with Held item, and improved Hub text contrast.']},
  {version:'0.22.55',changes:['Randomized Ability Capsules with result dialogs, added Legendary capture preferences, timed evolution dismissal, half-level wild captures, and an online Hub entrance.']},
  {version:'0.22.54',changes:['Smoothed online battle playback and shortened reconnect delays.']},
