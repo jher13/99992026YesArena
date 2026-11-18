@@ -800,22 +800,42 @@ function capsuleControl(name) {
  button.disabled=!wildProgress.capsules;
  button.onclick=()=>{
   if(!wildProgress.capsules)return;
-  const profile=profileFor(name),previous=abilityFor(name,profile);
-  const options=Object.keys(abilityCatalog).filter(ability=>ability!==previous);
-  if(!options.length)return;
-  const next=options[Math.floor(Math.random()*options.length)];
-  profile.abilityOverride=next;
-  wildProgress.capsules--;
-  playerStorage.setItem(profileStorage,JSON.stringify(profiles));
-  saveWildProgress();renderDetail();
-  const detail=ability=>arenaAbilityDescriptions[ability] ?? 'This ability currently has no supported arena effect.';
-  const dialog=element('dialog',null,'evolution-dialog');
+  const dialog=element('dialog',null,'evolution-dialog ability-capsule-dialog');
+  dialog.setAttribute('aria-label','Ability Capsule Use');
+  const result=element('div');
+  result.setAttribute('aria-live','polite');
+  result.setAttribute('aria-atomic','true');
+  const remaining=element('p',null,'ability-capsule-remaining');
+  const reroll=element('button','Re-roll (1 capsule)');
+  reroll.type='button';
   const close=element('button','Close');
+  close.type='button';
   close.onclick=()=>dialog.close();
-  dialog.append(element('h2','Ability Capsule Use'),element('h3','Previous'),
-   element('strong',previous),element('p',detail(previous)),element('h3','New'),
-   element('strong',next),element('p',detail(next)),close);
+  const detail=ability=>arenaAbilityDescriptions[ability] ?? 'This ability currently has no supported arena effect.';
+  const roll=()=>{
+   if(!wildProgress.capsules)return false;
+   const profile=profileFor(name),previous=abilityFor(name,profile);
+   const options=Object.keys(abilityCatalog).filter(ability=>ability!==previous);
+   if(!options.length)return false;
+   const next=options[Math.floor(Math.random()*options.length)];
+   profile.abilityOverride=next;
+   wildProgress.capsules--;
+   playerStorage.setItem(profileStorage,JSON.stringify(profiles));
+   saveWildProgress();renderDetail();
+   result.replaceChildren(element('h3','Previous','ability-result-heading'),
+    element('strong',previous,'ability-result-previous'),element('p',detail(previous)),
+    element('h3','New','ability-result-heading'),
+    element('strong',next,'ability-result-new'),element('p',detail(next)));
+   remaining.textContent=wildProgress.capsules+' Ability Capsules remaining';
+   reroll.disabled=!wildProgress.capsules;
+   return true;
+  };
+  reroll.onclick=roll;
+  const actions=element('div',null,'ability-capsule-actions');
+  actions.append(reroll,close);
+  dialog.append(element('h2','Ability Capsule Use'),result,remaining,actions);
   dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+  if(!roll())return;
   document.body.append(dialog);dialog.showModal();
  };
  group.append(button);
@@ -1197,7 +1217,11 @@ badges,element('p',height/10+' m · '+weight/10+' kg'),
   drawStats(chart,chartValues);
   return;
  }
- if(owned) body.append(heldItemPicker(name),capsuleControl(name),vitaminControls(name,'evs',trainingSelection),vitaminControls(name,'ivs',trainingSelection),experienceCandyControls(name),battleAIControls(name));
+ if(owned){
+  const equipment=element('div',null,'pokemon-equipment-controls');
+  equipment.append(heldItemPicker(name),capsuleControl(name));
+  body.append(equipment,vitaminControls(name,'evs',trainingSelection),vitaminControls(name,'ivs',trainingSelection),experienceCandyControls(name),battleAIControls(name));
+ }
  body.append(element('h4','Moves','move-heading'));
  body.append(renderSkillSlots(name),renderLearnableSkills(name));
  const actions=element('div',null,'detail-actions');
@@ -1785,7 +1809,7 @@ function renderShop(message='') {
  list.replaceChildren();
  for(const [title,kind,items] of [
   ['Poké Balls','ball',ballTypes.map((ball,index)=>[index,ball.name,ballPrices[index],ballDescriptions[index],wildProgress.balls[index]]).filter(([, ,price])=>price!==null)],
-  ['Ability items','capsule',[['Ability Capsule','Ability Capsule',capsulePrice,'Choose any ability from the game’s catalog for a Pokémon. Use from the PC.',wildProgress.capsules]]],
+  ['Ability items','capsule',[['Ability Capsule','Ability Capsule',capsulePrice,'Roll a random different ability for a Pokémon. Use from the PC.',wildProgress.capsules]]],
   ...['EV vitamins','EV-reducing berries','IV adjustments'].map(category=>[category,'vitamin',
    Object.entries(trainingItems).filter(([,rule])=>rule.category===category).map(([item,rule])=>[
     item,item,rule.price,(rule.delta>0?'Adds ':'Removes ')+Math.abs(rule.delta)+' '+
@@ -8860,6 +8884,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.56',changes:['Added capsule rerolls and clear ability comparison colors, aligned the capsule button with Held item, and improved Hub text contrast.']},
  {version:'0.22.55',changes:['Randomized Ability Capsules with result dialogs, added Legendary capture preferences, timed evolution dismissal, half-level wild captures, and an online Hub entrance.']},
  {version:'0.22.54',changes:['Smoothed online battle playback and shortened reconnect delays.']},
  {version:'0.22.53',changes:['Updated PFT rewards and pacing, added battle EV controls, and unlocked 3× speed at 34 badges and Lucky Coin at 68 Master badges.','Added Shell Bell to PvP loaners and restored charge times for Explosion, Misty Explosion, and Self-Destruct.']},
