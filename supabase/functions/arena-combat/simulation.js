@@ -142,11 +142,9 @@ function onlineSend(side,incomingId,fieldIndex) {
  if(!slot || slot.transition || !incoming || trainerFields.flat().some(field=>trainerOnField(incoming,[field])))
   throw Error('Choose an available reserve and field slot.');
  if(slot.actor?.hp>0 && blocksExhaustionRecall(slot.actor))throw Error('This Pokémon is exhausted.');
- if(slot.actor?.hp>0 && !arenaDefenseTypes(slot.actor).includes('Ghost') &&
-    enemies.some(actor=>actor.raidForm==='Mega Gengar' && actor.hp>0 && fieldActors().includes(actor) &&
-     activeAbility(actor)==='Shadow Tag'))throw Error('Mega Gengar’s Shadow Tag prevents recalls.');
- if(slot.actor?.hp>0 && fieldMoveActive('Fairy Lock'))throw Error('Fairy Lock prevents recalls.');
- if(slot.actor?.hp>0 && (slot.actor.trappedUntil>clock || slot.actor.octolockUntil>clock))throw Error('This Pokémon is trapped.');
+ if(slot.actor?.hp>0 && shadowTagSource(slot.actor))throw Error(shadowTagSource(slot.actor).ability+' prevents recalls inside its aura. Move out of range first.');
+ if(slot.actor?.hp>0 && activeAbility(slot.actor)!=='Run Away' && fieldMoveActive('Fairy Lock'))throw Error('Fairy Lock prevents recalls.');
+ if(slot.actor?.hp>0 && activeAbility(slot.actor)!=='Run Away' && (slot.actor.trappedUntil>clock || slot.actor.octolockUntil>clock))throw Error('This Pokémon is trapped.');
  if(slot.actor?.hp>0 && slot.actor.ingrainAt)throw Error('This Pokémon is rooted by Ingrain.');
  if(slot.actor?.hp>0 && (onlineRecalls[side] ?? 0)>clock) throw Error('Recall is on cooldown.');
  placeOnline(slot,incoming);
@@ -262,12 +260,12 @@ function compactOnlineDamage(buckets) {
 export function onlineView(state,side,mode) {
  const allowed=actor=>actor.side===side || actor.revealed;
  const visible=[...state.allies,...state.enemies].filter(allowed).map(actor=>{
-  const {name,side,onlineId,hp,max,level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
+  const {name,type,singleType,copiedSecondary,addedType,side,onlineId,hp,max,level,ability,abilitySuppressed,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary,shiny,masterRaidPhase}=actor;
-  return {name,side,onlineId,hp,max,level:mode==='free_fight'?100:level,ability,heldItem,moves,moveCooldowns,moveTimers,x,y,
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary,shiny,masterRaidPhase,abilityStance,abilityForm,abilityElapsed,abilityNotice,abilityNoticeUntil,disguiseBroken,disguiseBrokenAt,illusionName,substituteHP,iceFaceBroken,puppetUntil}=actor;
+  return {name,type,singleType,copiedSecondary,addedType,side,onlineId,hp,max,level:mode==='free_fight'?100:level,ability,abilitySuppressed,heldItem,moves,moveCooldowns,moveTimers,x,y,
    friendly,direction,facing,gait,motionTicks,stride,attack,attackStyle,attackSpan,attackX,attackY,
-   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary,shiny,masterRaidPhase};
+   hit,hitSpan,hitX,hitY,moveLabel,labelTime,fieldTime,ailment,stages,exhaustion,exhaustedUntil,dashRecharge,defendRecharge,defendUntil,raidForm,raidSecondary,shiny,masterRaidPhase,abilityStance,abilityForm,abilityElapsed,abilityNotice,abilityNoticeUntil,disguiseBroken,disguiseBrokenAt,illusionName,substituteHP,iceFaceBroken,puppetUntil};
  });
  const ids=new Set(visible.map(actor=>actor.onlineId));
  const fields=state.fields.map(slots=>slots.map(slot=>{

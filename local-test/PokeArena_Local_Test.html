@@ -1442,7 +1442,10 @@ function pmdClips(name,variant=null) {
  return pmdClipCache.get(cacheKey);
 }
 function actorSpriteVariant(actor) {
- const {shiny,mega}=spriteVariants(actor.name);
+ const variants=spriteVariants(actor.name);
+ const {shiny,mega}=variants;
+ const stance=variants.stances?.[actor.abilityForm];
+ if(stance)return (actor.shiny ?? actor.profile?.shiny)?stance[1] ?? stance[0]:stance[0];
  const form=mega?.[actor.raidForm];
  return actor.raidForm ? (actor.shiny?form?.[1] ?? form?.[0]:form?.[0]) : (actor.shiny ?? actor.profile?.shiny)?shiny:null;
 }
@@ -1487,7 +1490,7 @@ function effectiveness(element,target) {
   const revealed=type==='Flying' && element==='Ground' && fieldMoveActive('Gravity') || type==='Ghost' && target.revealedGhostUntil>clock && ['Normal','Fighting'].includes(element) ||
    type==='Dark' && target.revealedDarkUntil>clock && element==='Psychic';
   const weakness=row[type] ?? 1;
-  const strongWinds=type==='Flying' && weakness>1 && activeAbility(target)==='Delta Stream';
+  const strongWinds=type==='Flying' && weakness>1 && deltaWindsActive();
   return multiplier*(revealed || strongWinds?1:weakness);
  },1);
 }
@@ -1957,7 +1960,7 @@ function capsuleControl(name) {
   const roll=()=>{
    if(!wildProgress.capsules)return false;
    const profile=profileFor(name),previous=abilityFor(name,profile);
-   const options=Object.keys(abilityCatalog).filter(ability=>ability!==previous);
+   const options=Object.keys(abilityCatalog).filter(ability=>abilityEffects.has(ability) && ability!==previous);
    if(!options.length)return false;
    const next=options[Math.floor(Math.random()*options.length)];
    profile.abilityOverride=next;
@@ -2482,7 +2485,135 @@ const statusProtection={
 };
 const contactAilments={Static:1,'Flame Body':4,'Poison Point':5};
 const statBlockers={'Hyper Cutter':2,'Big Pecks':3,'Keen Eye':7};
+// Arena adaptations for abilities whose original rules depend on turns or overworld actions.
+const advancedArenaAbilities={
+ Analytic:'Deals 25% more damage while the target is attacking or all of its damaging skills are on cooldown.',
+ 'Anger Point':'Taking a critical hit maximizes Attack, up to the Arena stage cap.',
+ 'Anger Shell':'Once per battle, a hit crossing half HP raises Attack, Sp. Atk and Speed one stage and lowers both defenses one stage.',
+ Anticipation:'On entry, a super-effective enemy skill triggers a two-second guard and an overhead danger warning.',
+ 'Arena Trap':'Prevents grounded non-Ghost enemies within 160 arena units from voluntarily recalling. Run Away bypasses the trap.',
+ 'Armor Tail':'Blocks hostile priority skills targeting the user or allies within 180 arena units.',
+ 'Aroma Veil':'Protects the user and nearby allies from Attract, Taunt, Encore, Torment, Disable and Heal Block.',
+ 'As One':'Prevents enemy berry use while active. Knockouts raise Attack and Sp. Atk one stage.',
+ 'Aura Break':'While active, Dark Aura and Fairy Aura reduce their matching damage by 25% instead of boosting it.',
+ 'Bad Dreams':'Every four seconds, sleeping enemies within 180 arena units lose 4% max HP. Does not bypass Magic Guard.',
+ 'Ball Fetch':'After a missed skill, readies one spent dash charge. Recharges every six battle seconds. Never creates inventory items.',
+ Battery:'Nearby active allies deal 20% more special damage. Multiple Battery auras do not stack.',
+ 'Battle Bond':'The first knockout each battle raises Attack, Sp. Atk and Speed one stage and activates Bonded stance.',
+ 'Beads of Ruin':'Other combatants have 25% less Sp. Def. Multiple copies do not stack, and other Beads holders are exempt.',
+ 'Cheek Pouch':'Consuming a healing berry also restores 12.5% max HP.',
+ 'Color Change':'A damaging hit changes the user’s defensive typing to that attack’s type, at most once every two seconds.',
+ Comatose:'A waking sleep prevents major ailments. Counts as asleep for sleep-targeting effects while continuing to fight.',
+ Commander:'On entry, links to the highest-HP active ally. Within 180 units, that ally deals 20% more damage and takes 20% less. The commander deals 20% less damage.',
+ Costar:'On entry, copies the nearest active ally’s positive stat stages without copying its negative stages.',
+ 'Cotton Down':'Taking damage releases cotton, slowing other nearby combatants by 20% for two seconds. Recharges every three seconds.',
+ 'Cud Chew':'Four seconds after consuming a healing berry, repeats its healing once. Cannot create or restore inventory items.',
+ 'Curious Medicine':'On entry, clears negative stat stages from active allies.',
+ 'Cute Charm':'Contact attackers have a 30% chance to become infatuated for three seconds. Respects Oblivious and Aroma Veil.',
+ Dancer:'Copies positive stat boosts from a nearby dance skill. Can copy once every six battle seconds and cannot trigger another copy.',
+ 'Dark Aura':'While active, Dark damage across the battlefield increases by one third. Aura Break reverses this effect.',
+ Dazzling:'Blocks hostile priority skills targeting the user or allies within 180 arena units.',
+ Defeatist:'At half HP or less, deals 50% less damage.',
+ Dragonize:'Converts Normal attacks and damaging Normal skills to Dragon, with 20% bonus damage. Struggle is excluded.',
+ 'Early Bird':'Automatically wakes after two seconds of sleep, and can still wake sooner from a damaging hit.',
+ Electromorphosis:'Taking direct damage charges the next Electric skill within six seconds for double damage. Charges do not stack.',
+ 'Embody Aspect':'On entry, raises one stat stage based on the user’s type: Fire Attack, Water Sp. Def, Rock Defense, otherwise Speed.',
+ 'Emergency Exit':'When a hit crosses half HP, attempts a defensive switch to a healthy reserve. Obeys traps and exhaustion. Once per entry.',
+ 'Fairy Aura':'While active, Fairy damage across the battlefield increases by one third. Aura Break reverses this effect.',
+ 'Fire Mane':'Fire damage increases by 30%, and sun grants 20% faster movement.',
+ 'Flare Boost':'While burned, special damage increases by 50%.',
+ 'Flower Gift':'During sun, the user and nearby allies gain 25% physical damage and Sp. Def. Auras do not stack.',
+ 'Flower Veil':'Protects nearby Grass-type allies, including a Grass-type holder, from major ailments and opposing stat reductions.',
+ Fluffy:'Takes half damage from contact attacks but double Fire damage. Long Reach prevents the contact reduction.',
+ Forewarn:'On entry, identifies the strongest enemy skill. Takes 25% less damage from that skill for eight seconds.',
+ 'Friend Guard':'Nearby active allies take 25% less damage. Multiple Friend Guard auras do not stack.',
+ Frisk:'Announces the nearest opponent’s held item on entry and deals 20% more damage to item holders.',
+ 'Gale Wings':'At full HP, Flying skills gain priority and 25% shorter windups and action recovery.',
+ Gluttony:'Healing berries activate at 75% HP instead of half HP.',
+ 'Good as Gold':'Blocks hostile status skills. Damaging skills may still apply their secondary effects.',
+ 'Grass Pelt':'Gains 50% Defense during Grassy Terrain.',
+ 'Guard Dog':'Blocks enemy forced switches. Intimidate raises Attack instead of lowering it.',
+ 'Gulp Missile':'Surf or Dive loads a missile. The next direct hit releases it at the attacker for bounded damage and paralysis.',
+ Harvest:'Every twelve active seconds, can restore a consumed healing berry for this battle. Guaranteed in sun, otherwise a 50% chance.',
+ Healer:'Every four active seconds, cures one nearby teammate’s major ailment.',
+ 'Heavy Metal':'Doubles battle weight, affecting Heavy Slam, Heat Crash, Grass Knot and Low Kick. Does not change saved stats.',
+ 'Honey Gather':'Every four active seconds, heals the user and nearby active allies for 3% max HP, doubled on Grassy Terrain. Multiple Honey Gather sources do not stack.',
+ Hospitality:'On entry, heals the nearest active ally for 25% max HP. Recharges every eight battle seconds.',
+ 'Hunger Switch':'Alternates every six active seconds between Full Belly (+20% physical damage) and Hangry (+20% special damage).',
+ 'Ice Face':'Blocks the first successful physical hit each battle. Snow can rebuild the face after twelve seconds. Special attacks bypass it.',
+ Illuminate:'On entry, dazzles nearby enemies for three seconds, reducing their accuracy by 20%. Also gains 20% accuracy.',
+ Illusion:'On entry, takes a healthy teammate’s visible appearance and draws less automatic enemy attention until taking damage. Keeps its own stats and identity.',
+ 'Innards Out':'When knocked out, retaliates for the HP lost to the final hit, capped at 25% of the attacker’s max HP. Respects Magic Guard and raid limits.',
+ Klutz:'Held items have no battle effect while this ability is active.',
+ 'Leaf Guard':'Prevents major ailments during sun.',
+ 'Light Metal':'Halves battle weight, affecting Heavy Slam, Heat Crash, Grass Knot and Low Kick.',
+ 'Lingering Aroma':'Contact attackers acquire Lingering Aroma for this battle. Copy-proof form abilities are protected.',
+ 'Liquid Voice':'Sound-based damaging skills become Water and gain 20% bonus damage.',
+ 'Long Reach':'The user’s attacks do not make contact, avoiding supported contact retaliation.',
+ Magician:'A damaging skill steals the target’s held item if the user has none. Sticky Hold prevents theft. Battle-only transfer.',
+ 'Magnet Pull':'Prevents non-Ghost Steel-type enemies within 160 arena units from voluntarily recalling. Run Away bypasses it.',
+ 'Mega Sol':'Sets sun on entry and increases special damage by 20% during sun.',
+ Mimicry:'Electric, Grassy, Misty and Psychic Terrain change the user’s defensive type to match. Restores the previous typing when terrain ends.',
+ "Mind's Eye":'Normal and Fighting attacks can hit Ghost types, and attacks ignore the target’s evasion stages.',
+ Moody:'Every eight active seconds, raises one random combat stat two stages and lowers a different stat one stage, respecting stage caps.',
+ Multitype:'A held elemental booster changes defensive typing to its element and boosts matching damage by another 20%. Changes are battle-only.',
+ Mummy:'Contact attackers acquire Mummy for this battle. Copy-proof form abilities are protected.',
+ 'Mycelium Might':'Status skills ignore target abilities but take 25% longer to recover and wind up. Does not bypass terrain or team auras.',
+ Normalize:'Converts damaging attacks and skills to Normal and boosts them by 20%. Struggle is excluded.',
+ Opportunist:'Copies positive stat-stage gains from nearby opponents. Copied boosts cannot trigger another Opportunist copy.',
+ 'Perish Body':'Contact starts an eight-second perish countdown for both combatants. Switching clears it. Raid bosses cannot be affected or trigger the countdown.',
+ Pickpocket:'On taking a contact hit, steals the attacker’s held item if the user has none. Sticky Hold prevents theft. Battle-only transfer.',
+ Pickup:'After a teammate faints, obtains one temporary Oran Berry if empty-handed. Once per battle. Never adds items to inventory.',
+ 'Piercing Drill':'Physical skills ignore 25% of the target’s Defense. Normal attacks are excluded.',
+ 'Poison Puppeteer':'Poison applied by the user also confuses the target for four seconds, unless a confusion immunity protects it.',
+ 'Power Construct':'Once per battle, reaching half HP activates Complete stance, adding 25% max HP and restoring that added HP.',
+ 'Power of Alchemy':'Copies a fallen teammate’s supported ability while active. Cannot copy inheritance or copy abilities. Battle-only change.',
+ 'Power Spot':'Nearby active allies deal 20% more damage. Multiple Power Spot auras do not stack.',
+ 'Propeller Tail':'Ignores Follow Me, Rage Powder and other supported enemy redirection when choosing targets.',
+ Protosynthesis:'During sun, boosts the user’s highest non-HP stat by 30%. A Speed boost also speeds normal attacks.',
+ 'Purifying Salt':'Prevents major ailments and halves Ghost damage taken.',
+ 'Quark Drive':'During Electric Terrain, boosts the user’s highest non-HP stat by 30%. A Speed boost also speeds normal attacks.',
+ 'Queenly Majesty':'Blocks hostile priority skills targeting the user or allies within 180 arena units.',
+ 'Quick Draw':'Every six active seconds, gets a two-second burst of 30% shorter skill windups and action recovery.',
+ Receiver:'Copies a fallen teammate’s supported ability while active. Cannot copy inheritance or copy abilities. Battle-only change.',
+ Rivalry:'Arena rivalry: deals 20% more damage to opponents sharing a defensive type, and 10% less to other opponents.',
+ 'RKS System':'A held elemental booster changes defensive typing to its element and boosts matching damage by another 20%. Changes are battle-only.',
+ 'Rocky Payload':'Rock damage increases by 50%.',
+ 'Run Away':'Ignores recall traps. Exhaustion, rooting and the normal recall cooldown still apply.',
+ 'Sand Spit':'Taking direct damage starts sand weather for 25 seconds. Can activate once every eight seconds.',
+ 'Seed Sower':'Taking direct damage starts Grassy Terrain for 25 seconds. Can activate once every eight seconds.',
+ 'Shields Down':'Above half HP, gains 30% DEF and Sp. Def and major-ailment immunity. Below half, gains 25% damage and movement speed.',
+ 'Spicy Spray':'Damaging skills have a 25% chance to burn their target. Can trigger once every four seconds.',
+ Stall:'Skill windups and action recovery take 25% longer, but the user takes 15% less damage while recovering.',
+ Stalwart:'Ignores Follow Me, Rage Powder and other supported enemy redirection when choosing targets.',
+ Steadfast:'Being flinched raises Speed one stage and readies one spent dash. Recharges every three seconds.',
+ Stench:'Damaging skills have a 10% chance to flinch for 0.25 seconds. Can trigger once every four seconds.',
+ 'Sticky Hold':'Prevents enemies from stealing or exchanging the user’s held item. Does not stop voluntary Symbiosis transfers.',
+ 'Supersweet Syrup':'The first entry each battle lowers active opponents’ evasion by one stage.',
+ 'Surge Surfer':'Electric Terrain doubles movement speed.',
+ 'Sword of Ruin':'Other combatants have 25% less Defense. Multiple copies do not stack, and other Sword holders are exempt.',
+ Symbiosis:'When a nearby ally consumes a berry, passes the user’s unused held item to that ally for this battle. Never changes inventory.',
+ 'Tablets of Ruin':'Other combatants deal 25% less physical damage. Multiple copies do not stack, and other Tablets holders are exempt.',
+ 'Tangled Feet':'While confused, incoming attacks have one-third less accuracy.',
+ 'Tera Shell':'At full HP, damaging skills use at most a 0.5× type multiplier. Mold Breaker can bypass the shell.',
+ 'Tera Shift':'The first entry each battle creates a barrier worth 20% max HP and activates Terastal stance with 20% more defenses.',
+ 'Teraform Zero':'The first entry clears weather and terrain. While active, gains 15% more defenses.',
+ 'Thermal Exchange':'Prevents burns. Taking Fire damage raises Attack one stage.',
+ 'Toxic Boost':'While poisoned, physical damage increases by 50%.',
+ 'Toxic Chain':'Damaging skills have a 30% chance to poison their target.',
+ 'Toxic Debris':'Taking a physical hit adds one layer of Toxic Spikes to the opposing side, up to two layers.',
+ Triage:'Healing and draining skills gain priority and 30% shorter windups and action recovery.',
+ 'Unseen Fist':'Contact attacks bypass Protect-style guards and the one-second Defend window.',
+ 'Vessel of Ruin':'Other combatants deal 25% less special damage. Multiple copies do not stack, and other Vessel holders are exempt.',
+ 'Wandering Spirit':'Contact exchanges abilities with the attacker. Copy-proof form abilities are protected. Changes stay in battle.',
+ 'Wimp Out':'When a hit crosses half HP, attempts a defensive switch to a healthy reserve. Obeys traps and exhaustion. Once per entry.',
+ 'Wind Power':'Taking a wind skill or receiving Tailwind charges the next Electric skill within six seconds for double damage.',
+ 'Wonder Skin':'Hostile status skills have at most 50% accuracy, unless accuracy is guaranteed.',
+ 'Zero to Hero':'After the first recall and re-entry, activates Hero stance with 30% more damage and 20% more defenses.'
+};
+
 const abilityEffects=new Set([
+ ...Object.keys(advancedArenaAbilities),
  ...Object.keys(abilityAbsorptions),...Object.keys(abilityImmunities),...Object.keys(weatherAbilities),...Object.keys(weatherPace),...Object.keys(terrainAbilities),
  ...Object.values(statusProtection).flat(),...Object.keys(contactAilments),...Object.keys(statBlockers),
  'Adaptability','Huge Power','Pure Power','Technician','Filter','Solid Rock','Prism Armor','Thick Fat','Fur Coat','Ice Scales',
@@ -2496,7 +2627,11 @@ const abilityEffects=new Set([
  'Shed Skin','Hydration','Rain Dish','Ice Body','Solar Power','Overcoat','Heatproof','Liquid Ooze','Sturdy','Wonder Guard',
  'Quick Feet','Corrosion','Synchronize','Scrappy','Cloud Nine','Air Lock','Soundproof','Bulletproof','Damp','Own Tempo','Oblivious','Rough Skin','Iron Barbs','Aftermath','Poison Touch','Effect Spore',
  'Stamina','Weak Armor','Justified','Rattled','Water Compaction','Steam Engine','Cursed Body','Berserk','Moxie','Chilling Neigh',
- 'Grim Neigh','Soul-Heart','Beast Boost','Speed Boost','Mold Breaker','Teravolt','Turboblaze','Neutralizing Gas','Ripen','Unnerve'
+ 'Grim Neigh','Soul-Heart','Beast Boost','Speed Boost','Mold Breaker','Teravolt','Turboblaze','Neutralizing Gas','Ripen','Unnerve',
+ 'Telepathy','Disguise','Magic Bounce','Rock Head','Prankster','Pressure','Shadow Tag','Gooey','Tangling Hair',
+ 'Unburden','Protean','Libero','Aerilate','Pixilate','Refrigerate','Galvanize','Trace','Imposter','Skill Link',
+ 'Parental Bond','Truant','Slow Start','Forecast','Stance Change','Zen Mode','Schooling',
+ 'Delta Stream','Infiltrator','Suction Cups','Plus','Minus'
 ]);
 function hiddenAbilityFor(name,profile) {
  if(Object.hasOwn(abilityCatalog,profile.abilityOverride))
@@ -3203,13 +3338,15 @@ const conditionalPowerNotes={
  'Dragon Energy':'Base power scales with the user’s remaining HP.',
 };
 const heavyArenaBeams=new Set(['Hyper Beam','Dynamax Cannon','Eternabeam']);
-function arenaMoveGeometry(move,rules) {
+function arenaMoveGeometry(move,rules,actor=null) {
  const shape=skillShape(move);
  const blast=sacrificeProfiles.get(move);
  const selfCentered=move==='Earthquake' || Boolean(blast) || !shape && rules.scope==='area' && [9,12,14].includes(rules.target);
  const radius=shape==='vortex'?38:move==='Earthquake'?rules.radius*2:shape==='landing'?42:rules.radius*(blast?.radius ?? 1);
  const range=shape==='beam'?(heavyArenaBeams.has(move)?Math.hypot(canvas.width,canvas.height):rules.range*2):shape==='wave'?210:shape==='dash'?90:shape==='arc'?26:selfCentered?radius:rules.range;
- const warning=blast?.charge ?? (move==='Hyper Beam'?2:castWindup);
+ const baseWarning=blast?.charge ?? (move==='Hyper Beam'?2:castWindup);
+ const adjusted=actor && moveCatalog[move][4] && activeAbility(actor)==='Prankster'?baseWarning*0.75:baseWarning;
+ const warning=actor?Math.max(0.25,adjusted*abilityActionRate(actor,move)):adjusted;
  return {shape,selfCentered,radius,range,warning};
 }
 function skillDescription(move) {
@@ -3472,8 +3609,40 @@ Object.assign(arenaAbilityDescriptions,{
  Unnerve:'Prevents the opponent from using a held berry while active.',
  'Flash Fire':'Blocks damaging Fire moves. After activation, boosts the user’s Fire damage by 50%.',
  'Wind Rider':'Blocks supported wind moves and raises Attack on activation or when affected by Tailwind.',
- 'Dry Skin':'Absorbs Water moves for 25% max HP. Rain heals, sun drains HP, and Fire damage taken increases.'
+ 'Dry Skin':'Absorbs Water moves for 25% max HP. Rain heals, sun drains HP, and Fire damage taken increases.',
+ Telepathy:'Prevents damaging allied skills and attacks, including roaming hazards and confused teammates.',
+ Disguise:'Blocks the first successful damaging hit each battle. The disguise visibly shatters and stays broken after recalls.',
+ 'Magic Bounce':'Reflects hostile status skills and entry hazards to their caster. Recharges after 8 battle seconds. Reflections cannot bounce again.',
+ 'Rock Head':'Prevents move recoil. Does not prevent self-sacrifice or other HP costs.',
+ Prankster:'Status actions recover and their telegraphed windups charge 25% faster, with a minimum 0.25-second warning.',
+ Pressure:'Enemy skills used within 180 arena units generate 20% more exhaustion. Multiple Pressure auras do not stack. Normal attacks remain free.',
+ 'Shadow Tag':'Prevents living enemies within 160 arena units from voluntarily recalling or pivoting. Leaving the aura frees them. Ghost Pokémon are exempt.',
+ Gooey:'Contact attackers, including normal attackers, move 20% slower for 2 seconds. Repeated hits refresh the slow.',
+ 'Tangling Hair':'Contact attackers, including normal attackers, move 20% slower for 2 seconds. Repeated hits refresh the slow.',
+ Unburden:'Consuming a held healing berry grants 30% faster movement and normal attacks for 6 seconds. Switching ends the bonus.',
+ Protean:'A damaging skill changes the user’s defensive typing to its attack type. Can activate once every 6 battle seconds. Normal attacks do not trigger it.',
+ Libero:'A damaging skill changes the user’s defensive typing to its attack type. Can activate once every 6 battle seconds. Normal attacks do not trigger it.',
+ Aerilate:'Converts Normal attacks and damaging Normal skills to Flying, with 20% bonus damage. Struggle is excluded.',
+ Pixilate:'Converts Normal attacks and damaging Normal skills to Fairy, with 20% bonus damage. Struggle is excluded.',
+ Refrigerate:'Converts Normal attacks and damaging Normal skills to Ice, with 20% bonus damage. Struggle is excluded.',
+ Galvanize:'Converts Normal attacks and damaging Normal skills to Electric, with 20% bonus damage. Struggle is excluded.',
+ Trace:'On entry, copies the nearest opponent’s supported ability for this battle and announces it overhead. Does not copy Trace or Imposter.',
+ Imposter:'On entry, copies an opponent’s form, typing, moves, ability and non-HP combat stats. Keeps its own HP and level. Reverts on recall. Cannot chain copies.',
+ 'Skill Link':'Supported variable multi-hit skills always strike 5 times. Fixed multi-hit skills retain their full hit count.',
+ 'Parental Bond':'Single-target damaging skills add a second hit at 25% damage. Secondary effects trigger only on the first hit. Excludes normal attacks, area attacks, multi-hit skills and pivots.',
+ Truant:'After 6 active battle seconds, loafs for 1.5 seconds without attacking or casting. Can still move, dash and defend.',
+ 'Slow Start':'Deals 40% less damage and moves 40% slower for the first 8 active seconds after entry, then returns to normal.',
+ Forecast:'Sun, rain and snow change defensive typing to Fire, Water and Ice and boost matching damage by 20%. Castform changes its visible stance. Reverts when weather ends or is suppressed.',
+ 'Stance Change':'Shield stance grants 30% more DEF and S.DEF. Damaging skills switch to Blade for 3 seconds, granting 30% more damage. Status skills restore Shield. Aegislash visibly changes stance.',
+ 'Zen Mode':'At half HP or less, gains 30% S.ATK, DEF and S.DEF but moves 20% slower. Darmanitan visibly changes stance and becomes Fire/Psychic. Other holders retain their typing.',
+ Schooling:'Above 25% HP, gains 25% more damage and 20% more DEF and S.DEF. Wishiwashi visibly gathers a school. Falls back to Solo at 25% HP or less.',
+ 'Delta Stream':'While active, removes Flying-type weaknesses across the battlefield. Cloud Nine and Air Lock suppress these winds.',
+ Infiltrator:'Bypasses enemy Reflect, Light Screen, Substitute, Safeguard and Mist.',
+ 'Suction Cups':'Blocks forced switches from enemy skills. The user may still voluntarily recall or pivot.',
+ Plus:'Gains 50% S.ATK while a living Minus ally is active. Works with Gear Up and Magnetic Flux.',
+ Minus:'Gains 50% S.ATK while a living Plus ally is active. Works with Gear Up and Magnetic Flux.'
 });
+Object.assign(arenaAbilityDescriptions,advancedArenaAbilities);
 function renderAbilityCatalog() {
  const query=byId('ability-search').value.trim().toLowerCase();
  const matches=Object.keys(abilityCatalog).filter(name=>abilityEffects.has(name) &&
@@ -5678,9 +5847,26 @@ function skillShape(move) {
 let pendingCasts=[];
 let trainerFields=null;
 let recallSlot=null;
+let fieldActorCache=null;
 function fieldActors() {
- return trainerFields ? trainerFields.flat().filter(slot=>!slot.transition).map(slot=>slot.actor).filter(Boolean) :
+ const cache=fieldActorCache;
+ let valid=cache && cache.clock===clock && cache.fields===trainerFields && cache.player===activePlayer &&
+  cache.enemy===activeEnemy && cache.playerSwitch===playerSwitch && cache.enemySwitch===enemySwitch;
+ if(valid && trainerFields) {
+  let index=0;
+  for(const slots of trainerFields)for(const slot of slots) {
+   const old=cache.slots[index++];
+   if(!old || old.slot!==slot || old.actor!==slot.actor || old.transition!==slot.transition)valid=false;
+  }
+  if(index!==cache.slots.length)valid=false;
+ }
+ if(valid)return cache.actors;
+ const slots=trainerFields?trainerFields.flat():[];
+ const actors=trainerFields?slots.filter(slot=>!slot.transition && slot.actor).map(slot=>slot.actor):
   [playerSwitch?null:activePlayer,enemySwitch?null:activeEnemy];
+ fieldActorCache={clock,fields:trainerFields,player:activePlayer,enemy:activeEnemy,playerSwitch,enemySwitch,actors,
+  slots:slots.map(slot=>({slot,actor:slot.actor,transition:slot.transition}))};
+ return actors;
 }
 function trainerLeads(roster,friendly) {
  return friendly ? [roster[selected],...roster.filter((_,i)=>i!==selected)].slice(0,selectedTrainer.format) :
@@ -5713,17 +5899,25 @@ function combatSides() {
  return sides.map(side=>side.filter(actor=>actor?.hp>0));
 }
 function transformDitto(actor,target,explicit=false) {
- if((!explicit && actor.name!=='Ditto') || actor.originalName || !target || target.name===actor.name)return;
- const ratio=actor.hp/actor.max;
- actor.originalName=actor.name;
- actor.originalProfile=actor.profile;
- for(const key of ['name','type','ability','pace','cooldown'])actor[key]=target[key];
- actor.profile=structuredClone(target.profile);
- for(const key of ['stats','moves','moveCooldowns'])actor[key]=[...target[key]];
- actor.moveTimers=actor.moves.map(()=>0);
- actor.moveCooldownStarts=[];
- actor.max=actor.stats[0];
- actor.hp=Math.max(1,Math.ceil(actor.max*ratio));
+ if((!explicit && activeAbility(actor)!=='Imposter') || actor.battleTransform || !target || target.hp<=0 || actor===target)return;
+ const keys=['name','type','singleType','copiedSecondary','addedType','ability','pace','cooldown','stats','moves',
+  'moveCooldowns','moveTimers','moveCooldownStarts','max','shiny','bladeUntil','abilityElapsed'];
+ actor.battleTransform=Object.fromEntries(keys.map(key=>[key,Array.isArray(actor[key])?[...actor[key]]:actor[key] ?? null]));
+ actor.originalName=actor.name;actor.originalProfile=actor.profile;
+ restoreStanceTyping(actor);
+ const types=arenaDefenseTypes(target);
+ actor.name=target.name;actor.type=types[0];actor.singleType=true;
+ actor.copiedSecondary=types[1] ?? null;actor.addedType=types[2] ?? null;
+ actor.ability=activeAbility(target);
+ if(['Imposter','Trace'].includes(actor.ability))actor.ability=null;
+ actor.pace=target.pace;actor.cooldown=target.cooldown;
+ actor.stats=[actor.max,...target.stats.slice(1)];
+ actor.moves=[...target.moves];actor.moveCooldowns=[...target.moveCooldowns];
+ actor.moveTimers=actor.moves.map(()=>0);actor.moveCooldownStarts=[];
+ actor.shiny=target.shiny ?? target.profile?.shiny ?? false;
+ actor.bladeUntil=0;actor.abilityElapsed=0;
+ announceAbility(actor,(explicit?'Transform':'Imposter')+' · '+target.name);
+ updateAbilityStance(actor);
 }
 function actBattleFields(sides,dt) {
  for(const [side,team] of sides.entries())for(const actor of team) {
@@ -5735,7 +5929,7 @@ function actBattleFields(sides,dt) {
  for(const [side,team] of sides.entries())for(const actor of team) {
   const firstOpponent=sides[1-side].filter(foe=>foe.hp>0).reduce((nearest,foe)=>
    !nearest || Math.hypot(foe.x-actor.x,foe.y-actor.y)<Math.hypot(nearest.x-actor.x,nearest.y-actor.y)?foe:nearest,null);
-  transformDitto(actor,firstOpponent);
+  if(actor.entryPending)transformDitto(actor,firstOpponent);
  }
  if(fieldMoveActive('Trick Room')) {
   const actors=sides.flat().sort((a,b)=>a.stats[3]*stageFactor(a,6)-b.stats[3]*stageFactor(b,6));
@@ -5873,10 +6067,10 @@ function canSendReserve(actor) {
   const slots=trainerFields[0];
   const slot=trainerReserveSlot();
   return phase==='battle' && actor.hp>0 && Boolean(slot) && !trainerOnField(actor,slots) && !slots.some(entry=>entry.transition) &&
-   (!slot.actor || slot.actor.hp<=0 || (!fieldMoveActive('Fairy Lock') && !slot.actor.ingrainAt && !blocksExhaustionRecall(slot.actor) && !(slot.actor.trappedUntil>clock || slot.actor.octolockUntil>clock) && recallCooldown===0));
+   (!slot.actor || slot.actor.hp<=0 || (!voluntaryRecallBlocked(slot.actor) && recallCooldown===0));
  }
  if(phase!=='battle' || playerSwitch || actor.hp<=0 || actor===activePlayer) return false;
- return awaitingPlayerReserve() || (!fieldMoveActive('Fairy Lock') && !activePlayer?.ingrainAt && !blocksExhaustionRecall(activePlayer) && !(activePlayer?.trappedUntil>clock || activePlayer?.octolockUntil>clock) && (Boolean(selectedWild) || recallCooldown===0));
+ return awaitingPlayerReserve() || (!voluntaryRecallBlocked(activePlayer) && (Boolean(selectedWild) || recallCooldown===0));
 }
 function updateRecallStatus() {
  if(phase!=='battle') return;
@@ -5930,8 +6124,8 @@ function updateActivePanels(onlineFields) {
   const node=panel.node ?? byId(panel.id);
   if(onlineFields && actor?.raidForm?.startsWith('Mega '))return;
   if(!actor) {if(onlineFields || selectedMasterGym){node.replaceChildren();panel.actor=null;}return;}
-  if(panel.actor!==actor || panel.form!==actor.name) {
-   panel.actor=actor;panel.form=actor.name;
+  if(panel.actor!==actor || panel.form!==actor.name || panel.ability!==actor.ability || panel.moveKey!==actor.moves.join('|')) {
+   panel.actor=actor;panel.form=actor.name;panel.ability=actor.ability;panel.moveKey=actor.moves.join('|');
    const header=element('div',null,'active-header');
    const heading=element('div',null,'active-heading');
    panel.activity=element('small',panel.label);
@@ -6110,6 +6304,9 @@ function updateBattleRosters() {
 }
 function startSwitch(outgoing,incoming) {
  if(outgoing) {
+  if(activeAbility(outgoing)==='Zero to Hero')outgoing.heroReady=true;
+  outgoing.illusionName=null;outgoing.puppetUntil=0;
+  if(outgoing.adaptiveTyping){Object.assign(outgoing,outgoing.adaptiveTyping);outgoing.adaptiveTyping=null;}
   outgoing.type=dex[outgoing.name][1];outgoing.singleType=false;outgoing.addedType=null;
   outgoing.substituteHP=0;for(const key of ['attractUntil','curseAt','imprisonUntil','magicCoatUntil','octolockUntil','octolockTick','powderUntil','snatchUntil'])outgoing[key]=0;
   outgoing.embargoUntil=0;outgoing.electrifyUntil=0;outgoing.disabledUntil=0;outgoing.tauntedUntil=0;
@@ -6118,7 +6315,7 @@ function startSwitch(outgoing,incoming) {
   outgoing.redirectUntil=0;outgoing.powderRedirectUntil=0;
   outgoing.yawnAt=0;outgoing.ingrainAt=0;
   for(const key of ['trappedUntil','airborneUntil','liftedUntil','lockOnUntil','laserUntil','revealedGhostUntil','revealedDarkUntil'])outgoing[key]=0;
-  outgoing.gait=null;outgoing.labelTime=0;outgoing.abilitySuppressed=false;}
+  outgoing.gait=null;outgoing.labelTime=0;outgoing.abilitySuppressed=false;outgoing.unburdenUntil=0;}
  Object.assign(incoming,incoming.friendly ? sendOut.player : sendOut.enemy);
  incoming.facing=incoming.friendly ? 1 : -1;
  incoming.direction=incoming.friendly ? 2 : 6;
@@ -6139,6 +6336,8 @@ function stepSwitch(transition,dt,realDt=dt) {
   const ability=activeAbility(transition.outgoing);
   if(ability==='Regenerator') healActor(transition.outgoing,transition.outgoing.max/3);
   if(ability==='Natural Cure')clearArenaAilment(transition.outgoing);
+  restoreStanceTyping(transition.outgoing);
+  restoreBattleTransform(transition.outgoing);
   if(!transition.forced && transition.outgoing.friendly && !selectedWild && !selectedGym) restoreOpponentTeam();
   if(transition.passSubstitute)transition.incoming.substituteHP=transition.passSubstitute;
   if(transition.passStages)transition.incoming.stages=[...transition.passStages];
@@ -6533,18 +6732,24 @@ function stageFactor(actor,stat) {
  const base = 3;
  return stage>=0 ? (base+stage)/base : base/(base-stage);
 }
-function applyChanges(actor,changes,source=actor,reflected=false) {
- const ability=source===actor ? activeAbility(actor) : targetAbility(source,actor);
+function applyChanges(actor,changes,source=actor,reflected=false,move=null,opportunistCopy=false) {
+ const ability=source===actor ? activeAbility(actor) : targetAbility(source,actor,move);
  for(const [stat,original] of changes) {
   const external=source!==actor;
   let amount=ability==='Contrary'?-original:ability==='Simple'?original*2:original;
   if(amount<0 && external) {
-   if(source.friendly!==actor.friendly && actor.mistUntil>clock)continue;
+   if(arenaDefenseTypes(actor).includes('Grass') && (ability==='Flower Veil' || nearbyAbility(actor,'Flower Veil')))continue;
+   if(ability==='Guard Dog' && move==='Intimidate' && stat===2){applyChanges(actor,[[2,1]]);continue;}
+   if(source.friendly!==actor.friendly && actor.mistUntil>clock && activeAbility(source)!=='Infiltrator')continue;
    if(['Clear Body','White Smoke','Full Metal Body'].includes(ability) || statBlockers[ability]===stat) continue;
    if(ability==='Mirror Armor' && !reflected) {applyChanges(source,[[stat,amount]],actor,true);continue;}
   }
   const before=actor.stages[stat] ?? 0;
   actor.stages[stat]=clamp(before+amount,-battleStageCap,battleStageCap);
+  if(actor.stages[stat]>before && !opportunistCopy) {
+   for(const watcher of fieldActors())if(watcher?.hp>0 && watcher.friendly!==actor.friendly && activeAbility(watcher)==='Opportunist' &&
+    Math.hypot(watcher.x-actor.x,watcher.y-actor.y)<=180)applyChanges(watcher,[[stat,actor.stages[stat]-before]],watcher,false,null,true);
+  }
   if(actor.stages[stat]<before && external) {
    if(ability==='Defiant') applyChanges(actor,[[2,2]]);
    if(ability==='Competitive') applyChanges(actor,[[4,2]]);
@@ -6560,47 +6765,568 @@ function setWeather(kind) {
  battleWeather=kind;
  weatherTime=25;
 }
+let abilityEnvironmentCache=null;
+function abilityEnvironment() {
+ const field=fieldActors(),cache=abilityEnvironmentCache;
+ let valid=cache && cache.field===field;
+ if(valid)for(let i=0;i<field.length;i++) {
+  const actor=field[i],previous=cache.states[i];
+  if(previous.actor!==actor || previous.ability!==actor?.ability || previous.suppressed!==actor?.abilitySuppressed ||
+   previous.alive!==Boolean(actor?.hp>0)){valid=false;break;}
+ }
+ if(valid)return cache;
+ const gas=field.some(actor=>actor?.hp>0 && !actor.abilitySuppressed && actor.ability==='Neutralizing Gas');
+ const byAbility=new Map();
+ for(const actor of field)if(actor?.hp>0 && !actor.abilitySuppressed && (!gas || actor.ability==='Neutralizing Gas')) {
+  const group=byAbility.get(actor.ability) ?? [];group.push(actor);byAbility.set(actor.ability,group);
+ }
+ abilityEnvironmentCache={field,gas,byAbility,states:field.map(actor=>({actor,ability:actor?.ability,
+  suppressed:actor?.abilitySuppressed,alive:Boolean(actor?.hp>0)}))};
+ return abilityEnvironmentCache;
+}
 function activeAbility(actor) {
  const ability=actor?.abilitySuppressed?null:actor?.ability;
- if(!ability || ability==='Neutralizing Gas') return ability;
- if(fieldActors().some(other=>other && other!==actor && other.hp>0 && !other.abilitySuppressed && other.ability==='Neutralizing Gas')) return null;
- return ability;
+ if(!ability || ability==='Neutralizing Gas')return ability;
+ return abilityEnvironment().gas?null:ability;
 }
-function targetAbility(actor,victim) {
- return ['Mold Breaker','Teravolt','Turboblaze'].includes(activeAbility(actor)) ? null : activeAbility(victim);
+function targetAbility(actor,victim,move=null) {
+ const ability=activeAbility(actor);
+ return ['Mold Breaker','Teravolt','Turboblaze'].includes(ability) || ability==='Mycelium Might' && moveCatalog[move]?.[4] ? null : activeAbility(victim);
 }
+// Arena adaptations. All timers use combat seconds and stay on battle actors.
+const convertedAttackTypes={Aerilate:'Flying',Pixilate:'Fairy',Refrigerate:'Ice',Galvanize:'Electric',Dragonize:'Dragon'};
+const variableHitMoves=new Set(['Arm Thrust','Barrage','Bone Rush','Bullet Seed','Comet Punch','Double Slap','Fury Attack','Fury Swipes','Icicle Spear','Pin Missile','Rock Blast','Scale Shot','Spike Cannon','Tail Slap','Water Shuriken']);
+const separateAccuracyMoves=new Set(['Triple Kick','Triple Axel','Population Bomb']);
+const fixedHitMoves={'Bonemerang':2,'Double Hit':2,'Double Iron Bash':2,'Double Kick':2,'Dragon Darts':2,'Dual Chop':2,'Dual Wingbeat':2,'Gear Grind':2,'Tachyon Cutter':2,'Twin Beam':2,'Twineedle':2,'Triple Axel':3,'Triple Dive':3,'Triple Kick':3,'Surging Strikes':3,'Population Bomb':10};
+const stanceAbilities=new Set(['Forecast','Stance Change','Zen Mode','Schooling']);
+function arenaAttackElement(actor,move) {
+ const [base,,,,status]=moveCatalog[move] ?? [];
+ if(status)return {element:base,converted:false};
+ if(actor.electrifyUntil>clock || base==='Normal' && fieldMoveActive('Ion Deluge'))return {element:'Electric',converted:false};
+ const ability=activeAbility(actor);
+ if(move!=='Struggle' && ability==='Normalize')return {element:'Normal',converted:false};
+ if(ability==='Liquid Voice' && moveFlags[move]?.includes(9))return {element:'Water',converted:false};
+ const converted=base==='Normal' && move!=='Struggle' && convertedAttackTypes[ability];
+ return {element:converted || base,converted:Boolean(converted)};
+}
+function announceAbility(actor,label) {
+ actor.abilityNotice=label;
+ actor.abilityNoticeUntil=clock+2;
+}
+function shadowTagSource(actor) {
+ if(!actor || actor.hp<=0 || activeAbility(actor)==='Run Away' || arenaDefenseTypes(actor).includes('Ghost'))return null;
+ return fieldActors().find(other=>{
+  if(!(other?.hp>0) || other.friendly===actor.friendly || Math.hypot(other.x-actor.x,other.y-actor.y)>160)return false;
+  const ability=activeAbility(other);
+  return ability==='Shadow Tag' || ability==='Arena Trap' && isGrounded(actor) || ability==='Magnet Pull' && arenaDefenseTypes(actor).includes('Steel');
+ }) ?? null;
+}
+function voluntaryRecallBlocked(actor) {
+ return Boolean(actor?.hp>0 && (actor.ingrainAt || blocksExhaustionRecall(actor) || activeAbility(actor)!=='Run Away' &&
+  (shadowTagSource(actor) || fieldMoveActive('Fairy Lock') || actor.trappedUntil>clock || actor.octolockUntil>clock)));
+}
+function deltaWindsActive() {
+ const living=fieldActors().filter(actor=>actor?.hp>0);
+ return living.some(actor=>activeAbility(actor)==='Delta Stream') &&
+  !living.some(actor=>['Cloud Nine','Air Lock'].includes(activeAbility(actor)));
+}
+function pressureMultiplier(actor) {
+ return fieldActors().some(other=>other?.hp>0 && other.friendly!==actor.friendly &&
+  activeAbility(other)==='Pressure' && Math.hypot(other.x-actor.x,other.y-actor.y)<=180)?1.2:1;
+}
+function abilityMovementMultiplier(actor) {
+ const ability=activeAbility(actor);
+ return (actor.gooeyUntil>clock?0.8:1)*(ability==='Unburden' && actor.unburdenUntil>clock?1.3:1)*
+  (ability==='Slow Start' && (actor.abilityElapsed ?? 0)<8?0.6:1)*
+  (ability==='Zen Mode' && actor.hp<=actor.max/2?0.8:1)*advancedAbilityPace(actor);
+}
+function abilityDamageMultiplier(actor,physical,element,move,victim=null) {
+ const ability=activeAbility(actor);
+ let value=ability==='Slow Start' && (actor.abilityElapsed ?? 0)<8?0.6:1;
+ if(ability==='Stance Change' && actor.bladeUntil>clock)value*=1.3;
+ if(ability==='Zen Mode' && actor.hp<=actor.max/2 && !physical)value*=1.3;
+ if(ability==='Schooling' && actor.hp>actor.max/4)value*=1.25;
+ if(ability==='Forecast' && ({Sun:'Fire',Rain:'Water',Snow:'Ice'})[abilityWeather()]===element)value*=1.2;
+ if(!physical && ['Plus','Minus'].includes(ability) && activeTeammates(actor).some(other=>other!==actor &&
+  activeAbility(other)===(ability==='Plus'?'Minus':'Plus')))value*=1.5;
+ if(convertedAttackTypes[ability]===element && arenaAttackElement(actor,move).converted)value*=1.2;
+ return value*advancedAbilityDamage(actor,victim,physical,element,move);
+}
+function abilityDefenseMultiplier(actor,ability) {
+ if(ability==='Stance Change' && !(actor.bladeUntil>clock))return 1.3;
+ if(ability==='Zen Mode' && actor.hp<=actor.max/2)return 1.3;
+ if(ability==='Schooling' && actor.hp>actor.max/4)return 1.2;
+ return 1;
+}
+function restoreStanceTyping(actor) {
+ if(!actor.stanceTyping)return;
+ Object.assign(actor,actor.stanceTyping);
+ actor.stanceTyping=null;
+}
+function updateAbilityStance(actor) {
+ const ability=activeAbility(actor);
+ const weather=abilityWeather();
+ const form=ability==='Forecast'?({Sun:'Sunny',Rain:'Rainy',Snow:'Snowy'})[weather] ?? 'Normal':
+  ability==='Stance Change'?(actor.bladeUntil>clock?'Blade':'Shield'):
+  ability==='Zen Mode'?(actor.hp<=actor.max/2?'Zen':'Standard'):
+  ability==='Schooling'?(actor.hp>actor.max/4?'School':'Solo'):null;
+ const newType=ability==='Forecast'?({Sun:'Fire',Rain:'Water',Snow:'Ice'})[weather]:
+  ability==='Zen Mode' && actor.name==='Darmanitan' && form==='Zen'?'Fire':null;
+ if(newType) {
+  if(!actor.stanceTyping)actor.stanceTyping={type:actor.type,singleType:actor.singleType ?? false,
+   copiedSecondary:actor.copiedSecondary ?? null,addedType:actor.addedType ?? null};
+  replaceBattleType(actor,newType);
+  if(ability==='Zen Mode')actor.copiedSecondary='Psychic';
+ } else restoreStanceTyping(actor);
+ actor.abilityStance=stanceAbilities.has(ability)?form:null;
+ actor.abilityForm=ability==='Forecast' && actor.name==='Castform' || ability==='Stance Change' && actor.name==='Aegislash' ||
+  ability==='Zen Mode' && actor.name==='Darmanitan' || ability==='Schooling' && actor.name==='Wishiwashi'?form:null;
+ updateAdvancedStance(actor);
+}
+function prepareAbilityMove(actor,move) {
+ const ability=activeAbility(actor),status=moveCatalog[move][4];
+ if(ability==='Stance Change' && move!=='Normal Attack')actor.bladeUntil=status?0:clock+3;
+ const {element}=arenaAttackElement(actor,move);
+ if(!status && !['Normal Attack','Struggle'].includes(move) && ['Protean','Libero'].includes(ability) &&
+  !(actor.proteanReadyAt>clock)) {
+  replaceBattleType(actor,element);
+  actor.proteanReadyAt=clock+6;
+  announceAbility(actor,ability+' · '+element);
+ }
+ updateAbilityStance(actor);
+}
+function magicBounceReady(actor,source,move=null) {
+ return actor.friendly!==source.friendly && targetAbility(source,actor,move)==='Magic Bounce' && !(actor.magicBounceReadyAt>clock);
+}
+function reflectHazard(actor,move) {
+ const reflector=fieldActors().filter(other=>other?.hp>0 && magicBounceReady(other,actor,move))
+  .sort((a,b)=>Math.hypot(a.x-actor.x,a.y-actor.y)-Math.hypot(b.x-actor.x,b.y-actor.y))[0];
+ if(!reflector)return false;
+ reflector.magicBounceReadyAt=clock+8;
+ announceAbility(reflector,'Magic Bounce');
+ additionalStatusMoves[move].apply(reflector,actor);
+ return true;
+}
+function arenaHitSequence(actor,move,rules,cast) {
+ if(moveCatalog[move][4] || move==='Normal Attack' || cast?.roaming)return [1];
+ if(variableHitMoves.has(move)) {
+  const roll=activeAbility(actor)==='Skill Link'?1:Math.random();
+  return Array(roll<0.375?2:roll<0.75?3:roll<0.875?4:5).fill(1);
+ }
+ if(fixedHitMoves[move])return Array(fixedHitMoves[move]).fill(1);
+ if(activeAbility(actor)==='Parental Bond' && rules.scope==='single' && !rules.radius &&
+  !['beam','wave','cone','arc','vortex'].includes(cast?.shape) && !pivotMoves.has(move) && !forcedSwitchMoves.has(move))return [1,0.25];
+ return [1];
+}
+function restoreBattleTransform(actor) {
+ if(!actor.battleTransform)return;
+ const hp=actor.hp;
+ Object.assign(actor,actor.battleTransform);
+ actor.hp=Math.min(hp,actor.max);
+ actor.battleTransform=null;
+ actor.originalName=null;actor.originalProfile=null;
+ actor.abilityStance=null;actor.abilityForm=null;actor.stanceTyping=null;actor.adaptiveTyping=null;
+}
+function drawAbilityState(actor) {
+ if(!(actor.hp>0))return;
+ const now=phase==='online-battle'?onlineMatchDuration:clock;
+ const text=actor.abilityNoticeUntil>now?actor.abilityNotice:actor.abilityStance?actor.abilityStance+' stance':
+  actor.ability==='Truant' && (actor.abilityElapsed ?? 0)%7.5>=6?'Loafing':null;
+ ctx.save();
+ if(actor.disguiseBrokenAt!==undefined && now-actor.disguiseBrokenAt<0.6) {
+  const t=Math.max(0,now-actor.disguiseBrokenAt)/0.6;
+  ctx.fillStyle='#ede2c7';ctx.globalAlpha=1-t;
+  for(let i=0;i<8;i++) {
+   const angle=i*Math.PI/4;
+   ctx.fillRect(actor.x+Math.cos(angle)*(12+30*t),actor.y-8+Math.sin(angle)*(12+30*t),4,4);
+  }
+ }
+ if(text) {
+  ctx.font='bold 11px system-ui';ctx.textAlign='center';
+  const width=Math.min(canvas.width-16,ctx.measureText(text).width+20);
+  const x=clamp(actor.x,8+width/2,canvas.width-8-width/2),y=Math.max(16,actor.y-57);
+  ctx.globalAlpha=1;ctx.fillStyle='#162339e8';ctx.fillRect(x-width/2,y-11,width,17);
+  ctx.fillStyle='#9de7ed';ctx.fillRect(x-width/2+4,y-6,4,4);
+  ctx.fillStyle='#fff4cc';ctx.fillText(text,x+4,y+1);
+ }
+ ctx.restore();
+}
+
+// Remaining Arena abilities. These hooks mutate battle actors, never saved Pokémon or inventory.
+const priorityWardAbilities=new Set(['Armor Tail','Dazzling','Queenly Majesty']);
+const redirectBypassAbilities=new Set(['Stalwart','Propeller Tail']);
+const protectedBattleAbilities=new Set(['As One','Battle Bond','Comatose','Commander','Disguise','Forecast','Gulp Missile',
+ 'Hunger Switch','Ice Face','Imposter','Multitype','Power Construct','RKS System','Schooling','Shields Down','Stance Change',
+ 'Tera Shift','Teraform Zero','Trace','Zen Mode','Zero to Hero']);
+const controlWardMoves=new Set(['Attract','Taunt','Encore','Torment','Disable','Heal Block']);
+const danceAbilityMoves=new Set(['Dragon Dance','Swords Dance','Quiver Dance','Victory Dance','Fiery Dance','Revelation Dance','Feather Dance','Teeter Dance','Petal Dance','Lunar Dance']);
+function nearbyAbility(actor,names,includeSelf=false,range=180) {
+ const list=Array.isArray(names)?names:[names],environment=abilityEnvironment();
+ return list.some(name=>(environment.byAbility.get(name) ?? []).some(other=>(includeSelf || other!==actor) &&
+  other.friendly===actor.friendly && Math.hypot(other.x-actor.x,other.y-actor.y)<=range));
+}
+function globalAbility(name,except=null) {
+ return (abilityEnvironment().byAbility.get(name) ?? []).some(other=>other!==except);
+}
+function arenaAsleep(actor) {return actor?.ailment===2 || activeAbility(actor)==='Comatose';}
+function arenaConfused(actor) {return actor?.ailment===6 || actor?.puppetUntil>clock;}
+function arenaContact(actor,move) {
+ return activeAbility(actor)!=='Long Reach' && (move==='Normal Attack' || Boolean(moveFlags[move]?.includes(1)));
+}
+function unseenGuard(actor,move) {return activeAbility(actor)==='Unseen Fist' && arenaContact(actor,move);}
+function highestAbilityStat(actor) {
+ const ability=activeAbility(actor);
+ if(!(ability==='Protosynthesis' && abilityWeather()==='Sun' || ability==='Quark Drive' && battleTerrain==='Electric'))return -1;
+ let best=1;
+ for(let i=2;i<6;i++)if(actor.stats[i]>actor.stats[best])best=i;
+ return best;
+}
+function advancedAbilityPace(actor) {
+ const ability=activeAbility(actor),weather=abilityWeather();
+ return (ability==='Surge Surfer' && battleTerrain==='Electric'?2:1)*
+  (ability==='Fire Mane' && weather==='Sun'?1.2:1)*
+  (ability==='Shields Down' && actor.hp<=actor.max/2?1.25:1)*(highestAbilityStat(actor)===3?1.3:1);
+}
+function abilityActionRate(actor,move) {
+ const ability=activeAbility(actor),status=moveCatalog[move]?.[4];
+ if(ability==='Quick Draw' && (actor.abilityElapsed ?? 0)%6<2)return 0.7;
+ if(ability==='Stall')return 1.25;
+ if(ability==='Mycelium Might' && status)return 1.25;
+ if(ability==='Triage' && (moveRules(move).healing>0 || moveCatalog[move]?.[5]>0))return 0.7;
+ if(ability==='Gale Wings' && actor.hp===actor.max && arenaAttackElement(actor,move).element==='Flying')return 0.75;
+ return 1;
+}
+function arenaPriority(actor,move) {
+ const base=moveCatalog[move]?.[3] ?? 0,ability=activeAbility(actor);
+ return base+(ability==='Gale Wings' && actor.hp===actor.max && arenaAttackElement(actor,move).element==='Flying'?1:0)+
+  (ability==='Triage' && (moveRules(move).healing>0 || moveCatalog[move]?.[5]>0)?3:0);
+}
+function priorityWardBlocks(source,victim,move) {
+ return source.friendly!==victim.friendly && arenaPriority(source,move)>0 && fieldActors().some(ward=>ward?.hp>0 &&
+  ward.friendly===victim.friendly && Math.hypot(ward.x-victim.x,ward.y-victim.y)<=180 &&
+  priorityWardAbilities.has(ward===victim?targetAbility(source,ward,move):activeAbility(ward)));
+}
+function controlAbilityBlocks(victim,move,source) {
+ if(!source || source.friendly===victim.friendly || !controlWardMoves.has(move))return false;
+ const ability=targetAbility(source,victim,move);
+ return ability==='Oblivious' && ['Attract','Taunt'].includes(move) || ability==='Aroma Veil' || nearbyAbility(victim,'Aroma Veil');
+}
+function abilityBlocksAilment(victim,condition,source,move=null) {
+ const ability=source?targetAbility(source,victim,move):activeAbility(victim);
+ return ['Comatose','Purifying Salt'].includes(ability) || ability==='Leaf Guard' && abilityWeather()==='Sun' ||
+  ability==='Shields Down' && victim.hp>victim.max/2 || condition===4 && ability==='Thermal Exchange' ||
+  condition===6 && ability==='Own Tempo' || (arenaDefenseTypes(victim).includes('Grass') &&
+   (ability==='Flower Veil' || nearbyAbility(victim,'Flower Veil')));
+}
+function advancedAbilityDamage(actor,victim,physical,element,move) {
+ const ability=activeAbility(actor),weather=abilityWeather();
+ let value=1;
+ if(ability==='Analytic' && victim && (victim.attack>0 || victim.moves.every((skill,i)=>moveCatalog[skill]?.[4] || victim.moveTimers[i]>0)))value*=1.25;
+ if(ability==='Defeatist' && actor.hp<=actor.max/2)value*=0.5;
+ if(ability==='Rivalry' && victim)value*=arenaDefenseTypes(actor).some(type=>arenaDefenseTypes(victim).includes(type))?1.2:0.9;
+ if(ability==='Flare Boost' && actor.ailment===4 && !physical)value*=1.5;
+ if(ability==='Toxic Boost' && actor.ailment===5 && physical)value*=1.5;
+ if(ability==='Fire Mane' && element==='Fire')value*=1.3;
+ if(ability==='Mega Sol' && weather==='Sun' && !physical)value*=1.2;
+ if(ability==='Rocky Payload' && element==='Rock')value*=1.5;
+ if(ability==='Normalize' && element==='Normal' && move!=='Struggle')value*=1.2;
+ if(ability==='Liquid Voice' && element==='Water' && moveFlags[move]?.includes(9))value*=1.2;
+ if(['Electromorphosis','Wind Power'].includes(ability) && actor.electricChargeUntil>clock && element==='Electric')value*=2;
+ if(['Multitype','RKS System'].includes(ability) && heldItems[effectiveHeldItem(actor)]?.element===element)value*=1.2;
+ if(ability==='Hunger Switch' && (Math.floor((actor.abilityElapsed ?? 0)/6)%2===0)===physical)value*=1.2;
+ if(ability==='Shields Down' && actor.hp<=actor.max/2)value*=1.25;
+ if(ability==='Zero to Hero' && actor.heroReady)value*=1.3;
+ if(ability==='Frisk' && victim?.heldItem)value*=1.2;
+ if(ability==='Commander')value*=0.8;
+ if(highestAbilityStat(actor)===(physical?1:5))value*=1.3;
+ if(nearbyAbility(actor,'Power Spot'))value*=1.2;
+ if(!physical && nearbyAbility(actor,'Battery'))value*=1.2;
+ if(physical && weather==='Sun' && nearbyAbility(actor,'Flower Gift',true))value*=1.25;
+ if(fieldActors().some(other=>other?.hp>0 && other!==actor && other.commanderTarget===battleActorId(actor) &&
+  other.friendly===actor.friendly && activeAbility(other)==='Commander' && Math.hypot(other.x-actor.x,other.y-actor.y)<=180))value*=1.2;
+ if(physical && ability!=='Tablets of Ruin' && globalAbility('Tablets of Ruin',actor))value*=0.75;
+ if(!physical && ability!=='Vessel of Ruin' && globalAbility('Vessel of Ruin',actor))value*=0.75;
+ if((element==='Dark' && globalAbility('Dark Aura')) || (element==='Fairy' && globalAbility('Fairy Aura')))
+  value*=globalAbility('Aura Break')?0.75:4/3;
+ return value;
+}
+function advancedAbilityDefense(victim,actor,physical,element,move) {
+ const ability=targetAbility(actor,victim,move);
+ let value=1;
+ if(ability==='Fluffy') {if(arenaContact(actor,move))value*=2;if(element==='Fire')value*=0.5;}
+ if(ability==='Purifying Salt' && element==='Ghost')value*=2;
+ if(ability==='Grass Pelt' && physical && battleTerrain==='Grass')value*=1.5;
+ if(ability==='Shields Down' && victim.hp>victim.max/2)value*=1.3;
+ if(ability==='Zero to Hero' && victim.heroReady)value*=1.2;
+ if(ability==='Tera Shift' && victim.teraShifted)value*=1.2;
+ if(ability==='Teraform Zero')value*=1.15;
+ if(ability==='Stall' && victim.charge>0)value/=0.85;
+ if(ability==='Forewarn' && victim.forewarnUntil>clock && victim.forewarnMove===move)value/=0.75;
+ if(highestAbilityStat(victim)===(physical?2:4) && ability)value*=1.3;
+ if(nearbyAbility(victim,'Friend Guard'))value/=0.75;
+ if(!physical && abilityWeather()==='Sun' && nearbyAbility(victim,'Flower Gift',true))value*=1.25;
+ if(fieldActors().some(other=>other?.hp>0 && other!==victim && other.commanderTarget===battleActorId(victim) &&
+  other.friendly===victim.friendly && activeAbility(other)==='Commander' && Math.hypot(other.x-victim.x,other.y-victim.y)<=180))value/=0.8;
+ if(physical && activeAbility(victim)!=='Sword of Ruin' && globalAbility('Sword of Ruin',victim))value*=0.75;
+ if(!physical && activeAbility(victim)!=='Beads of Ruin' && globalAbility('Beads of Ruin',victim))value*=0.75;
+ if(physical && activeAbility(actor)==='Piercing Drill' && move!=='Normal Attack')value*=0.75;
+ return value;
+}
+function arenaAbilityMatchup(actor,victim,move,element) {
+ let multiplier=effectiveness(element,victim);
+ const attacker=activeAbility(actor),defender=targetAbility(actor,victim,move);
+ if(!multiplier && ['Scrappy',"Mind's Eye"].includes(attacker) && ['Normal','Fighting'].includes(element) && arenaDefenseTypes(victim).includes('Ghost'))
+  multiplier=arenaDefenseTypes(victim).filter(type=>type!=='Ghost').reduce((total,type)=>total*(typeChart[element]?.[type] ?? 1),1);
+ if(defender==='Tera Shell' && victim.hp===victim.max && multiplier>0)multiplier=Math.min(0.5,multiplier);
+ return multiplier;
+}
+function arenaWeight(actor,source=null) {
+ const ability=source?targetAbility(source,actor):activeAbility(actor);
+ return dimensions(actor.originalName ?? actor.name)[1]/10*(ability==='Heavy Metal'?2:ability==='Light Metal'?0.5:1);
+}
+function refreshSpentDash(actor) {
+ actor.dashRecharge=(actor.dashRecharge ?? []).filter(ready=>ready>clock);
+ if(!actor.dashRecharge.length)return false;
+ actor.dashRecharge.sort((a,b)=>a-b).shift();return true;
+}
+function missedAbilityMove(actor,move) {
+ if(move!=='Normal Attack' && activeAbility(actor)==='Ball Fetch' && !(actor.ballFetchReadyAt>clock) && refreshSpentDash(actor)) {
+  actor.ballFetchReadyAt=clock+6;announceAbility(actor,'Ball Fetch · dash ready');
+ }
+}
+function takeBattleItem(recipient,holder) {
+ if(recipient.heldItem && !recipient.itemUsed || !holder.heldItem || holder.itemUsed || activeAbility(holder)==='Sticky Hold')return false;
+ recipient.heldItem=holder.heldItem;recipient.itemUsed=Boolean(holder.itemUsed);
+ holder.heldItem=null;holder.itemUsed=false;announceAbility(recipient,'Item · '+recipient.heldItem);return true;
+}
+function abilityResidualDamage(source,target,amount) {
+ if(!target || target.hp<=0 || activeAbility(target)==='Magic Guard')return 0;
+ const damage=Math.min(target.hp,Math.max(1,Math.round(raidResidualDamage(target,amount))));
+ target.hp-=damage;recordOpponentDamage(source,target,damage);return damage;
+}
+function advancedAbilityEntry(actor,opponent) {
+ const ability=activeAbility(actor),team=activeTeammates(actor).filter(other=>other!==actor);
+ const nearest=team.toSorted((a,b)=>Math.hypot(a.x-actor.x,a.y-actor.y)-Math.hypot(b.x-actor.x,b.y-actor.y))[0];
+ const foes=fieldActors().filter(other=>other?.hp>0 && other.friendly!==actor.friendly);
+ actor.emergencyExitUsed=false;
+ if(ability==='Mega Sol')setWeather('Sun');
+ if(ability==='Anticipation' && foes.some(foe=>foe.moves.some(move=>!moveCatalog[move]?.[4] &&
+  arenaAbilityMatchup(foe,actor,move,arenaAttackElement(foe,move).element)>1))) {
+  actor.guard=Math.max(actor.guard,2);announceAbility(actor,'Anticipation · danger');
+ }
+ if(ability==='Forewarn') {
+  const move=foes.flatMap(foe=>foe.moves).toSorted((a,b)=>(moveCatalog[b]?.[1] ?? 0)-(moveCatalog[a]?.[1] ?? 0))[0];
+  actor.forewarnMove=move;actor.forewarnUntil=clock+8;announceAbility(actor,'Forewarn · '+move);
+ }
+ if(ability==='Frisk')announceAbility(actor,'Frisk · '+(opponent.heldItem ?? 'no item'));
+ if(ability==='Commander' && team.length)actor.commanderTarget=battleActorId(team.toSorted((a,b)=>b.max-a.max)[0]);
+ if(ability==='Costar' && nearest)applyChanges(actor,nearest.stages.flatMap((stage,i)=>stage>0 && stage>actor.stages[i]?[[i,stage-actor.stages[i]]]:[]));
+ if(ability==='Curious Medicine')for(const ally of [actor,...team])ally.stages=ally.stages.map(stage=>Math.max(0,stage));
+ if(ability==='Hospitality' && nearest && !(actor.hospitalityReadyAt>clock)) {
+  healActor(nearest,nearest.max/4);actor.hospitalityReadyAt=clock+8;announceAbility(actor,'Hospitality');
+ }
+ if(ability==='Supersweet Syrup' && !actor.syrupUsed) {actor.syrupUsed=true;for(const foe of foes)applyChanges(foe,[[8,-1]],actor);}
+ if(ability==='Illuminate')for(const foe of foes)if(Math.hypot(foe.x-actor.x,foe.y-actor.y)<=180)foe.dazzledUntil=clock+3;
+ if(ability==='Embody Aspect')applyChanges(actor,[[({Fire:2,Water:5,Rock:3})[actor.type] ?? 6,1]]);
+ if(ability==='Tera Shift' && !actor.teraShifted) {
+  actor.teraShifted=true;actor.substituteHP=Math.max(actor.substituteHP ?? 0,Math.round(actor.max/5));announceAbility(actor,'Tera Shift · barrier');
+ }
+ if(ability==='Teraform Zero' && !actor.teraZeroUsed) {actor.teraZeroUsed=true;battleWeather=battleTerrain=null;weatherTime=terrainTime=0;announceAbility(actor,'Teraform Zero');}
+ if(ability==='Illusion') {
+  const disguise=(actor.friendly?allies:enemies).findLast(other=>other!==actor && other.hp>0);
+  if(disguise)actor.illusionName=disguise.name;
+ }
+}
+function advancedAbilityTick(actor,dt) {
+ const ability=activeAbility(actor);
+ if(!ability)return;
+ if(ability==='Early Bird' && actor.ailment===2 && clock-(actor.sleepStartedAt ?? 0)>=2)clearArenaAilment(actor);
+ if(ability==='Steadfast' && actor.flinch>0 && !(actor.steadfastReadyAt>clock)) {
+  actor.steadfastReadyAt=clock+3;applyChanges(actor,[[6,1]]);refreshSpentDash(actor);
+ }
+ if(ability==='Cud Chew' && actor.cudChewAt && actor.cudChewAt<=clock) {
+  actor.cudChewAt=0;healActor(actor,actor.cudChewAmount);announceAbility(actor,'Cud Chew');
+ }
+ if(ability==='Ice Face' && actor.iceFaceBroken && abilityWeather()==='Snow' && clock-(actor.iceFaceBrokenAt ?? 0)>=12) {
+  actor.iceFaceBroken=false;announceAbility(actor,'Ice Face rebuilt');
+ }
+ if(ability==='Power Construct' && !actor.powerConstructUsed && actor.hp<=actor.max/2) {
+  actor.powerConstructUsed=true;const extra=Math.round(actor.max/4);actor.max+=extra;actor.stats[0]=actor.max;
+  healActor(actor,extra);announceAbility(actor,'Power Construct · Complete');
+ }
+ if(['Receiver','Power of Alchemy'].includes(ability)) {
+  const fallen=(actor.friendly?allies:enemies).find(other=>other!==actor && other.hp<=0 && abilityEffects.has(other.ability) &&
+   !['Receiver','Power of Alchemy'].includes(other.ability) && !protectedBattleAbilities.has(other.ability));
+  if(fallen){actor.ability=fallen.ability;announceAbility(actor,ability+' · '+actor.ability);}
+ }
+ if(ability==='Pickup' && !actor.pickupUsed && !actor.heldItem && (actor.friendly?allies:enemies).some(other=>other!==actor && other.hp<=0)) {
+  actor.pickupUsed=true;actor.heldItem='Oran Berry';actor.itemUsed=false;announceAbility(actor,'Pickup · temporary berry');
+ }
+ const before=actor.advancedAbilityTimer ?? 0;
+ actor.advancedAbilityTimer=before+dt;
+ if(Math.floor(before/8)!==Math.floor(actor.advancedAbilityTimer/8) && ability==='Moody') {
+  const stats=[2,3,4,5,6],up=stats.splice(Math.floor(Math.random()*stats.length),1)[0],down=stats[Math.floor(Math.random()*stats.length)];
+  applyChanges(actor,[[up,2],[down,-1]]);
+ }
+ if(Math.floor(before/12)!==Math.floor(actor.advancedAbilityTimer/12) && ability==='Harvest' && actor.itemUsed &&
+  (heldItems[actor.heldItem]?.heal || heldItems[actor.heldItem]?.healRatio) && (abilityWeather()==='Sun' || Math.random()<0.5)) {
+  actor.itemUsed=false;announceAbility(actor,'Harvest');
+ }
+ if(Math.floor(before/4)===Math.floor(actor.advancedAbilityTimer/4))return;
+ if(ability==='Bad Dreams')for(const foe of fieldActors())if(foe?.hp>0 && foe.friendly!==actor.friendly && arenaAsleep(foe) &&
+  Math.hypot(foe.x-actor.x,foe.y-actor.y)<=180)abilityResidualDamage(actor,foe,foe.max*0.04);
+ if(ability==='Healer') {
+  const ally=activeTeammates(actor).filter(other=>other!==actor && other.ailment && Math.hypot(other.x-actor.x,other.y-actor.y)<=180)
+   .toSorted((a,b)=>a.hp/a.max-b.hp/b.max)[0];
+  if(ally)clearArenaAilment(ally);
+ }
+ if(ability==='Honey Gather')for(const ally of activeTeammates(actor))if(Math.hypot(ally.x-actor.x,ally.y-actor.y)<=180 && !(ally.honeyGatherReadyAt>clock)) {
+  ally.honeyGatherReadyAt=clock+4;healActor(ally,ally.max*0.03*(battleTerrain==='Grass'?2:1));
+ }
+}
+function advancedBerryUsed(actor,amount) {
+ const ability=activeAbility(actor);
+ if(ability==='Cheek Pouch')healActor(actor,actor.max/8);
+ if(ability==='Cud Chew'){actor.cudChewAmount=amount;actor.cudChewAt=clock+4;}
+ const donor=fieldActors().find(other=>other?.hp>0 && other!==actor && other.friendly===actor.friendly &&
+  activeAbility(other)==='Symbiosis' && other.heldItem && !other.itemUsed && Math.hypot(other.x-actor.x,other.y-actor.y)<=180);
+ if(donor){actor.heldItem=donor.heldItem;actor.itemUsed=false;donor.heldItem=null;donor.itemUsed=false;announceAbility(donor,'Symbiosis');}
+}
+function advancedAbilityAction(actor,move) {
+ const ability=activeAbility(actor);
+ if(ability==='Gulp Missile' && ['Surf','Dive'].includes(move))actor.gulpLoaded=true;
+ if(danceAbilityMoves.has(move)) {
+  const boosts=moveRules(move).changes.filter(([,amount])=>amount>0);
+  if(boosts.length)for(const dancer of fieldActors())if(dancer?.hp>0 && dancer!==actor && activeAbility(dancer)==='Dancer' &&
+   !(dancer.dancerReadyAt>clock) && Math.hypot(dancer.x-actor.x,dancer.y-actor.y)<=180) {
+   dancer.dancerReadyAt=clock+6;applyChanges(dancer,boosts);announceAbility(dancer,'Dancer · '+move);
+  }
+ }
+}
+function advancedAbilityOnHit(actor,victim,move,element,physical,dealt,critical) {
+ const ability=activeAbility(actor),defender=targetAbility(actor,victim,move),contact=arenaContact(actor,move);
+ if(!dealt)return;
+ if(victim.illusionName){victim.illusionName=null;announceAbility(victim,'Illusion broke');}
+  if(defender==='Sand Spit' && !(victim.sandSpitReadyAt>clock)){setWeather('Sand');victim.sandSpitReadyAt=clock+8;}
+  if(defender==='Seed Sower' && !(victim.seedSowerReadyAt>clock)){setTerrain('Grass');victim.seedSowerReadyAt=clock+8;}
+  if(defender==='Toxic Debris' && physical) {
+   const hazards=entryHazards[victim.friendly?1:0];hazards['Toxic Spikes']=Math.min(2,(hazards['Toxic Spikes'] ?? 0)+1);
+  }
+  if(defender==='Gulp Missile' && victim.gulpLoaded) {
+   victim.gulpLoaded=false;abilityResidualDamage(victim,actor,Math.min(actor.max/8,victim.max/4));tryAilment(actor,1,victim);
+  }
+ if(victim.hp>0) {
+  if(defender==='Anger Point' && critical)applyChanges(victim,[[2,battleStageCap-victim.stages[2]]]);
+  if(defender==='Anger Shell' && !victim.angerShellUsed && victim.hp<=victim.max/2 && victim.hp+dealt>victim.max/2) {
+   victim.angerShellUsed=true;applyChanges(victim,[[2,1],[4,1],[6,1],[3,-1],[5,-1]]);
+  }
+  if(defender==='Color Change' && !(victim.colorChangeReadyAt>clock)) {
+   replaceBattleType(victim,element);victim.colorChangeReadyAt=clock+2;announceAbility(victim,'Color Change · '+element);
+  }
+  if(defender==='Electromorphosis' || defender==='Wind Power' && windMoves.has(move))victim.electricChargeUntil=clock+6;
+  if(defender==='Thermal Exchange' && element==='Fire')applyChanges(victim,[[2,1]]);
+  if(defender==='Cotton Down' && !(victim.cottonReadyAt>clock)) {
+   victim.cottonReadyAt=clock+3;
+   for(const other of fieldActors())if(other?.hp>0 && other!==victim && Math.hypot(other.x-victim.x,other.y-victim.y)<=180)other.gooeyUntil=clock+2;
+  }
+  if(['Emergency Exit','Wimp Out'].includes(defender) && !victim.emergencyExitUsed && victim.hp<=victim.max/2 && victim.hp+dealt>victim.max/2) {
+   victim.emergencyExitUsed=true;forceSwitch(victim,null,false,0,true);
+  }
+ }
+ if(contact) {
+  if(defender==='Cute Charm' && !controlAbilityBlocks(actor,'Attract',victim) && Math.random()<0.3)actor.attractUntil=clock+3;
+  if(defender==='Pickpocket')takeBattleItem(victim,actor);
+  if(['Mummy','Lingering Aroma'].includes(defender) && !protectedBattleAbilities.has(ability)) {
+   actor.ability=defender;announceAbility(actor,defender);
+  }
+  if(defender==='Wandering Spirit' && !protectedBattleAbilities.has(ability) && !protectedBattleAbilities.has(defender)) {
+   [actor.ability,victim.ability]=[victim.ability,actor.ability];announceAbility(actor,'Wandering Spirit');
+  }
+  if(defender==='Perish Body' && actor.side!=='boss' && victim.side!=='boss' && !actor.masterRaidPhase && !victim.masterRaidPhase) {
+   actor.perishAt ||= clock+8;victim.perishAt ||= clock+8;
+  }
+ }
+ if(move!=='Normal Attack' && !moveCatalog[move]?.[4]) {
+  if(ability==='Magician')takeBattleItem(actor,victim);
+  if(ability==='Toxic Chain' && Math.random()<0.3)tryAilment(victim,5,actor);
+  if(ability==='Spicy Spray' && !(actor.spicyReadyAt>clock) && Math.random()<0.25) {
+   if(tryAilment(victim,4,actor))actor.spicyReadyAt=clock+4;
+  }
+  if(ability==='Stench' && !(actor.stenchReadyAt>clock) && defender!=='Inner Focus' && Math.random()<0.1) {
+   actor.stenchReadyAt=clock+4;victim.flinch=Math.max(victim.flinch ?? 0,0.25);
+  }
+ }
+ if(victim.hp<=0) {
+  if(defender==='Innards Out')abilityResidualDamage(victim,actor,Math.min(dealt,actor.max/4));
+  if(ability==='As One' && actor.hp>0)applyChanges(actor,[[2,1],[4,1]]);
+  if(ability==='Battle Bond' && !actor.battleBondUsed && actor.hp>0) {
+   actor.battleBondUsed=true;applyChanges(actor,[[2,1],[4,1],[6,1]]);announceAbility(actor,'Battle Bond');
+  }
+ }
+}
+function updateAdvancedStance(actor) {
+ const ability=activeAbility(actor);
+ const type=ability==='Mimicry'?({Electric:'Electric',Grass:'Grass',Fairy:'Fairy',Psychic:'Psychic'})[battleTerrain]:
+  ['Multitype','RKS System'].includes(ability)?heldItems[effectiveHeldItem(actor)]?.element:null;
+ if(type) {
+  if(!actor.adaptiveTyping)actor.adaptiveTyping={type:actor.type,singleType:actor.singleType ?? false,copiedSecondary:actor.copiedSecondary ?? null,addedType:actor.addedType ?? null};
+  replaceBattleType(actor,type);
+ } else if(actor.adaptiveTyping){Object.assign(actor,actor.adaptiveTyping);actor.adaptiveTyping=null;}
+ const form=ability==='Hunger Switch'?(Math.floor((actor.abilityElapsed ?? 0)/6)%2?'Hangry':'Full Belly'):
+  ability==='Shields Down'?(actor.hp>actor.max/2?'Meteor':'Core'):
+  ability==='Power Construct' && actor.powerConstructUsed?'Complete':
+  ability==='Zero to Hero' && actor.heroReady?'Hero':ability==='Battle Bond' && actor.battleBondUsed?'Bonded':
+  ability==='Tera Shift' && actor.teraShifted?'Terastal':null;
+ if(form){actor.abilityStance=form;actor.abilityForm=form;}
+}
+
 function abilityWeather() {
- return fieldActors().some(actor=>actor?.hp>0 && ['Cloud Nine','Air Lock'].includes(activeAbility(actor)))?null:battleWeather;
+ const {byAbility}=abilityEnvironment();
+ return byAbility.has('Cloud Nine') || byAbility.has('Air Lock')?null:battleWeather;
 }
 function entryAbility(actor,opponent) {
  if(!actor?.entryPending || actor.hp<=0 || !opponent || opponent.hp<=0) return;
  actor.entryPending=false;
 
  actor.abilityTimer=0;
- const ability=activeAbility(actor);
+ actor.abilityElapsed=0;
+ actor.advancedAbilityTimer=0;
+ let ability=activeAbility(actor);
+ if(ability==='Trace' && !actor.traceUsed) {
+  const copied=fieldActors().filter(other=>other?.hp>0 && other.friendly!==actor.friendly &&
+   abilityEffects.has(activeAbility(other)) && !['Trace','Imposter'].includes(activeAbility(other)))
+   .sort((a,b)=>Math.hypot(a.x-actor.x,a.y-actor.y)-Math.hypot(b.x-actor.x,b.y-actor.y))[0];
+  if(copied) {
+   actor.ability=ability=activeAbility(copied);actor.traceUsed=true;
+   announceAbility(actor,'Trace · '+ability);
+  }
+ }
+ updateAbilityStance(actor);
  if(weatherAbilities[ability]) setWeather(weatherAbilities[ability]);
  if(terrainAbilities[ability]) setTerrain(terrainAbilities[ability]);
  if(ability==='Orichalcum Pulse') setWeather('Sun');
  if(ability==='Intimidate' && !['Inner Focus','Own Tempo','Oblivious','Scrappy'].includes(activeAbility(opponent)))
-  applyChanges(opponent,[[2,-1]],actor);
+  applyChanges(opponent,[[2,-1]],actor,false,'Intimidate');
  if(ability==='Download') applyChanges(actor,[[opponent.stats[2]<opponent.stats[4]?2:4,1]]);
  if((ability==='Intrepid Sword'||ability==='Dauntless Shield') && !actor.entryUsed) {
   applyChanges(actor,[[ability==='Intrepid Sword'?2:3,1]]);
   actor.entryUsed=true;
  }
  if(ability==='Screen Cleaner') {actor.guard=0;opponent.guard=0;clearScreens(actor);clearScreens(opponent);}
+ advancedAbilityEntry(actor,opponent);
+ updateAbilityStance(actor);
 }
 const hardStatusRecoverySeconds=10;
 function blocksHardStatus(actor,condition) {
  return (condition===2 && actor.side==='boss') ||
   ([2,3].includes(condition) && (actor.hardStatusRecoveryUntil ?? 0)>clock);
 }
-function canInflictAilment(victim,condition,source) {
- if(blocksHardStatus(victim,condition))return false;
- if(source!==victim && victim.safeguardUntil>clock)return false;
+function canInflictAilment(victim,condition,source,move=null) {
+ if(blocksHardStatus(victim,condition) || abilityBlocksAilment(victim,condition,source,move))return false;
+ if(source!==victim && victim.safeguardUntil>clock && activeAbility(source)!=='Infiltrator')return false;
  if(victim.hp<=0 || victim.ailment || ![1,2,3,4,5,6].includes(condition)) return false;
- const types=[victim.type,extraTypes[victim.name]];
- const ability=targetAbility(source,victim);
+ const types=arenaDefenseTypes(victim);
+ const ability=targetAbility(source,victim,move);
  if(statusProtection[condition]?.includes(ability) ||
   (isGrounded(victim) && (battleTerrain==='Fairy' || condition===2 && battleTerrain==='Electric')) ||
   (condition===1 && types.includes('Electric')) ||
@@ -6609,10 +7335,12 @@ function canInflictAilment(victim,condition,source) {
   (condition===5 && types.some(type=>type==='Poison'||type==='Steel') && activeAbility(source)!=='Corrosion')) return false;
  return true;
 }
-function tryAilment(victim,condition,source) {
- if(!canInflictAilment(victim,condition,source))return false;
- const ability=targetAbility(source,victim);
+function tryAilment(victim,condition,source,move=null) {
+ if(!canInflictAilment(victim,condition,source,move))return false;
+ const ability=targetAbility(source,victim,move);
  victim.ailment=condition;
+ if(condition===2)victim.sleepStartedAt=clock;
+ if(condition===5 && activeAbility(source)==='Poison Puppeteer' && !abilityBlocksAilment(victim,6,source,move))victim.puppetUntil=clock+4;
  victim.ailmentSource=source;
  victim.ailmentTime=({2:null,3:5,4:3,5:5,6:6})[condition];
  if(condition===1) {victim.ailmentTime=5;victim.paralysisWindow=0;victim.paralysisPaused=false;}
@@ -6625,7 +7353,10 @@ function tryAilment(victim,condition,source) {
 function tickAbility(actor,dt) {
  const ability=activeAbility(actor);
  const weather=abilityWeather();
- actor.abilityTimer+=dt;
+ actor.abilityElapsed=(actor.abilityElapsed ?? 0)+dt;
+ advancedAbilityTick(actor,dt);
+ updateAbilityStance(actor);
+ actor.abilityTimer=(actor.abilityTimer ?? 0)+dt;
  if(actor.abilityTimer<4) return;
  actor.abilityTimer-=4;
  if(ability==='Speed Boost') applyChanges(actor,[[6,1]]);
@@ -6667,7 +7398,7 @@ function tickStatus(actor,dt) {
   applyChanges(actor,[[3,-1],[5,-1]]);
  }
  if(actor.perishAt && clock>=actor.perishAt){actor.hp=0;return;}
- if(actor.ailment!==2)actor.nightmareAt=0;
+ if(!arenaAsleep(actor))actor.nightmareAt=0;
  for(const [key,fraction] of [['nightmareAt',1/16],['seedAt',1/32],['curseAt',1/16]]) {
   if(!actor[key] || clock<actor[key])continue;
   actor[key]+=1;
@@ -6718,10 +7449,13 @@ function healActor(actor,amount) {
 }
 function useHeldBerry(actor,force=false) {
  const item=heldItems[effectiveHeldItem(actor)];
- if(fieldActors().some(other=>other?.hp>0 && other.friendly!==actor.friendly && activeAbility(other)==='Unnerve')) return;
- if(actor.itemUsed || !item || actor.hp<=0 || (!force && actor.hp>actor.max/2) || (!item.heal && !item.healRatio)) return;
+ if(fieldActors().some(other=>other?.hp>0 && other.friendly!==actor.friendly && ['Unnerve','As One'].includes(activeAbility(other)))) return;
+ if(actor.itemUsed || !item || actor.hp<=0 || (!force && actor.hp>actor.max*(activeAbility(actor)==='Gluttony'?0.75:0.5)) || (!item.heal && !item.healRatio)) return;
  actor.itemUsed=true;
- healActor(actor,(item.heal ?? actor.max*item.healRatio)*(activeAbility(actor)==='Ripen'?2:1));
+ if(activeAbility(actor)==='Unburden'){actor.unburdenUntil=clock+6;announceAbility(actor,'Unburden');}
+ const amount=(item.heal ?? actor.max*item.healRatio)*(activeAbility(actor)==='Ripen'?2:1);
+ healActor(actor,amount);
+ advancedBerryUsed(actor,amount);
 }
 function tickHeldItem(actor,dt) {
  useHeldBerry(actor);
@@ -6744,8 +7478,12 @@ function movePower(move,power,actor,victim) {
  if(move==='Acrobatics' && !actor.heldItem) return power*2;
  if(['Eruption','Water Spout','Dragon Energy'].includes(move)) return Math.max(1,Math.floor(150*actor.hp/actor.max));
  if(move==='Grass Knot' || move==='Low Kick') {
-  const kg=dimensions(victim.name)[1]/10;
+  const kg=arenaWeight(victim,actor);
   return kg<10?20:kg<25?40:kg<50?60:kg<100?80:kg<200?100:120;
+ }
+ if(move==='Heavy Slam' || move==='Heat Crash') {
+  const ratio=arenaWeight(actor)/Math.max(0.1,arenaWeight(victim,actor));
+  return ratio>=5?120:ratio>=4?100:ratio>=3?80:ratio>=2?60:40;
  }
  if(move==='Gyro Ball') return Math.min(150,Math.floor(25*victim.stats[3]/actor.stats[3])+1);
  if(move==='Electro Ball') {
@@ -6762,12 +7500,11 @@ function battleDamage(actor,victim,power,multiplier,physical,element,move,critic
  if(multiplier===0) return 0;
  const masterBonus=actor.friendly!==victim.friendly?
   masterGymDamageMultiplier(actor)*(isRaidBerserk(actor)?2:1)*(isRaidBerserk(victim)?3:1):1;
- if(move==='Seismic Toss' || move==='Night Shade') return scaledBattleDamage(actor.level*masterBonus);
- if(move==='Dragon Rage') return scaledBattleDamage(40*masterBonus);
- if(move==='Sonic Boom') return scaledBattleDamage(20*masterBonus);
+ const fixedDamage=move==='Seismic Toss' || move==='Night Shade'?actor.level:move==='Dragon Rage'?40:move==='Sonic Boom'?20:null;
+ if(fixedDamage!==null)return scaledBattleDamage(fixedDamage*masterBonus*abilityDamageMultiplier(actor,physical,element,move,victim));
  const superEffective=multiplier>1;
  const ability=activeAbility(actor);
- const defender=targetAbility(actor,victim);
+ const defender=targetAbility(actor,victim,move);
  const flags=moveFlags[move] ?? [];
  const weather=abilityWeather();
  const attackStage=defender==='Unaware' ? 1 : stageFactor(actor,physical?2:4);
@@ -6781,6 +7518,8 @@ function battleDamage(actor,victim,power,multiplier,physical,element,move,critic
  if(physical && defender==='Marvel Scale' && victim.ailment) defense*=1.5;
  if(physical && weather==='Snow' && [victim.type,extraTypes[victim.name]].includes('Ice')) defense*=1.5;
  if(!physical && weather==='Sand' && [victim.type,extraTypes[victim.name]].includes('Rock')) defense*=1.5;
+ attack*=abilityDamageMultiplier(actor,physical,element,move,victim);
+ defense*=abilityDefenseMultiplier(victim,defender)*advancedAbilityDefense(victim,actor,physicalDefense,element,move);
  const item=heldItems[effectiveHeldItem(actor)];
  if((item?.element===element && element) || item?.category===(physical?'physical':'special')) multiplier*=item.power;
  if(element && arenaDefenseTypes(actor).includes(element)) multiplier*=ability==='Adaptability'?2:1.5;
@@ -6821,14 +7560,16 @@ function battleDamage(actor,victim,power,multiplier,physical,element,move,critic
     screenTime(victim,physical?'Reflect':'Light Screen')>0)multiplier*=0.5;
  if(critical) multiplier*=ability==='Sniper'?2.25:1.5;
  const raw=Math.floor((Math.floor(2*actor.level/5)+2)*movePower(move,power,actor,victim)*attack/defense/50)+2;
- return scaledBattleDamage(Math.max(1,Math.round(raw*multiplier*masterBonus*(victim.guard>0 && !critical ? 0.5 : 1))));
+ return scaledBattleDamage(Math.max(1,Math.round(raw*multiplier*masterBonus*(victim.guard>0 && !critical && !unseenGuard(actor,move) ? 0.5 : 1))));
 }
-function respondToHit(actor,victim,move,element,physical,dealt) {
+function respondToHit(actor,victim,move,element,physical,dealt,critical=false) {
  const ability=activeAbility(actor);
- const defender=targetAbility(actor,victim);
- const contact=moveFlags[move]?.includes(1);
+ const defender=targetAbility(actor,victim,move);
+ const contact=arenaContact(actor,move);
  if(!dealt) return;
+ advancedAbilityOnHit(actor,victim,move,element,physical,dealt,critical);
  if(contact) {
+  if(['Gooey','Tangling Hair'].includes(defender))actor.gooeyUntil=clock+2;
   if(victim.guard>0) {
    switch(victim.contactShield) {
     case 'poison':tryAilment(actor,5,victim);break;
@@ -6899,7 +7640,7 @@ const selfRecallMoves=new Set([...pivotMoves,'Teleport','Chilly Reception','Bato
 const recallMoveEntryDelay=1;
 const recallMoveReentryCooldown=10;
 function recallWithMove(actor,passStages=false,passSubstitute=0) {
- if(fieldMoveActive('Fairy Lock') || !forceSwitch(actor,null,passStages,passSubstitute,true))return false;
+ if(!forceSwitch(actor,null,passStages,passSubstitute,true))return false;
  actor.recalledWithMove=true;
  return true;
 }
@@ -6919,8 +7660,8 @@ function reserveMatchup(actor) {
   foes.some(foe=>effectiveness(moveCatalog[move][0],foe)>1));
  return 2*actor.hp/actor.max-entryCost*4+(ready?0.35:0)+matchup.reduce((sum,value)=>sum+value,0)/Math.max(1,foes.length);
 }
-function forcedSwitchOptions(victim,defender) {
- if(victim.hp<=0 || defender==='Suction Cups' || victim.ingrainAt)return [];
+function forcedSwitchOptions(victim,defender,voluntary=false) {
+ if(victim.hp<=0 || (!voluntary && ['Suction Cups','Guard Dog'].includes(defender)) || victim.ingrainAt || voluntary && voluntaryRecallBlocked(victim))return [];
  const roster=victim.friendly?allies:enemies;
  const slots=trainerFields?.flat();
  const slot=slots?.find(entry=>entry.actor===victim && !entry.transition);
@@ -6929,7 +7670,7 @@ function forcedSwitchOptions(victim,defender) {
   (!victim.side || victim.side===actor.side) && (!slots || !trainerOnField(actor,slots)));
 }
 function forceSwitch(victim,defender,passStages=false,passSubstitute=0,chooseReserve=false) {
- const reserves=forcedSwitchOptions(victim,defender);
+ const reserves=forcedSwitchOptions(victim,defender,chooseReserve);
  if(!reserves.length)return false;
  const incoming=chooseReserve?reserves.sort((a,b)=>reserveMatchup(b)-reserveMatchup(a))[0]:reserves[Math.floor(Math.random()*reserves.length)];
  if(trainerFields) {
@@ -7015,6 +7756,7 @@ function contactShield(description,reaction) {
   apply:actor=>{actor.guard=2.5;actor.contactShield=reaction;}};
 }
 function exchangeHeldItems(actor,target) {
+ if(target.friendly!==actor.friendly && activeAbility(target)==='Sticky Hold')return false;
  [actor.heldItem,target.heldItem]=[target.heldItem,actor.heldItem];
  [actor.itemUsed,target.itemUsed]=[target.itemUsed,actor.itemUsed];
  [actor.itemTimer,target.itemTimer]=[target.itemTimer,actor.itemTimer];
@@ -7085,11 +7827,12 @@ function callableAttack(move) {
 }
 function callArenaAttack(actor,target,move) {
  if(!target?.hp || !callableAttack(move))return;
+ advancedAbilityAction(actor,move);
  actor.moveLabel=move;
  actor.labelTime=0.95;
  const rules=moveRules(move);
  if(vortexMoves.has(move) || move==='Hyper Beam') {
-  const {shape,warning,radius,range}=arenaMoveGeometry(move,rules);
+  const {shape,warning,radius,range}=arenaMoveGeometry(move,rules,actor);
   const center={x:target.x,y:target.y};
   playSkillSound(move,'warning',shape);
   const line=shape==='beam'?skillLane(actor,target,range,shape,0,move):null;
@@ -7115,7 +7858,7 @@ function positionedAlly(actor) {
   .sort((a,b)=>a.hp/a.max-b.hp/b.max)[0];
 }
 function effectiveHeldItem(actor) {
- return actor.embargoUntil>clock || fieldMoveActive('Magic Room')?null:actor.heldItem;
+ return actor.embargoUntil>clock || fieldMoveActive('Magic Room') || activeAbility(actor)==='Klutz'?null:actor.heldItem;
 }
 function arenaBench(actor) {
  const roster=actor.friendly?allies:enemies;
@@ -7200,11 +7943,11 @@ const additionalStatusMoves={
    if(!actor.substituteHP && actor.hp>cost){actor.hp-=cost;actor.substituteHP=cost;}
   }},
  'Shed Tail':{description:'Spends half of max HP to switch out and give a healthy reserve suited to the matchup a decoy worth one-quarter of the user’s max HP.',
-  score:actor=>actor.hp>actor.max*.5 && !fieldMoveActive('Fairy Lock') && !(actor.trappedUntil>clock) &&
-   forcedSwitchOptions(actor,null).length?48:0,
+  score:actor=>actor.hp>actor.max*.5 && !voluntaryRecallBlocked(actor) &&
+   forcedSwitchOptions(actor,null,true).length?48:0,
   apply:actor=>{
    const cost=Math.max(1,Math.floor(actor.max/2));
-   if(actor.hp>cost && !fieldMoveActive('Fairy Lock') && !(actor.trappedUntil>clock) &&
+   if(actor.hp>cost && !voluntaryRecallBlocked(actor) &&
       recallWithMove(actor,false,Math.max(1,Math.floor(actor.max/4))))actor.hp-=cost;
   }},
  'Revival Blessing':{description:'Once per battle, revives a knocked-out reserve with half its max HP.',
@@ -7264,16 +8007,16 @@ const additionalStatusMoves={
   Electric:'Thunderbolt',Grass:'Energy Ball',Psychic:'Psychic',Fairy:'Moonblast',
  })[battleTerrain] ?? 'Tri Attack'),
  'Sleep Talk':repeatAttackMove('While asleep, calls the first eligible damaging move in the user’s moveset.',
-  actor=>actor.ailment===2?actor.moves.find(callableAttack):null),
+  actor=>arenaAsleep(actor)?actor.moves.find(callableAttack):null),
 
  'Destiny Bond':timedStatus('For 4 seconds, a direct attack that knocks out the user also knocks out its attacker.','destinyUntil',4,true),
  Grudge:timedStatus('For 4 seconds, a move that knocks out the user gets an extra 12 seconds of cooldown.','grudgeUntil',4,true),
  'Perish Song':{description:'All active Pokémon that hear the song faint after 8 seconds unless they switch out.',
-  score:actor=>forcedSwitchOptions(actor,null).length && !actor.perishAt?48:0,
+  score:actor=>forcedSwitchOptions(actor,null,true).length && !actor.perishAt?48:0,
   apply:()=>{for(const member of fieldActors())if(member?.hp>0 && !member.masterRaidPhase && activeAbility(member)!=='Soundproof' && !member.perishAt)member.perishAt=clock+8;}},
  Nightmare:{description:'While the target stays asleep, deals 1/16 of its max HP per second.',
-  score:(_,target)=>target.ailment===2 && !target.nightmareAt?55:0,
-  apply:(_,target)=>{if(target.ailment===2)target.nightmareAt=clock+1;}},
+  score:(_,target)=>arenaAsleep(target) && !target.nightmareAt?55:0,
+  apply:(_,target)=>{if(arenaAsleep(target))target.nightmareAt=clock+1;}},
  'Leech Seed':{description:'Drains 1/32 of the target’s max HP per second until it switches. Grass Pokémon are immune.',
   score:(_,target)=>!target.seedAt && !arenaDefenseTypes(target).includes('Grass')?45:0,
   apply:(_,target)=>{if(!arenaDefenseTypes(target).includes('Grass'))target.seedAt=clock+1;}},
@@ -7415,8 +8158,8 @@ const additionalStatusMoves={
   apply:(actor,target)=>{if(target.ability)for(const ally of fieldActors())if(ally?.hp>0 && ally.friendly===actor.friendly)ally.ability=target.ability;}},
  Teleport:{description:'Recalls the user and sends out a healthy reserve suited to the matchup.',
   score:(actor,target)=>{
-   if(actor.trappedUntil>clock || actor.octolockUntil>clock || fieldMoveActive('Fairy Lock'))return 0;
-   const reserves=forcedSwitchOptions(actor,null);
+   if(voluntaryRecallBlocked(actor))return 0;
+   const reserves=forcedSwitchOptions(actor,null,true);
    if(!reserves.length)return 0;
    const danger=pendingCasts.some(cast=>cast.actor.friendly!==actor.friendly &&
     inSkill(actor,cast.center,cast.radius,cast.line,cast.roaming));
@@ -7424,9 +8167,9 @@ const additionalStatusMoves={
    const health=actor.hp/actor.max;
    return health<.35 || danger || gain>1.4 ? Math.max(0,35+(1-health)*20+gain*10+(danger?20:0)):0;
   },
-  apply:actor=>{if(!(actor.trappedUntil>clock))recallWithMove(actor);}},
+  apply:actor=>{recallWithMove(actor);}},
  'Chilly Reception':{description:'Starts snow and switches the user to a healthy reserve suited to the matchup.',
-  score:actor=>forcedSwitchOptions(actor,null).length && (battleWeather!=='Snow' || actor.hp<actor.max*.35)?48:0,
+  score:actor=>forcedSwitchOptions(actor,null,true).length && (battleWeather!=='Snow' || actor.hp<actor.max*.35)?48:0,
   apply:actor=>{setWeather('Snow');recallWithMove(actor);}},
 
  'Heal Pulse':allyHealingMove(50*battleDamageScale),
@@ -7486,8 +8229,9 @@ function isBackHit(origin,target) {
  return distance>0 && (dx*Math.sin(heading)+dy*Math.cos(heading))/distance<=-Math.SQRT1_2+1e-9;
 }
 function tacticalMoveScore(actor,target,move,rules,gap) {
- const [type,power,accuracy,priority,status,drain,recoil]=moveCatalog[move];
- const defender=targetAbility(actor,target);
+ const [,power,accuracy,priority,status,drain,recoil]=moveCatalog[move];
+ const {element:type}=arenaAttackElement(actor,move);
+ const defender=targetAbility(actor,target,move);
  const health=actor.hp/actor.max;
  const ally=rules.scope==='ally';
  const recipients=ally?supportRecipients(actor,move,rules):[target];
@@ -7496,8 +8240,9 @@ function tacticalMoveScore(actor,target,move,rules,gap) {
   return total+Math.abs(clamp(current+change,-battleStageCap,battleStageCap)-current)/(1+Math.abs(current)*0.35);
  },0)));
  if(status) {
+  if(!ally && (defender==='Good as Gold' || controlAbilityBlocks(target,move,actor)))return 0;
   if(Object.hasOwn(additionalStatusMoves,move))return additionalStatusMoves[move].score(actor,target);
-  if(move==='Baton Pass')return actor.stages.some(stage=>stage>0) && forcedSwitchOptions(actor,null).length?55:0;
+  if(move==='Baton Pass')return actor.stages.some(stage=>stage>0) && forcedSwitchOptions(actor,null,true).length?55:0;
   if(move==='Belly Drum')return actor.hp>Math.floor(actor.max/2) && actor.stages[2]<battleStageCap?55:0;
   if(forcedSwitchMoves.has(move))return forcedSwitchOptions(target,defender).length && !(move==='Roar' && defender==='Soundproof')?45:0;
   const healing=actor.healBlockUntil>clock?0:Math.min(1-health,skillHealingPercent(move,rules)/100);
@@ -7512,7 +8257,7 @@ function tacticalMoveScore(actor,target,move,rules,gap) {
     const threats=foe.moves.flatMap((attack,slot)=>{
      const rule=moveRules(attack);
      if(rule.category!==category || foe.moveTimers[slot]>2 ||
-        distance>arenaMoveGeometry(attack,rule).range+150)return [];
+        distance>arenaMoveGeometry(attack,rule,foe).range+150)return [];
      return [battleDamage(foe,member,moveCatalog[attack][1],effectiveness(moveCatalog[attack][0],member),
       category===2,moveCatalog[attack][0],attack)];
     });
@@ -7530,18 +8275,20 @@ function tacticalMoveScore(actor,target,move,rules,gap) {
    (ailment?30:0)+(field?(weather?55:18):0))*(accuracy ?? 100)/100;
  }
  const flags=moveFlags[move] ?? [];
- let multiplier=effectiveness(type,target);
- if(!multiplier && activeAbility(actor)==='Scrappy' && ['Normal','Fighting'].includes(type) &&
+ let multiplier=arenaAbilityMatchup(actor,target,move,type);
+ if(!multiplier && ['Scrappy',"Mind's Eye"].includes(activeAbility(actor)) && ['Normal','Fighting'].includes(type) &&
     [target.type,extraTypes[target.name]].includes('Ghost')) {
   const other=[target.type,extraTypes[target.name]].find(value=>value && value!=='Ghost');
   multiplier=typeChart[type]?.[other] ?? 1;
  }
- if(!multiplier || (defender==='Wonder Guard' && multiplier<=1) ||
+ if(!multiplier || priorityWardBlocks(actor,target,move) || (defender==='Wonder Guard' && multiplier<=1) ||
     abilityAbsorptions[defender]===type || (abilityImmunities[defender]?.[0]===type && !(type==='Ground' && defender==='Levitate' && fieldMoveActive('Gravity'))) ||
     (defender==='Wind Rider' && windMoves.has(move)) ||
     (defender==='Soundproof' && flags.includes(9)) || (defender==='Bulletproof' && flags.includes(18)) ||
     (battleTerrain==='Psychic' && priority>0 && isGrounded(target))) return 0;
- const damage=battleDamage(actor,target,power,multiplier,rules.category!==3,type,move)*(isBackHit(actor,target)?1.5:1)*(sacrificeProfiles.get(move)?.damage ?? 1);
+ const expectedHits=variableHitMoves.has(move)?(activeAbility(actor)==='Skill Link'?5:3.125):fixedHitMoves[move] ??
+  (activeAbility(actor)==='Parental Bond' && rules.scope==='single' && !rules.radius && move!=='Normal Attack' && !pivotMoves.has(move)?1.25:1);
+ const damage=battleDamage(actor,target,power,multiplier,rules.category!==3,type,move)*expectedHits*(isBackHit(actor,target)?1.5:1)*(sacrificeProfiles.get(move)?.damage ?? 1);
  const sacrifice=sacrificeProfiles.has(move);
  if(sacrifice && (fieldActors().some(member=>member?.hp>0 && activeAbility(member)==='Damp') ||
     health>=0.4))return 0;
@@ -7551,7 +8298,7 @@ function tacticalMoveScore(actor,target,move,rules,gap) {
   (damage>=target.hp?35:0)+Math.min(1-health,drain)*20-recoil*15+
   (!target.ailment && rules.ailment ? rules.ailmentChance*0.12 : 0)+
   (pivotMoves.has(move) && !recallMoveWait(actor,move) && !fieldMoveActive('Fairy Lock')?
-   Math.max(0,...forcedSwitchOptions(actor,null).map(reserve=>12*(reserveMatchup(reserve)-reserveMatchup(actor)))):0))*(accuracy ?? 100)/100;
+   Math.max(0,...forcedSwitchOptions(actor,null,true).map(reserve=>12*(reserveMatchup(reserve)-reserveMatchup(actor)))):0))*(accuracy ?? 100)/100;
 }
 function moveActor(actor,dx,dy,remaining,dt,run,navigationTarget,escape=false) {
  if(actor.ingrainAt)return;
@@ -7560,7 +8307,7 @@ function moveActor(actor,dx,dy,remaining,dt,run,navigationTarget,escape=false) {
   const weather=abilityWeather();
   const fastWeather=weather && weatherPace[ability]===weather && ability!=='Solar Power';
   const quickFeet=ability==='Quick Feet' && actor.ailment;
-  const pace=actor.pace*stageFactor(actor,6)*(fastWeather?2:1)*(quickFeet?1.5:1);
+  const pace=actor.pace*stageFactor(actor,6)*(fastWeather?2:1)*(quickFeet?1.5:1)*abilityMovementMultiplier(actor);
   const gaitSpeed=actor.gait==='run' ? 1.22 : actor.gait==='walk' ? 0.82 : 1;
   const slowed=pendingCasts.some(cast=>cast.actor.hp>0 && cast.actor.friendly!==actor.friendly &&
    sacrificeProfiles.has(cast.move) && inSkill(actor,cast.center,cast.radius,null));
@@ -7696,7 +8443,7 @@ function dodgeSkill(actor,dt) {
  if(!hazard)return false;
  const center=hazard.line?nearestLinePoint(actor,hazard.line):hazard.roaming?roamingCenter(hazard,0.25):hazard.center;
  const heading=Math.atan2(actor.y-center.y,actor.x-center.x);
- const pace=actor.pace*stageFactor(actor,6)*1.22;
+ const pace=actor.pace*stageFactor(actor,6)*1.22*abilityMovementMultiplier(actor);
  const time=impact(hazard);
  let best=null;
  for(const turn of [0,1,-1,2,-2,3,-3,4]) {
@@ -7788,7 +8535,7 @@ function readyKnockout(actor,target,gap) {
 }
 function targetPreference(actor,opponent,gap) {
  if(actor.manualTarget && actor.manualTarget===battleActorId(opponent))return -50000;
- if(opponent.friendly!==actor.friendly && (opponent.redirectUntil>clock ||
+ if(opponent.friendly!==actor.friendly && !redirectBypassAbilities.has(activeAbility(actor)) && (opponent.redirectUntil>clock ||
   opponent.powderRedirectUntil>clock && !arenaDefenseTypes(actor).includes('Grass') && activeAbility(actor)!=='Overcoat'))return -1e6;
  const enemyDepth=opponent.friendly?canvas.width-opponent.x:opponent.x;
  switch(actor.ai?.target) {
@@ -7810,7 +8557,7 @@ function targetPreference(actor,opponent,gap) {
    }
    return -best;
   }
-  default:return gap;
+  default:return gap+(opponent.illusionName?35:0);
  }
 }
 function recallMoveWait(actor,move) {
@@ -7933,7 +8680,7 @@ function gambitChoice(actor,opponents,defaultTarget) {
     if(actor.moveTimers[slot]>0 || moveRestricted(actor,move))continue;
     const rules=moveRules(move);
     if(defaultTarget===actor && !canPrepareWithoutOpponent(move,rules))continue;
-    const {shape,selfCentered,range}=arenaMoveGeometry(move,rules);
+    const {shape,selfCentered,range}=arenaMoveGeometry(move,rules,actor);
     if(!gambitMatches(rule,subject.target,move,subject.distance))continue;
     if(moveCatalog[move][4] && rules.ailment && rules.scope!=='ally' &&
        !canInflictAilment(target,rules.ailment,actor))continue;
@@ -7953,7 +8700,7 @@ function anticipateAttack(actor,target,gap,dt) {
  const threat=target.moves.find((move,slot)=>{
   const timer=target.moveTimers[slot];
   if(!(timer>0 && timer<=0.5) || moveRestricted(target,move))return false;
-  const geometry=arenaMoveGeometry(move,moveRules(move));
+  const geometry=arenaMoveGeometry(move,moveRules(move),target);
   return (moveCatalog[move][1]>=100 || aiControlMoves.has(move)) &&
    gap<=geometry.range+12 && gap>=Math.max(16,geometry.range-42);
  });
@@ -7971,7 +8718,7 @@ function coordinatedMoveWeight(actor,target,move,rules) {
   ['wave','beam','cone','zone'].includes(skillShape(attack))));
  if(aiControlMoves.has(move) && !target.ailment && hasFollowUp)return 1.4;
  if(aiEntryTraps.has(move) && hasFollowUp && forcedSwitchOptions(target,null).length)return 1.2;
- const {shape,warning}=arenaMoveGeometry(move,rules);
+ const {shape,warning}=arenaMoveGeometry(move,rules,actor);
  if(moveCatalog[move][4] || (!rules.radius && !['wave','beam','cone'].includes(shape)))return 1;
  const overlap=pendingCasts.some(cast=>cast.actor!==actor && cast.actor.friendly===actor.friendly &&
   (cast.radius>=50 || cast.line?.halfWidth || cast.line?.halfAngle) && hazardHits(target,cast));
@@ -7979,8 +8726,8 @@ function coordinatedMoveWeight(actor,target,move,rules) {
  return (overlap?0.42:1)*(pinned?1.4:1);
 }
 function pivotMoveWeight(actor,target,move) {
- if(!selfRecallMoves.has(move) || recallMoveWait(actor,move)>0 || fieldMoveActive('Fairy Lock'))return 1;
- const reserves=forcedSwitchOptions(actor,null).filter(reserve=>reserve.hp>=reserve.max*.45 && reserveMatchup(reserve)>-50);
+ if(!selfRecallMoves.has(move) || recallMoveWait(actor,move)>0 || voluntaryRecallBlocked(actor))return 1;
+ const reserves=forcedSwitchOptions(actor,null,true).filter(reserve=>reserve.hp>=reserve.max*.45 && reserveMatchup(reserve)>-50);
  const incomingThreat=member=>Math.max(1,...target.moves.filter(attack=>!moveCatalog[attack][4])
   .map(attack=>effectiveness(moveCatalog[attack][0],member)));
  const threat=incomingThreat(actor);
@@ -8010,7 +8757,7 @@ function act(actor, opponents, dt) {
  }
  actor.charge=Math.max(0,actor.charge-dt);
  if(actor.attack<=0 && dodgeSkill(actor,dt) || masterPressure===0 && escapeCrowding(actor,opponents,dt))return;
- if(actor.ailment===6)opponents=[...opponents,...activeTeammates(actor).filter(member=>member!==actor)];
+ if(arenaConfused(actor))opponents=[...opponents,...activeTeammates(actor).filter(member=>member!==actor)];
  let target = null;
  let gap = Infinity;
  let distance = 0;
@@ -8049,6 +8796,10 @@ function act(actor, opponents, dt) {
  if(gambit?.hold)return;
  if(gambit)({target,distance,gap}=gambit);
  actor.committedTarget=preparing?null:battleActorId(target);
+ if(activeAbility(actor)==='Truant' && (actor.abilityElapsed ?? 0)%7.5>=6) {
+  if(distance>1 && gap>24)moveActor(actor,(target.x-actor.x)/distance,(target.y-actor.y)/distance,gap-24,dt,false,target);
+  return;
+ }
  if(actor.attack>0 || pendingCasts.some(cast=>cast.actor===actor && !cast.flight &&
    (cast.shape==='dash' || cast.shape==='landing' || sacrificeProfiles.has(cast.move)))) return;
  if(distance>1) {
@@ -8076,7 +8827,7 @@ function act(actor, opponents, dt) {
   if(moveRestricted(actor,move))continue;
   const rules=moveRules(move);
   if(preparing && !canPrepareWithoutOpponent(move,rules))continue;
-  const {shape,selfCentered,range,warning}=arenaMoveGeometry(move,rules);
+  const {shape,selfCentered,range,warning}=arenaMoveGeometry(move,rules,actor);
   const remaining=rules.scope==='ally' ? 0 : Math.max(0,gap-range);
   const score=tacticalMoveScore(actor,target,move,rules,gap);
   if(score>0 && !moveCatalog[move][4]) {
@@ -8239,7 +8990,8 @@ function act(actor, opponents, dt) {
  }
  const basic=move==='Normal Attack';
  if(basic) {
-  actor.normalAttackAt=clock+(actor.masterGymCombatant || isRaidBerserk(actor)?0.25:0.5);
+  actor.normalAttackAt=clock+(actor.masterGymCombatant || isRaidBerserk(actor)?0.25:0.5)/
+   (activeAbility(actor)==='Unburden' && actor.unburdenUntil>clock?1.3:1)/(highestAbilityStat(actor)===3?1.3:1);
  }
  else beginMoveCooldown(actor,slot);
  actor.firstAction=!actor.actedSinceEntry;
@@ -8250,8 +9002,11 @@ function act(actor, opponents, dt) {
   actor.hp=Math.max(0,actor.hp-Math.max(1,Math.floor(actor.max/16)));
   return;
  }
- if(!basic)actor.charge=actor.cooldown*(isRaidBerserk(actor)?0.5:1)*(priority>0 ? 0.82 : power>=100 ? 1.18 : 1);
- if(actor.ailment===6 && !status && Math.random()<1/3) {
+ prepareAbilityMove(actor,move);
+ advancedAbilityAction(actor,move);
+ if(!basic)actor.charge=actor.cooldown*(isRaidBerserk(actor)?0.5:1)*(priority>0 ? 0.82 : power>=100 ? 1.18 : 1)*
+  (status && activeAbility(actor)==='Prankster'?0.75:1)*abilityActionRate(actor,move);
+ if(arenaConfused(actor) && !status && Math.random()<1/3) {
   const damage=Math.min(actor.hp,battleDamage(actor,actor,40,1,true,null,null));
   actor.hp-=damage;
   actor.moveLabel='Confusion';
@@ -8264,6 +9019,8 @@ function act(actor, opponents, dt) {
  }
  actor.attackStyle=rules.scope!=='ally' && rules.range<=25 ? 'lunge' : 'attack';
  actor.attackSpan=(pmdMotion(actor,actor.attackStyle)?.duration ?? 21.6)/(isRaidBerserk(actor)?120:60);
+ if(status && activeAbility(actor)==='Prankster')actor.attackSpan=Math.max(0.25,actor.attackSpan*0.75);
+ actor.attackSpan=Math.max(0.25,actor.attackSpan*abilityActionRate(actor,move));
  actor.attack=actor.attackSpan;
  if(slot>=0)actor.moveCooldownStarts[slot]=clock+Math.max(isRaidBerserk(actor)?0.29:0.58,actor.attackSpan);
  if(!basic)actor.exhaustionAnimationUntil=Math.max(actor.exhaustionAnimationUntil ?? 0,clock+actor.attackSpan);
@@ -8291,6 +9048,7 @@ function act(actor, opponents, dt) {
   return;
  }
  if(rules.scope==='ally' || Object.hasOwn(hazardCaps,move) || move==='Court Change') {
+  if(Object.hasOwn(hazardCaps,move) && reflectHazard(actor,move))return;
   if(Object.hasOwn(additionalStatusMoves,move)) {
    additionalStatusMoves[move].apply(actor,target);
    playSkillSound(move,'release');
@@ -8311,7 +9069,7 @@ function act(actor, opponents, dt) {
   if(thief && canSteal)thief.snatchUntil=0;
   for(const recipient of thief && canSteal?[thief]:recipients) {
    applyChanges(recipient,rules.changes,actor);
-   if(move==='Tailwind') {applyChanges(recipient,[[6,2]]);if(activeAbility(recipient)==='Wind Rider') applyChanges(recipient,[[2,1]]);}
+   if(move==='Tailwind') {applyChanges(recipient,[[6,2]]);if(activeAbility(recipient)==='Wind Rider') applyChanges(recipient,[[2,1]]);if(activeAbility(recipient)==='Wind Power')recipient.electricChargeUntil=clock+6;}
    const healing=skillHealingPercent(move,rules);
    if(healing) healActor(recipient,Math.round(recipient.max*healing/100));
    const guard=guardMoves.has(move);
@@ -8322,12 +9080,12 @@ function act(actor, opponents, dt) {
  }
  const center=selfCentered ? actor : target;
  if(shape || rules.radius) {
-  const {warning,radius}=arenaMoveGeometry(move,rules);
+  const {warning,radius}=arenaMoveGeometry(move,rules,actor);
   const halfAngle=shape==='cone'?Math.PI/7:shape==='arc'?Math.PI/3:0;
   const line=shape && shape!=='landing' && shape!=='vortex' ? skillLane(actor,target,range,shape,halfAngle,move) : null;
   const ground={x:clamp(center.x,28,canvas.width-28),y:clamp(center.y,28,canvas.height-28)};
   playSkillSound(move,'warning',shape);
-  pendingCasts.push({actor,move,rules,shape,line,center:ground,radius,warning,remaining:warning,started:clock,tracksExhaustion:!basic,cooldownSlot:slot,friendlyFire:actor.ailment===6});
+  pendingCasts.push({actor,move,rules,shape,line,center:ground,radius,warning,remaining:warning,started:clock,tracksExhaustion:!basic,cooldownSlot:slot,friendlyFire:arenaConfused(actor)});
   return;
  }
  resolveOffensiveMove(actor,move,rules,target,[target]);
@@ -8381,17 +9139,29 @@ function inSkill(actor,center,radius,line,ignoreCover=false) {
  const dy=actor.y-point.y;
  return Math.hypot(dx,dy)<=(line?.halfAngle ? 0 : line?.radius ?? radius)+hitboxRadius(actor,dx,dy);
 }
-function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflected=false) {
- let [element,power,accuracy,priority,status,drain,recoil]=moveCatalog[move];
- if(!status && (actor.electrifyUntil>clock || element==='Normal' && fieldMoveActive('Ion Deluge'))) {
-  element='Electric';
-  actor.electrifyUntil=0;
+function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflected=false,strike=null) {
+ let [,power,accuracy,priority,status,drain,recoil]=moveCatalog[move];
+ if(!strike) {
+  prepareAbilityMove(actor,move);
+  const sequence=arenaHitSequence(actor,move,rules,cast);
+  if(sequence.length>1) {
+   const context={state:{connected:false},element:arenaAttackElement(actor,move).element,locked:actor.lockOnUntil>clock,
+    focused:actor.laserUntil>clock,helped:actor.helpingHandUntil>clock};
+   for(let i=0;i<sequence.length;i++) {
+    if(actor.hp<=0 || !opponents.some(victim=>victim.hp>0) || i>0 && !context.state.connected)break;
+    resolveOffensiveMove(actor,move,rules,center,opponents.filter(victim=>victim.hp>0),cast,reflected,
+     {...context,index:i,scale:sequence[i],secondary:sequence[i]===1});
+   }
+   if(!status){actor.electrifyUntil=0;if(context.element==='Electric')actor.electricChargeUntil=0;}
+   return;
+  }
  }
- const locked=actor.lockOnUntil>clock;
- const focused=!status && actor.laserUntil>clock;
+ let element=strike?.element ?? arenaAttackElement(actor,move).element;
+ const locked=strike?.locked ?? actor.lockOnUntil>clock;
+ const focused=!status && (strike?.focused ?? actor.laserUntil>clock);
  if(locked)actor.lockOnUntil=0;
  if(focused)actor.laserUntil=0;
- const helped=!status && actor.helpingHandUntil>clock;
+ const helped=!status && (strike?.helped ?? actor.helpingHandUntil>clock);
  if(helped)actor.helpingHandUntil=0;
  const sacrifice=sacrificeProfiles.has(move);
  if(sacrifice && fieldActors().some(member=>member?.hp>0 && activeAbility(member)==='Damp'))return;
@@ -8428,19 +9198,23 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
  const victims=cast?.flight ? opponents : line || radius ?
   opponents.filter(other=>other.hp>0 && inSkill(other,center,radius,line)) : opponents;
  for(const victim of victims) {
+  if(!status && actor.friendly===victim.friendly && targetAbility(actor,victim)==='Telepathy')continue;
   if(status && victim.friendly!==actor.friendly && victim.craftyShieldUntil>clock)continue;
   if(!cast?.roaming && rockIntersection(actor.x,actor.y,victim.x,victim.y)<1) {
    effect(victim,'Blocked',1,{impactOnly:true});
    continue;
   }
   const attacker=activeAbility(actor);
-  const defender=targetAbility(actor,victim);
-  let multiplier=status || move==='Struggle' ? 1 : effectiveness(element,victim);
-  if(!status && attacker==='Scrappy' && ['Normal','Fighting'].includes(element) &&
+  const defender=targetAbility(actor,victim,move);
+  let multiplier=status || move==='Struggle' ? 1 : arenaAbilityMatchup(actor,victim,move,element);
+  if(!status && ['Scrappy',"Mind's Eye"].includes(attacker) && ['Normal','Fighting'].includes(element) &&
     [victim.type,extraTypes[victim.name]].includes('Ghost')) {
    const row=typeChart[element] ?? {};
    const other=[victim.type,extraTypes[victim.name]].find(type=>type && type!=='Ghost');
    multiplier=row[other] ?? 1;
+  }
+  if(priorityWardBlocks(actor,victim,move) || status && (defender==='Good as Gold' || controlAbilityBlocks(victim,move,actor))) {
+   effect(victim,'Ability blocked',1,{impactOnly:true});continue;
   }
   if(!status && move!=='Struggle' && defender==='Wonder Guard' && multiplier<=1) multiplier=0;
   if(battleTerrain==='Psychic' && priority>0 && isGrounded(victim)) multiplier=0;
@@ -8450,7 +9224,11 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
   if(sacrificeProfiles.has(move) &&
    [attacker,defender].includes('Damp')) multiplier=0;
   if(!multiplier) {effect(victim,0,0,{impactOnly:Boolean(cast)});continue;}
-  let hitChance=accuracy*stageFactor(actor,7)/stageFactor(victim,8);
+  let hitChance=accuracy*stageFactor(actor,7)/(attacker==="Mind's Eye"?1:stageFactor(victim,8));
+  if(attacker==='Illuminate')hitChance*=1.2;
+  if(actor.dazzledUntil>clock)hitChance*=0.8;
+  if(defender==='Tangled Feet' && arenaConfused(victim))hitChance/=1.5;
+  if(status && defender==='Wonder Skin')hitChance=Math.min(50,hitChance);
   if(fieldMoveActive('Gravity'))hitChance*=5/3;
   if(attacker==='Compound Eyes') hitChance*=1.3;
   if(attacker==='Victory Star') hitChance*=1.1;
@@ -8461,7 +9239,10 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
     (weather==='Snow' && move==='Blizzard'))hitChance=100;
   if(weather==='Sun' && ['Thunder','Hurricane'].includes(move))hitChance*=50/70;
  if(cast?.roaming || locked || victim.liftedUntil>clock || moveReferences[move]?.[4]===null || attacker==='No Guard' || defender==='No Guard') hitChance=100;
-  if(Math.random()*100>=Math.min(100,hitChance)) {effect(victim,'Miss',1,{impactOnly:Boolean(cast)});continue;}
+  if(!(strike?.index>0 && (!separateAccuracyMoves.has(move) || attacker==='Skill Link')) && Math.random()*100>=Math.min(100,hitChance)) {
+   if(strike)strike.state.connected=false;
+   missedAbilityMove(actor,move);effect(victim,'Miss',1,{impactOnly:Boolean(cast)});continue;
+  }
   const absorbed=!status && move!=='Struggle' && abilityAbsorptions[defender]===element;
   const immunity=!status && move!=='Struggle' && !(defender==='Levitate' && fieldMoveActive('Gravity')) && abilityImmunities[defender];
   const windImmune=!status && defender==='Wind Rider' && windMoves.has(move);
@@ -8473,6 +9254,7 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
    effect(victim,0,0,{impactOnly:Boolean(cast)});
    continue;
   }
+  if(strike)strike.state.connected=true;
   if(screenBreakers.has(move) && actor.friendly!==victim.friendly &&
      [...screenMoves].some(screen=>screenTime(victim,screen)>0)) {
    clearScreens(victim);
@@ -8483,23 +9265,31 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
    effect(victim,victim.substituteHP?'Substitute':'Decoy broke',1,{impactOnly:true});
    continue;
   }
-  if(status && !reflected && victim.magicCoatUntil>clock && victim.friendly!==actor.friendly){
+  if(status && !reflected && victim.friendly!==actor.friendly && (victim.magicCoatUntil>clock || magicBounceReady(victim,actor,move))){
+   if(magicBounceReady(victim,actor,move)){victim.magicBounceReadyAt=clock+8;announceAbility(victim,'Magic Bounce');}
    victim.magicCoatUntil=0;
    resolveOffensiveMove(victim,move,{...rules,radius:0},actor,[actor],null,true);
    continue;
   }
+  if(!status && defender==='Disguise' && !victim.disguiseBroken) {
+   victim.disguiseBroken=true;victim.disguiseBrokenAt=clock;
+   announceAbility(victim,'Disguise shattered');effect(victim,'Disguise',1,{impactOnly:true});continue;
+  }
+  if(!status && rules.category!==3 && defender==='Ice Face' && !victim.iceFaceBroken) {
+   victim.iceFaceBroken=true;victim.iceFaceBrokenAt=clock;announceAbility(victim,'Ice Face broke');effect(victim,'Ice Face',1,{impactOnly:true});continue;
+  }
   const beforeDebuff=move==='Parting Shot'?[...victim.stages]:null;
-  const wasAsleep=victim.ailment===2;
+  const wasAsleep=arenaAsleep(victim);
   const effectScale=attacker==='Serene Grace'?2:1;
-  const secondaryAllowed=status || defender!=='Shield Dust' && attacker!=='Sheer Force';
+  const secondaryAllowed=(strike?.secondary ?? true) && (status || defender!=='Shield Dust' && attacker!=='Sheer Force');
   if(secondaryAllowed && rules.changes.length && (status || Math.random()*100<rules.statChance*effectScale)) {
    for(const change of rules.changes) {
     const recipient=change[1]>0 && !status ? actor : victim;
-    applyChanges(recipient,[change],actor);
+    applyChanges(recipient,[change],actor,false,move);
    }
   }
   if(secondaryAllowed && !Object.hasOwn(additionalStatusMoves,move) && (status || Math.random()*100<rules.ailmentChance*effectScale))
-   tryAilment(victim,rules.ailment,actor);
+   tryAilment(victim,rules.ailment,actor,move);
   if(secondaryAllowed && defender!=='Inner Focus' && Math.random()*100<(moveExtras[move]?.[1] ?? 0)*effectScale)
    victim.flinch=0.5;
   if(status) {
@@ -8518,8 +9308,8 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
   const boosted=attacker==='Flash Fire' && actor.flashFire && element==='Fire' ? multiplier*1.5 : multiplier;
   const baseDamage=battleDamage(actor,victim,power,boosted,rules.category!==3,element,move,critical)*(cast?.quakeRing===2?0.25:cast?.quakeRing===1?0.5:1);
   const backHit=actor.friendly!==victim.friendly && isBackHit(cast?.line ?? (cast?.roaming?center:actor),victim);
-  const damage=Math.round(baseDamage*(backHit?1.5:1)*(masterPressure>=2?1.35:1)*(move==='Hyper Beam'?2:1)*(sacrificeProfiles.get(move)?.damage ?? 1)*(wasAsleep?1.25:1)*(helped?1.5:1));
-  const mitigated=actor.friendly!==victim.friendly?defendDamage(victim,damage,clock):damage;
+  const damage=Math.round(baseDamage*(strike?.scale ?? 1)*(backHit?1.5:1)*(masterPressure>=2?1.35:1)*(move==='Hyper Beam'?2:1)*(sacrificeProfiles.get(move)?.damage ?? 1)*(wasAsleep?1.25:1)*(helped?1.5:1));
+  const mitigated=actor.friendly!==victim.friendly && !unseenGuard(actor,move)?defendDamage(victim,damage,clock):damage;
   const dealt=Math.min(victim.hp===victim.max && defender==='Sturdy' && victim.hp>1?victim.hp-1:victim.hp,mitigated);
   victim.hp-=dealt;
   if(victim.hp<=0 && dealt>0) {
@@ -8530,7 +9320,7 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
   if(dealt>0 && wasAsleep)clearArenaAilment(victim);
   if(dealt>0) playSkillSound(move,'impact');
   recordOpponentDamage(actor,victim,dealt);
-  respondToHit(actor,victim,move,element,rules.category!==3,dealt);
+  respondToHit(actor,victim,move,element,rules.category!==3,dealt,critical);
   useHeldBerry(victim);
   if(effectiveHeldItem(actor)==='Shell Bell' && dealt>0) healActor(actor,dealt/8);
   victim.hitSpan=(pmdMotion(victim,'hit')?.duration ?? 16.8)/60;
@@ -8542,7 +9332,7 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
   victim.hitY=impactDistance ? dy/impactDistance : 0;
   const drainChange=Math.round(dealt*drain*(defender==='Liquid Ooze'?1:masterRecoveryScale()))*(defender==='Liquid Ooze'?-1:1);
   if(actor.hp>0) actor.hp=Math.max(0,Math.min(actor.max,actor.hp+(actor.healBlockUntil>clock?Math.min(0,drainChange):drainChange)-
-   (attacker==='Magic Guard'?0:Math.round(dealt*recoil))));
+   (['Magic Guard','Rock Head'].includes(attacker)?0:Math.round(dealt*recoil))));
   if(dealt>0 && pivotMoves.has(move))pivot=true;
   if(dealt>0 && forcedSwitchMoves.has(move))forceSwitch(victim,defender);
   effect(victim,dealt,multiplier,{impactOnly:Boolean(cast),backHit});
@@ -8551,6 +9341,7 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
  if(pivot && !recallMoveWait(actor,move))recallWithMove(actor);
  for(const rock of pillars)damagePillar(rock,actor,power);
  if(sacrifice)actor.hp=0;
+ if(!strike && !status){actor.electrifyUntil=0;if(element==='Electric')actor.electricChargeUntil=0;}
 }
 function tickVortex(area,field,dt) {
  const step=Math.min(dt,area.remaining);
@@ -8603,7 +9394,7 @@ function moveExhaustionCost(actor,slot) {
 }
 function addMoveExhaustion(actor,slot,animation,overrideCost) {
  if(actor.side==='boss')return;
- actor.exhaustion=Math.min(100,(actor.exhaustion ?? 0)+(overrideCost ?? moveExhaustionCost(actor,slot))*(actor.masterGymCombatant?0.5:1));
+ actor.exhaustion=Math.min(100,(actor.exhaustion ?? 0)+(overrideCost ?? moveExhaustionCost(actor,slot))*pressureMultiplier(actor)*(actor.masterGymCombatant?0.5:1));
  actor.exhaustionAnimationUntil=Math.max(actor.exhaustionAnimationUntil ?? 0,clock+animation);
 }
 function tickExhaustion(actor,dt) {
@@ -8861,7 +9652,7 @@ function sendGymReserve(outgoing,reserve,reason) {
  noteGymSwitch(reserve,reason);
 }
 function considerGymSwitch() {
- if(!selectedGym || blocksExhaustionRecall(activeEnemy) || fieldMoveActive('Fairy Lock') || activeEnemy?.ingrainAt || activeEnemy?.trappedUntil>clock || activeEnemy?.octolockUntil>clock || enemySwitch || playerSwitch || !(activePlayer?.hp>0) || !(activeEnemy?.hp>0) ||
+ if(!selectedGym || voluntaryRecallBlocked(activeEnemy) || enemySwitch || playerSwitch || !(activePlayer?.hp>0) || !(activeEnemy?.hp>0) ||
   clock<nextGymSwitchCheck || activeEnemy.attack>0 ||
   pendingCasts.some(cast=>cast.actor===activeEnemy && !cast.roaming))return;
  nextGymSwitchCheck=clock+1;
@@ -9108,10 +9899,12 @@ function motionPose(actor) {
 }
 function drawUnit(actor) {
  if (actor.hp <= 0) return;
+ if(actor.illusionName)actor={...actor,name:actor.illusionName};
  const {x,y,name,type} = actor;
  const sprite = getSprite(name);
  const art=battleArt(name,actorSpriteVariant(actor));
- const scale=battleSpriteScale*(actor.raidForm?.startsWith('Gigantamax')?1.45:actor.raidForm==='Mega Rayquaza'?2:actor.raidForm?.startsWith('Mega ')?3:actor.raidForm?1.15:1);
+ const stanceScale=actor.abilityForm==='Zen'?1.22:actor.abilityForm==='School'?1.18:1;
+ const scale=battleSpriteScale*stanceScale*(['Hero','Complete'].includes(actor.abilityForm)?1.2:1)*(actor.raidForm?.startsWith('Gigantamax')?1.45:actor.raidForm==='Mega Rayquaza'?2:actor.raidForm?.startsWith('Mega ')?3:actor.raidForm?1.15:1);
  const width=art.width*scale;
  const height=art.height*scale;
  const radius = Math.max(10,Math.min(52,width*0.37));
@@ -9143,6 +9936,21 @@ function drawUnit(actor) {
    Math.round(ground-3+actor.attackY*shift+actor.hitY*reaction));
   if(!authoredReady) ctx.scale(-actor.facing,1);
   ctx.imageSmoothingEnabled=false;
+  const form=actor.abilityForm;
+  if(form==='Sunny')ctx.filter='sepia(1) saturate(2.5) hue-rotate(335deg)';
+  else if(form==='Rainy')ctx.filter='sepia(1) saturate(2) hue-rotate(155deg)';
+  else if(form==='Snowy' || form==='Zen')ctx.filter='sepia(0.7) saturate(1.8) hue-rotate(165deg)';
+  if(form==='Blade')ctx.scale(0.82,1.18);
+  if(form==='Shield')ctx.scale(1.12,0.94);
+  if(form==='School' && sprite.image.naturalWidth) {
+   ctx.save();ctx.globalAlpha=0.72;
+   for(let i=0;i<8;i++) {
+    const angle=i*Math.PI/4,dx=Math.cos(angle)*23,dy=Math.sin(angle)*13-8;
+    ctx.drawImage(sprite.image,sprite.sx,sprite.sy,sprite.width,sprite.height,
+     dx-sprite.width*scale*0.24,dy-sprite.height*scale*0.5,sprite.width*scale*0.48,sprite.height*scale*0.48);
+   }
+   ctx.restore();
+  }
   if(authoredImage?.naturalWidth) {
    ctx.drawImage(authoredImage,authored.sx,authored.sy,authored.width,authored.height,
     authored.x*scale,authored.y*scale,authored.width*scale,authored.height*scale);
@@ -9171,6 +9979,7 @@ function drawUnit(actor) {
   ctx.fillRect(x-25,healthY,50,5);
   ctx.fillStyle = actor.friendly ? '#b8ec92' : '#ff8c85';
   ctx.fillRect(x-25,healthY,50*actor.hp/actor.max,5);
+  if(actor.substituteHP>0){ctx.fillStyle='#d9e2eb';ctx.fillRect(x-25,healthY-3,50*Math.min(1,actor.substituteHP/actor.max),2);}
  }
  ctx.fillStyle = '#f0f6e7';
  ctx.font = '600 13px system-ui';
@@ -9378,7 +10187,7 @@ function paint() {
   if(rock.maxHp){ctx.fillStyle='#b9d2e9';ctx.fillRect(rock.x-rock.r,rock.y-rock.r-7,2*rock.r*rock.hp/rock.maxHp,3);}
  }
  paintArenaWeather();
- for(const actor of visible.sort((a,b)=>a.y-b.y)) drawUnit(actor);
+ for(const actor of visible.sort((a,b)=>a.y-b.y)){drawUnit(actor);drawAbilityState(actor);}
  if(playerSwitch) drawSwitch(playerSwitch);
  if(enemySwitch) drawSwitch(enemySwitch);
  for(const slot of trainerFields?.flat() ?? []) if(slot.transition) drawSwitch(slot.transition);
@@ -10085,6 +10894,8 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.62',changes:['Added Arena adaptations for the remaining 123 abilities, with working descriptions, temporary forms, team auras, items and reactions.','Fixed release smoke tests for the separate Legendary auto-capture settings and updated online-retry timing.']},
+ {version:'0.22.61',changes:['Implemented 31 Arena ability adaptations, including defensive reactions, conversions, copy abilities, multi-hit skills, pacing and temporary stances.','Ability Capsules now roll working abilities only. Updated local and online combat, ability descriptions and battle indicators.']},
  {version:'0.22.60',changes:['Capped EXP Candy S, M, and L at 500, 1,000, and 2,000 XP per use.']},
  {version:'0.22.59',changes:['Eased midgame leveling, increased team XP shares, and lengthened levels 90–100.','EXP Candy S, M, and L now scale with the Pokémon’s level and show their XP before use.']},
  {version:'0.22.58',changes:['Show capture preferences while Auto Capture is enabled, clarify fallback ball choices, and display the final coin payout in a centered Trainer victory dialog.']},

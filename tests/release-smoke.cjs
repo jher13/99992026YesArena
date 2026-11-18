@@ -347,13 +347,25 @@ assert.equal(storage.get('pokemon-arena-gym-badges/clean-records'),'{"misty":tru
 backups.restoreArenaSave(backup);
 assert.equal(storage.get('pokemon-arena-gym-badges/master'),'["brock"]');
 
-const captureSettings={autoCaptureBall:6,autoCaptureFallback:'standard',reservePremiumBalls:true,balls:[1,0,0,0,0,0,1,1]};
+const captureSettings={autoCaptureBall:6,autoCaptureFallback:'standard',reservePremiumBalls:true,
+ autoCaptureRare:false,autoCaptureRareBall:6,autoCaptureRareFallback:-1,balls:[1,0,0,0,0,0,1,1,1]};
 const captureCode=html.slice(html.indexOf('function autoCaptureChoice('),html.indexOf('function renderAutoOptions('));
 const chooseBall=new Function('wildProgress','ballTypes','isLegendaryEncounter',captureCode+'return autoCaptureChoice')(
- captureSettings,Array.from({length:8},()=>({})),name=>name==='Mewtwo');
+ captureSettings,Array.from({length:9},()=>({})),name=>name==='Mewtwo');
 assert.equal(chooseBall({name:'Pikachu'}),0);
 assert.equal(chooseBall({name:'Pikachu',profile:{shiny:true}}),6);
-assert.equal(chooseBall({name:'Mewtwo'}),6);
+assert.equal(chooseBall({name:'Mewtwo'}),-1,'Rare auto-capture requires its own toggle');
+captureSettings.autoCaptureRare=true;
+assert.equal(chooseBall({name:'Mewtwo'}),6,'Use the configured rare preferred ball');
+captureSettings.balls[6]=0;
+assert.equal(chooseBall({name:'Mewtwo'}),-1,'An empty preferred ball with Ask me fallback must stop');
+captureSettings.autoCaptureRareFallback=7;
+assert.equal(chooseBall({name:'Mewtwo'}),7,'Use the configured rare fallback ball');
+captureSettings.balls[7]=0;
+assert.equal(chooseBall({name:'Mewtwo'}),-1,'Never silently spend an unconfigured Master Ball');
+captureSettings.balls[6]=captureSettings.balls[7]=1;
+captureSettings.autoCaptureRare=false;
+assert.equal(chooseBall({name:'Mewtwo'}),-1,'Turning rare capture off must take effect immediately');
 captureSettings.autoCaptureFallback='none';
 assert.equal(chooseBall({name:'Pikachu'}),-1);
 
@@ -506,8 +518,9 @@ if(process.argv.includes('--balance'))console.table([...report].map(([group,s])=
 })));
 
 async function verifyRaidRetry(){
- const start=multiplayer.indexOf('  let retryCount=0, retryButton=null;');
- const end=multiplayer.indexOf('  if(!active.result)timer=setTimeout(poll,850);',start);
+ const start=multiplayer.indexOf('  let retryCount=0, retryButton=null');
+ const pollStart=multiplayer.indexOf('  async function poll() {',start);
+ const end=multiplayer.indexOf('\n  if(!active.result)timer=setTimeout(poll,',pollStart);
  assert(start>=0 && end>start);
  const source=multiplayer.slice(start,end);
  const scheduled=[];
@@ -525,8 +538,8 @@ async function verifyRaidRetry(){
    return {turn:1,battle:{},result:stage==='result'?'coop_win':null};
   };
   const poll=new Function('state','status','rpc','combat','onlineRetryMessage','element','setTimeout','clearTimeout',
-   'let active=state.active, timer, displayedTurn=0;'+
-   'const token=1,generation=1,submitting=false, live=false,began=0,lastPush=0,'+
+   'let active=state.active, timer, displayedTurn=0,resumeMatchPolling=null;'+
+   'const token=1,generation=1,submitting=false, live=false,lastPush=0,'+
    'phase=active.started?"online-battle":"raid-lobby",dialog={open:true},navigator={onLine:true};'+
    'const raidRpc=rpc,view=status,byId=()=>status,joinBattleChannel=()=>{},render=()=>{state.rendered++;};'+
    'const button=(text,onclick)=>({text,onclick,disabled:false});'+
@@ -544,7 +557,6 @@ async function verifyRaidRetry(){
  }
  console.log('Simulated raid reconnect passed during ready-up, combat and result.');
 }
-verifyRaidRetry().catch(error=>{console.error(error);process.exitCode=1;});
 
 const manualCapture=html.slice(html.indexOf('function runWildResultOptions()'),html.indexOf('function renderWildResult()'));
 const throws=[];
@@ -646,6 +658,8 @@ async function verifyMasterRaids(){
   assert.equal(state.arenaMap.meteors.length,0);
  }
 }
-Promise.all([verifyPendingRecovery(),verifyLoanerGear(),verifyPillarChase(),verifyMasterRaids()]).then(()=>{
+Promise.all([verifyPendingRecovery(),verifyLoanerGear(),verifyPillarChase(),verifyMasterRaids(),verifyRaidRetry()]).then(()=>{
  console.log('Manual Capture, full-bench fusion, pending-save recovery, and server loaner gear checks passed.');
+ for(const file of ['ability-adaptations.cjs','remaining-abilities.cjs'])
+  require('node:child_process').execFileSync(process.execPath,[path.join(__dirname,file)],{stdio:'inherit'});
 }).catch(error=>{console.error(error);process.exitCode=1;});
