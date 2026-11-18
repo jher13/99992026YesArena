@@ -2677,6 +2677,11 @@ function autoCaptureChoice(result){
 function renderAutoOptions(container,onChange) {
  container.replaceChildren();
  container.classList.add('wild-auto-options');
+ const saveOptions=()=>{
+  saveWildProgress();
+  if(onChange)onChange();
+  else renderAutoOptions(container);
+ };
  const automation=element('div',null,'auto-options-row');
  const standardBalls=element('div',null,'auto-options-row auto-options-balls');
  const rareBalls=element('div',null,'auto-options-row auto-options-balls');
@@ -2687,12 +2692,19 @@ function renderAutoOptions(container,onChange) {
   control.checked=wildProgress[key];
   control.onchange=()=>{
    wildProgress[key]=control.checked;
-   saveWildProgress();
-   onChange?.();
+   saveOptions();
   };
   label.append(control,element('span',text));
   automation.append(label);
  }
+ container.append(automation);
+ if(!wildProgress.autoCapture)return;
+ const fallbackDescriptions={
+  none:'Choose a ball manually when the preferred ball is unavailable.',
+  standard:'Tries Poké, Safari, Great, Premier, Luxury, then Cherished Ball. Uses the first ball in stock.',
+  any:'Tries balls from Poké through Master in tier order. Ultra, Event, and Master Balls follow the reservation toggle below.'
+ };
+ const fallbackNote=element('small',fallbackDescriptions[wildProgress.autoCaptureFallback],'auto-capture-fallback-help');
  const addSelect=(row,caption,key,options)=>{
   const label=element('label',caption);
   const select=element('select');
@@ -2704,33 +2716,32 @@ function renderAutoOptions(container,onChange) {
   select.value=String(wildProgress[key]);
   select.onchange=()=>{
    wildProgress[key]=['autoCaptureBall','autoCaptureRareBall','autoCaptureRareFallback'].includes(key)?Number(select.value):select.value;
-   saveWildProgress();
-   onChange?.();
+   saveOptions();
   };
   label.append(select);
   row.append(label);
  };
  addSelect(standardBalls,'Preferred ball','autoCaptureBall',ballTypes.map(({name},index)=>[index,name]));
- addSelect(standardBalls,'Fallback','autoCaptureFallback',[['none','Ask me'],['standard','First stocked standard ball'],['any','First stocked eligible ball']]);
+ addSelect(standardBalls,'Fallback','autoCaptureFallback',[['none','Ask me'],['standard','Standard only · Poké to Cherished'],['any','All allowed · Poké to Master']]);
  const reserve=element('label',null,'auto-options-row');
  const checkbox=element('input');
  checkbox.type='checkbox';checkbox.checked=wildProgress.reservePremiumBalls;
  checkbox.onchange=()=>{
   wildProgress.reservePremiumBalls=checkbox.checked;
-  saveWildProgress();
-  onChange?.();
+  saveOptions();
  };
  reserve.append(checkbox,element('span','Reserve Ultra, Event, and Master Balls for rare encounters'));
  const rareLabel=element('label',null,'auto-options-row');
  const rareToggle=element('input');
  rareToggle.type='checkbox';rareToggle.checked=wildProgress.autoCaptureRare;
  rareToggle.onchange=()=>{
-  wildProgress.autoCaptureRare=rareToggle.checked;saveWildProgress();onChange?.();
+  wildProgress.autoCaptureRare=rareToggle.checked;saveOptions();
  };
  rareLabel.append(rareToggle,element('span','Auto capture Legendary / Mythical Pokémon'));
  addSelect(rareBalls,'Legendary / Mythical preferred ball','autoCaptureRareBall',ballTypes.map(({name},index)=>[index,name]));
  addSelect(rareBalls,'Legendary / Mythical fallback ball','autoCaptureRareFallback',[[-1,'Ask me'],...ballTypes.map(({name},index)=>[index,name])]);
- container.append(automation,standardBalls,reserve,rareLabel,rareBalls);
+ standardBalls.append(fallbackNote);
+ container.append(standardBalls,reserve,rareLabel,rareBalls);
 }
 function openWildRegions() {
  cancelWildRepeat();
@@ -2793,7 +2804,26 @@ function openTrainerSetup() {
  byId('trainer-auto-repeat').checked=trainerOptions.autoRepeat;
  byId('trainer-auto-start').checked=trainerOptions.autoStart;
 }
-function scheduleTrainerRepeat() {
+function showTrainerVictory(coins,done) {
+ cancelWildRepeat();
+ const dialog=element('dialog',null,'evolution-dialog trainer-reward-dialog');
+ dialog.setAttribute('aria-label','Trainer battle won!');
+ const heading=element('h2','Trainer battle won!');
+ const reward=element('p','Obtained '+coins.toLocaleString()+' coins!','trainer-reward-coins');
+ const proceed=element('button','Continue');
+ proceed.type='button';
+ proceed.onclick=()=>dialog.close();
+ let timer=null;
+ dialog.addEventListener('close',()=>{
+  clearTimeout(timer);
+  dialog.remove();
+  done();
+ },{once:true});
+ dialog.append(heading,reward,proceed);
+ document.body.append(dialog);dialog.showModal();
+ if(trainerOptions.autoRepeat)timer=setTimeout(()=>dialog.close(),1800);
+}
+function scheduleTrainerRepeat(delay=1800) {
  cancelWildRepeat();
  if(!selectedTrainer || !trainerOptions.autoRepeat || !['win','loss','draw'].includes(phase)) return;
  const {tier,format}=selectedTrainer;
@@ -2801,7 +2831,7 @@ function scheduleTrainerRepeat() {
   repeatTimer=null;
   startTrainerEncounter(tier,format);
   startBattle();
- },1800);
+ },delay);
 }
 function wildVictoryExperience(level) {return Math.floor((25+level*6)/2+level*level*0.12);}
 function applyDefeatRewards() {
@@ -7744,9 +7774,11 @@ function advance(dt,realDt=dt) {
    byId('status').textContent+=' Rematch challenge complete: no Pokémon fainted.';
   }
   if(timedOut)byId('status').textContent=phase==='draw'?'Time expired. Team HP percentages are tied.':'Time expired. You won on remaining team HP. '+byId('status').textContent;
-  if(stones.length) {
+  if(stones.length)byId('status').textContent+=' '+stones.join(' ');
+  if(phase==='win' && selectedTrainer){
+   showTrainerVictory(selectedTrainer.coins,()=>playEvolutionScenes(()=>scheduleTrainerRepeat(0)));
+  }else if(stones.length){
    cancelWildRepeat();
-   byId('status').textContent+=' '+stones.join(' ');
    playEvolutionScenes(scheduleTrainerRepeat);
   }
   if(phase==='win' && (selectedGym || selectedTrainer)) playVictoryMusic(selectedGym?'gym':'trainer');
@@ -8885,6 +8917,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.58',changes:['Show capture preferences while Auto Capture is enabled, clarify fallback ball choices, and display the final coin payout in a centered Trainer victory dialog.']},
  {version:'0.22.57',changes:['Organized Auto Capture settings into separate rows on Pokébattle selection and results, including Legendary and Mythical ball preferences.']},
  {version:'0.22.56',changes:['Added capsule rerolls and clear ability comparison colors, aligned the capsule button with Held item, and improved Hub text contrast.']},
  {version:'0.22.55',changes:['Randomized Ability Capsules with result dialogs, added Legendary capture preferences, timed evolution dismissal, half-level wild captures, and an online Hub entrance.']},
@@ -9046,7 +9079,7 @@ const updateLogEntries=[
 let clientVersionCheckPending=false;
 function canCheckGameVersion() {
  return typeof location!=='undefined' && !window.isPvpVersionContext?.() && !window.hasActiveTacticsRun?.() &&
-  !['setup','battle'].includes(phase) &&
+  !['setup','battle'].includes(phase) && !document.querySelector('.trainer-reward-dialog[open]') &&
   (phase!=='online-battle' || window.isCompletedRaid?.());
 }
 function isNewerGameVersion(candidate,current) {
