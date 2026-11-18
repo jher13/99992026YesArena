@@ -29,7 +29,7 @@ function onlineActor(name,entries,side,index,bossLevel,levelOverride,raid=null,c
  const equipped=Object.entries(progress.held ?? {}).filter(([,item])=>item===held).map(([holder])=>holder);
  actor.heldItem=pvpRoster?pvpLoanerFor(name,pvpRoster,progress.pvpLoaners):
   Object.hasOwn(heldItems,held) && equipped.indexOf(name)>=0 && equipped.indexOf(name)<(progress.items?.[held] ?? 0)?held:null;
- if(!bossLevel)actor.ai=normalizeBattleAI(progress.ai?.[name]);
+ if(!bossLevel){actor.ai=normalizeBattleAI(progress.ai?.[name]);actor.teamPlan=normalizeTeamPlan(progress.battlePlan);actor.carryName=typeof progress.battleCarry==='string'?progress.battleCarry:'';}
  actor.normalAttacksEnabled=true;
  actor.onlineId=side+':'+index;
  actor.side=side;
@@ -99,7 +99,7 @@ function initializeOnline(match) {
  fieldMoveExpiry={};
  clock=lastDamageClock=weatherTime=terrainTime=recallCooldown=0;
  battleWeather=battleTerrain=null;
- effects=[];pendingCasts=[];onlineSounds=[];onlineRecalls={};
+ effects=[];pendingCasts=[];arenaSkillFields=[];arenaFieldSequence=0;onlineSounds=[];onlineRecalls={};
  onlineRandomState=Number.parseInt(match.id.slice(0,8),16)>>>0;
  arenaMap=raid?megaRaidArena(raid):randomArenaMap();
  if(raid?.master)Object.assign(arenaMap,{master:true,phase:1,phaseStarted:0,meteors:[],nextMeteor:0});
@@ -114,12 +114,13 @@ function saveOnlineState() {
     incoming:slot.transition.incoming.onlineId}:null}))),
   casts:pendingCasts.map(cast=>({...cast,actor:cast.actor.onlineId})),effects,
   clock,lastDamageClock,battleWeather,weatherTime,battleTerrain,terrainTime,
-  arenaMap,damageBuckets,entryHazards,fieldMoveExpiry,recalls:onlineRecalls,random:onlineRandomState,sounds:onlineSounds,
+  arenaMap,arenaSkillFields,arenaFieldSequence,damageBuckets,entryHazards,fieldMoveExpiry,recalls:onlineRecalls,random:onlineRandomState,sounds:onlineSounds,
  };
 }
 function loadOnlineState(state) {
  ({allies,enemies,effects,clock,lastDamageClock,battleWeather,weatherTime,battleTerrain,terrainTime}=state);
- arenaMap=state.arenaMap ?? null;
+ arenaMap=state.arenaMap?{...state.arenaMap,rocks:[]}:null;
+ arenaSkillFields=state.arenaSkillFields ?? [];arenaFieldSequence=state.arenaFieldSequence ?? 0;
  setArenaDimensions(arenaMap ?? undefined);
  fieldMoveExpiry=state.fieldMoveExpiry ?? {};
  entryHazards=state.entryHazards ?? [{},{}];
@@ -273,7 +274,7 @@ export function onlineView(state,side,mode) {
   if(!transition || ids.has(transition.incoming))return slot;
   return {...slot,transition:{...transition,incoming:null}};
  }));
- return {actors:visible,fields,arenaMap:state.arenaMap ?? null,damageBuckets:compactOnlineDamage(state.damageBuckets),casts:state.casts,effects:state.effects,
+ return {actors:visible,fields,arenaMap:state.arenaMap?{...state.arenaMap,rocks:[]}:null,arenaSkillFields:state.arenaSkillFields ?? [],damageBuckets:compactOnlineDamage(state.damageBuckets),casts:state.casts,effects:state.effects,
   weather:state.battleWeather,weatherTime:state.weatherTime,terrain:state.battleTerrain,clock:state.clock,
   normalAttacks:[...state.allies,...state.enemies].find(actor=>actor.side===side)?.normalAttacksEnabled ?? true,
   recall:Math.max(0,(state.recalls[side] ?? 0)-state.clock),sounds:state.sounds};

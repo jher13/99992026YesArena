@@ -204,6 +204,7 @@
   const panel=element('details',null,'pvp-loaners');
   panel.open=true;
   panel.append(element('summary','PvP loaner gear'),element('p','Both players can borrow one of each item. Your regular held items are excluded in PvP.'));
+  panel.append(battlePlanControls(locked));
   for(const name of team){
    const label=element('label',name+' ');
    const choices=wildProgress.pvpLoaners;
@@ -214,7 +215,7 @@
    field.disabled=locked;
    for(const option of field.options)
     option.disabled=Boolean(option.value && team.some(other=>other!==name && pvpLoanerFor(other,team,choices)===option.value));
-   const result=element('small',(equipped?'Loaner: '+equipped:'No PvP held item')+
+   const result=element('small',(equipped?'Loaner: '+equipped+' · '+heldItems[equipped].description:'No PvP held item')+
     (ordinary?' · '+ordinary+' from your bag is excluded':''));
    field.onchange=()=>{
     if(field.value)choices[name]=field.value;
@@ -238,7 +239,7 @@
    setArenaDimensions(mega?megaRaidArenaSize:undefined);
    byId('battle').classList.toggle('is-mega-raid',mega);
    effects=[];pendingCasts=[];playerSwitch=enemySwitch=null;
-   battleWeather=battleTerrain=null;arenaMap=null;weatherTime=0;onlineMatchDuration=0;
+   battleWeather=battleTerrain=null;arenaMap=null;arenaSkillFields=[];weatherTime=0;onlineMatchDuration=0;
    showScreen('battle');
    for(const id of ['start','auto-reserve','battle-auto-repeat','battle-auto-start','battle-auto-capture','next-gym'])byId(id).hidden=true;
    for(const id of ['player-active','enemy-active','player-roster','enemy-roster','choices'])byId(id).replaceChildren();
@@ -335,8 +336,11 @@
   });
   if(visualSnapshots.length>64)visualSnapshots.shift();
   battleWeather=data.weather;battleTerrain=data.terrain;weatherTime=data.weatherTime ?? 0;
-  arenaMap=data.arenaMap?{...data.arenaMap,rocks:data.arenaMap.rocks.map(rock=>({...rock,x:mx(rock.x),fall:rock.fall?{...rock.fall,x:mx(rock.fall.x),dx:dx(rock.fall.dx)}:null})),
-   zones:data.arenaMap.zones.map(zone=>({...zone,x:mx(zone.x)}))}:null;
+  arenaMap=data.arenaMap?{...data.arenaMap,rocks:[],
+   zones:data.arenaMap.zones.map(zone=>({...zone,x:mx(zone.x)})),
+   meteors:data.arenaMap.meteors?.map(meteor=>({...meteor,x:mx(meteor.x)}))}:null;
+  arenaSkillFields=(data.arenaSkillFields ?? []).map(field=>({...field,x:mx(field.x),
+   friendly:mirror?!field.friendly:field.friendly}));
   byId('score').textContent='Online battle · 1×'+(data.weather?' · '+data.weather+' '+Math.ceil(data.weatherTime ?? 0)+'s'+(abilityWeather()?'':' (suppressed)'):'');
   const freshSounds=new Set();
   for(const sound of data.sounds ?? []) {

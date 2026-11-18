@@ -13,8 +13,8 @@ assert.equal(residual({max:10000,masterRaidPhase:2},312),65);
 assert.equal(residual({max:10000,masterRaidPhase:3},20),20);
 assert.equal(residual({max:10000},312),312);
 const chargeCode=html.slice(html.indexOf('function dashChargesLeft('),html.indexOf('function tryDashDodge('));
-const {dashChargesLeft,defendChargesLeft,defendDamage}=new Function('isExhausted',chargeCode+
- 'return {dashChargesLeft,defendChargesLeft,defendDamage};')(actor=>actor.exhausted);
+const {dashChargesLeft,defendChargesLeft,defendDamage}=new Function('isExhausted','effectiveHeldItem',chargeCode+
+ 'return {dashChargesLeft,defendChargesLeft,defendDamage};')(actor=>actor.exhausted,actor=>actor.heldItem);
 assert.equal(dashChargesLeft({},0),3);
 assert.equal(dashChargesLeft({dashRecharge:[3,4,5]},2),0);
 assert.equal(dashChargesLeft({dashRecharge:[3,4,5]},3),1);
@@ -32,9 +32,9 @@ assert.equal(defendChargesLeft(defender,5),1);
 assert.equal(defendDamage(defender,40,5),20);
 assert.equal(defendDamage({hp:100,max:100,exhausted:true},40,0),60);
 const dashCode=html.slice(html.indexOf('function tryBattleDash('),html.indexOf('function battleActorId('));
-const dash=new Function('dashChargesLeft','clock','pendingCasts','canvas','clamp','movementClearance','pmdDirection','effects','actorSpriteVariant','arenaMap',
+const dash=new Function('dashChargesLeft','clock','pendingCasts','canvas','clamp','movementClearance','pmdDirection','effects','actorSpriteVariant','arenaMap','effectiveHeldItem',
  dashCode+'return tryBattleDash;')(dashChargesLeft,0,[],{width:960,height:480},
- (x,lo,hi)=>Math.max(lo,Math.min(hi,x)),()=>1,()=>0,[],()=>null,null);
+ (x,lo,hi)=>Math.max(lo,Math.min(hi,x)),()=>1,()=>0,[],()=>null,null,actor=>actor.heldItem);
 const dasher={x:100,y:100,motionTicks:0};
 assert(dash(dasher,0,90,point=>point.x>=185));
 assert.equal(dasher.x,190);
@@ -617,7 +617,7 @@ async function verifyLoanerGear(){
  assert.equal((serialized.match(/"heldItem":"Shell Bell"/g) ?? []).length,1);
  assert(!serialized.includes('"heldItem":"Leftovers"'));
 }
-async function verifyPillarChase(){
+async function verifyOpenArenaChase(){
  const {simulateOnline}=await import('../supabase/functions/arena-combat/engine.js');
  const match={id:'b2450000-0000-0000-0000-000000000000',mode:'unranked',format:1,
   host:'a',guest:'b',host_pick:['Mewtwo'],guest_pick:['Malamar'],host_entries:{},guest_entries:{}};
@@ -630,7 +630,8 @@ async function verifyPillarChase(){
  Object.assign(malamar,{x:545,y:270});
  state.arenaMap.rocks=[{x:480,y:270,r:32,hp:32,maxHp:32,cover:true}];
  const result=simulateOnline(match,state,600,null,'host');
- assert(result.state.lastDamageClock>0,'Mewtwo and Malamar must exchange damage around a pillar');
+ assert.deepEqual(result.state.arenaMap.rocks,[],'Legacy reconnect snapshots discard pillars');
+ assert(result.state.lastDamageClock>0,'Mewtwo and Malamar must exchange damage in an open arena');
 }
 async function verifyMasterRaids(){
  const {simulateOnline,onlineView}=await import('../supabase/functions/arena-combat/engine.js');
@@ -658,8 +659,8 @@ async function verifyMasterRaids(){
   assert.equal(state.arenaMap.meteors.length,0);
  }
 }
-Promise.all([verifyPendingRecovery(),verifyLoanerGear(),verifyPillarChase(),verifyMasterRaids(),verifyRaidRetry()]).then(()=>{
+Promise.all([verifyPendingRecovery(),verifyLoanerGear(),verifyOpenArenaChase(),verifyMasterRaids(),verifyRaidRetry()]).then(()=>{
  console.log('Manual Capture, full-bench fusion, pending-save recovery, and server loaner gear checks passed.');
- for(const file of ['ability-adaptations.cjs','remaining-abilities.cjs','update-and-trade-client.cjs','arena-evolutions.cjs'])
+ for(const file of ['ability-adaptations.cjs','remaining-abilities.cjs','update-and-trade-client.cjs','arena-evolutions.cjs','arena-tactics.cjs'])
   require('node:child_process').execFileSync(process.execPath,[path.join(__dirname,file)],{stdio:'inherit'});
 }).catch(error=>{console.error(error);process.exitCode=1;});
