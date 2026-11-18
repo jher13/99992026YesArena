@@ -1440,6 +1440,20 @@ function gambitValues(condition,current) {
 }
 const battleTargeting=['Nearest','Type weakness','Frontline','Backline','Farthest','Lowest HP','Highest HP','Ranged attacks'];
 const experienceCandies={'Rare Candy':null,'EXP Candy 500':500,'EXP Candy 250':250,'EXP Candy 100':100};
+// Preserve saved inventory IDs when displaying the new candy sizes.
+const experienceCandyEffects={
+ 'EXP Candy 100':{name:'EXP Candy S',fraction:.03},
+ 'EXP Candy 250':{name:'EXP Candy M',fraction:.075},
+ 'EXP Candy 500':{name:'EXP Candy L',fraction:.15},
+};
+function experienceCandyName(item) {
+ return experienceCandyEffects[item]?.name ?? item;
+}
+function experienceCandyXP(item,level) {
+ const minimum=experienceCandies[item];
+ if(minimum===null)return experienceNeeded(level);
+ return Math.max(minimum,Math.round(experienceNeeded(level)*experienceCandyEffects[item].fraction));
+}
 const trainingItems=Object.fromEntries([
  ...['HP Up','Protein','Iron','Carbos','Zinc','Calcium'].map((name,stat)=>
   [name,{stat,field:'evs',delta:10,price:2500,category:'EV vitamins'}]),
@@ -1629,7 +1643,7 @@ function renderBattlePass() {
  const [,name,amount]=passRewards[selected];
  const featured=element('div',null,'pass-feature');
  const copy=element('div',null,'pass-feature-copy');
- copy.append(element('h3','Battle Pass'),element('small','Tier '+(selected+1)+' reward'),element('h4',name+' ×'+amount),
+ copy.append(element('h3','Battle Pass'),element('small','Tier '+(selected+1)+' reward'),element('h4',experienceCandyName(name)+' ×'+amount),
   makeButton('Item Bag',openItemBag));
  const showcase=element('div',null,'pass-showcase');
  showcase.append(bagItemIcon(name));
@@ -1660,7 +1674,7 @@ function renderBattlePass() {
   });
   preview.className='pass-reward-preview';
   preview.setAttribute('aria-pressed',String(selected===index));
-  preview.append(bagItemIcon(rewardName),element('strong',rewardName+' ×'+count));
+  preview.append(bagItemIcon(rewardName),element('strong',experienceCandyName(rewardName)+' ×'+count));
   const claim=makeButton(claimed?'Claimed':level>index?'Claim':'Locked',()=>claimPassReward(index));
   claim.disabled=claimed || level<=index;
   claim.setAttribute('aria-label',claim.textContent+' tier '+(index+1)+' reward');
@@ -1915,7 +1929,7 @@ function inventoryTile(name,count,detail,action,extra) {
  const card=element('div',null,'bag-item');
  const art=element('div',null,'bag-art');
  art.append(bagItemIcon(name),element('small','×'+count,'bag-count'));
- card.append(art,element('strong',name));
+ card.append(art,element('strong',experienceCandyName(name)));
  if(detail)card.append(typeof detail==='string'?element('small',detail):detail);
  if(extra)card.append(element('small',extra));
  if(action)card.append(action);
@@ -1949,7 +1963,7 @@ function renderItemBag(message='') {
  group('Held items and evolution items',Object.entries(wildProgress.items).filter(([,count])=>count>0)
   .map(([name,count])=>[name,count,(count-freeHeldCopies(name))+' equipped']));
  group('EXP Candies · Use from a Pokémon’s details',Object.entries(experienceCandies).filter(([name])=>wildProgress.vitamins[name]>0)
-  .map(([name,xp])=>[name,wildProgress.vitamins[name],xp===null?'+1 level':'+'+xp+' EXP']));
+  .map(([name,minimum])=>[name,wildProgress.vitamins[name],minimum===null?'+1 level':(experienceCandyEffects[name].fraction*100)+'% of next-level XP, minimum '+minimum+' XP.']));
  group('Training and ability items',[
   ['Ability Capsule',wildProgress.capsules],...Object.entries(wildProgress.vitamins).filter(([name])=>!Object.hasOwn(experienceCandies,name))
  ].filter(([,count])=>count>0));
@@ -2450,11 +2464,19 @@ for(const [id,[parent,,level]] of Object.entries(evolutionData)) {
  if(parent && level && isAvailablePokemon(name)) (levelEvolutions[parent] ??=[]).push({name,level});
 }
 function experienceNeeded(level) {
- // Taper the discount across each band so the next-level cost rises smoothly.
  const factor=level<40 ? 0.32+(level-1)*0.18/39 :
   level<80 ? 0.50+(level-40)*0.30/40 :
   0.80+(level-80)*0.20/19;
- return Math.ceil(((level+1)**3-level**3)*factor);
+ const base=Math.ceil(((level+1)**3-level**3)*factor);
+ // Blend the midgame discount into the longer final ten levels.
+ let pacing=1;
+ if(level>=90)pacing=1.5;
+ else if(level>=80)pacing=.85+(level-80)*.065;
+ else if(level>=70)pacing=.75+(level-70)*.01;
+ else if(level>=60)pacing=.70+(level-60)*.005;
+ else if(level>=50)pacing=.75-(level-50)*.005;
+ else if(level>=40)pacing=1-(level-40)*.025;
+ return Math.ceil(base*pacing);
 }
 const evolutionScenes=[];
 function stoneTarget(name,item) {
@@ -2532,30 +2554,34 @@ function useExperienceCandy(name,item) {
  const entry=ownedPokemon(name);
  if(!entry || entry.level>=100 || !Object.hasOwn(experienceCandies,item) || !(wildProgress.vitamins[item]>0))return [];
  wildProgress.vitamins[item]--;
- return gainWildExperience(name,experienceCandies[item] ?? experienceNeeded(entry.level));
+ return gainWildExperience(name,experienceCandyXP(item,entry.level));
 }
 function experienceCandyControls(name) {
  const section=element('fieldset',null,'exp-boosts');
  section.append(element('legend','EXP Boosts'));
  const controls=element('div',null,'experience-candy-controls');
  const entry=ownedPokemon(name);
- for(const [item,xp] of Object.entries(experienceCandies)) {
+ for(const [item,minimum] of Object.entries(experienceCandies)) {
   const count=wildProgress.vitamins[item] ?? 0;
   if(!count)continue;
   const use=element('button','Use');
-  use.setAttribute('aria-label','Use '+item);
+  use.setAttribute('aria-label','Use '+experienceCandyName(item));
   use.type='button';
   use.disabled=entry.level>=100;
   use.onclick=()=>{
+   const gained=experienceCandyXP(item,entry.level);
    const messages=useExperienceCandy(name,item);
    renderDetail();
-   showPassBattleNotice([xp===null?'Used Rare Candy.':name+' gained '+xp+' XP.',...messages].join(' '));
+   showPassBattleNotice([minimum===null?'Used Rare Candy.':name+' gained '+gained.toLocaleString()+' XP.',...messages].join(' '));
    playEvolutionScenes(()=>{});
   };
+  const value=entry.level>=100?'Max level':minimum===null?'+1 level':'+'+experienceCandyXP(item,entry.level).toLocaleString()+' XP';
   const icon=bagItemIcon(item);
-  icon.title=xp===null?'Raises the Pokémon by 1 level.':'Adds '+xp+' EXP.';
+  icon.title=value;
+  const label=element('span',experienceCandyName(item)+' ×'+count);
+  label.append(element('small',value,'experience-candy-value'));
   const row=element('div',null,'experience-candy-row');
-  row.append(icon,element('span',item+' ×'+count),use);
+  row.append(icon,label,use);
   controls.append(row);
  }
  if(!controls.children.length)controls.append(element('small','No EXP boosts available.'));
@@ -2865,7 +2891,7 @@ function finishWildBattle(timedOut=false) {
  const finisher=enemy.lastDamageBy?.friendly ? enemy.lastDamageBy : activePlayer;
  const finisherXP=battleExperience(finisher.originalName ?? finisher.name,gained);
  const awards=allies.map(actor=>{
-  const share=actor===finisher ? 100 : actor.damagedOpponent ? 50 : 25;
+  const share=actor===finisher ? 100 : actor.damagedOpponent ? 75 : 50;
   return {name:actor.originalName ?? actor.name,share,xp:battleExperience(actor.originalName ?? actor.name,Math.floor(gained*share/100))};
  });
  const growth=awards.flatMap(award=>gainWildExperience(award.name,award.xp));
@@ -8917,6 +8943,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.59',changes:['Eased midgame leveling, increased team XP shares, and lengthened levels 90–100.','EXP Candy S, M, and L now scale with the Pokémon’s level and show their XP before use.']},
  {version:'0.22.58',changes:['Show capture preferences while Auto Capture is enabled, clarify fallback ball choices, and display the final coin payout in a centered Trainer victory dialog.']},
  {version:'0.22.57',changes:['Organized Auto Capture settings into separate rows on Pokébattle selection and results, including Legendary and Mythical ball preferences.']},
  {version:'0.22.56',changes:['Added capsule rerolls and clear ability comparison colors, aligned the capsule button with Held item, and improved Hub text contrast.']},

@@ -4,6 +4,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 const read=file=>fs.readFileSync(path.join(__dirname,'..',file),'utf8');
 const html=read('index.html');
+const candyCode=html.slice(html.indexOf('const experienceCandies='),html.indexOf('const trainingItems='));
 const manifest=JSON.parse(read('version.json'));
 assert.match(manifest.version,/^\d+\.\d+\.\d+$/);
 const residualCode=html.slice(html.indexOf('function raidResidualDamage('),html.indexOf('const updateLogEntries='));
@@ -105,6 +106,7 @@ let seed=0x13579bdf;
 const random=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);
 const context=vm.createContext({
  byId,element,window:{},phase:'home',showScreen(){},setInterval(){},clearInterval(){},
+ experienceCandyName:new Function(candyCode+'return experienceCandyName;')(),
  idlePokemonPortrait:()=>element('canvas'),getSprite:()=>({image:{}}),
  types:{},moveColors:{},pmdDirection:()=>0,pmdMotion:()=>null,checkGameVersion(){},structuredClone,openMenu(){},
  drawRogueChoices:(list,n)=>list.slice(0,n),
@@ -400,19 +402,33 @@ assert.deepEqual(lateItems.find(([,name])=>name==='EXP Candy 250'),['vitamins','
 assert.equal(Math.ceil(a.combatTicks*a.combatStepMs/1000),60);
 
 
-const candyCode=html.slice(html.indexOf('const experienceCandies='),html.indexOf('const trainingItems='));
 const levelCode=html.slice(html.indexOf('function experienceNeeded('),html.indexOf('}',html.indexOf('function experienceNeeded('))+1);
 const candyActions=html.slice(html.indexOf('function useExperienceCandy('),html.indexOf('let selectedWild='));
-const candyInventory={vitamins:{'Rare Candy':2,'EXP Candy 100':1},held:{Pikachu:'Lucky Egg'}};
+const candyInventory={vitamins:{'Rare Candy':2,'EXP Candy 100':1,'EXP Candy 250':1,'EXP Candy 500':1},held:{Pikachu:'Lucky Egg'}};
 const pika={level:20,xp:30};
 const candy=new Function('wildProgress','ownedPokemon','stoneTarget','levelEvolutions','dex','saveWildProgress',
- candyCode+levelCode+candyActions+'return {useExperienceCandy,battleExperience}')(
+ candyCode+levelCode+candyActions+'return {useExperienceCandy,battleExperience,experienceCandyName,experienceCandyXP,gainWildExperience}')(
  candyInventory,()=>pika,()=>null,{}, {Pikachu:[25]},()=>{});
 assert.equal(candy.battleExperience('Pikachu',100),200);
 candy.useExperienceCandy('Pikachu','EXP Candy 100');
 assert.deepEqual(pika,{level:20,xp:130});
 candy.useExperienceCandy('Pikachu','Rare Candy');
 assert.deepEqual(pika,{level:21,xp:130});
+assert.equal(candy.experienceCandyName('EXP Candy 100'),'EXP Candy S');
+assert.equal(candy.experienceCandyName('EXP Candy 250'),'EXP Candy M');
+assert.equal(candy.experienceCandyName('EXP Candy 500'),'EXP Candy L');
+const requiredXP=new Function(levelCode+'return experienceNeeded;')();
+for(const [level,xp] of [[50,3300],[60,4997],[70,8109],[80,13221],[90,33366],[99,44552]])assert.equal(requiredXP(level),xp);
+for(let level=1;level<100;level++)assert(requiredXP(level)<requiredXP(level+1));
+pika.level=99;pika.xp=0;
+candy.useExperienceCandy('Pikachu','EXP Candy 500');
+assert.equal(pika.xp,6683);
+assert.equal(candyInventory.vitamins['EXP Candy 500'],0);
+assert.equal(candy.experienceCandyXP('EXP Candy 250',99),3341);
+assert.equal(candy.experienceCandyXP('EXP Candy 100',99),1337);
+pika.level=50;pika.xp=4000;
+candy.gainWildExperience('Pikachu',0);
+assert.deepEqual(pika,{level:51,xp:700});
 pika.level=100;
 candy.useExperienceCandy('Pikachu','Rare Candy');
 assert.equal(candyInventory.vitamins['Rare Candy'],1);

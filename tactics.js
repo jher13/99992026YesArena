@@ -1155,7 +1155,7 @@
   }
   for(const item of items)giveArenaItem(...item);
   wildProgress.coins+=coins;
-  match.placementReward=[coins.toLocaleString()+' coins',...items.map(([,name,count])=>count+' × '+name)].join(' · ');
+  match.placementReward=[coins.toLocaleString()+' coins',...items.map(([,name,count])=>count+' × '+experienceCandyName(name))].join(' · ');
   saveWildProgress();
  }
  function start(){
