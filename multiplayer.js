@@ -1361,6 +1361,42 @@
    updateNotificationUnread(data);
   } catch {}
  },5000);
+ let hubChannel=null,hubJoining=false;
+ const hubButton=byId('home-hub');
+ async function joinHubPresence(){
+  if(hubChannel || hubJoining || !cloudAccount)return;
+  hubJoining=true;
+  try{
+   const client=await cloudClient();
+   const {data,error}=await client.auth.getUser();
+   if(error || !data.user)return;
+   const channel=client.channel('arena-trading-hub',{config:{presence:{key:data.user.id}}});
+   hubChannel=channel;
+   channel.on('presence',{event:'sync'},()=>{
+    hubButton.textContent='Hub - Online: '+Object.keys(channel.presenceState()).length;
+   }).subscribe(async status=>{
+    if(status==='SUBSCRIBED')await channel.track({online:true});
+    else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)){
+     hubButton.textContent='Hub - Online: unavailable';
+     hubChannel=null;void client.removeChannel(channel);
+    }
+   });
+  }catch{hubButton.textContent='Hub - Online: unavailable';}
+  finally{hubJoining=false;}
+ }
+ hubButton.onclick=async()=>{
+  if(!cloudAccount){show('Trading Hub',element('p','Sign in to enter the online Hub.'));return;}
+  await joinHubPresence();
+  show('Trading Hub',element('p',hubButton.textContent),
+   element('p','Trading is being prepared. Pokémon exchange is currently unavailable.'));
+ };
+ void joinHubPresence();
+ setInterval(()=>{
+  if(!cloudAccount && hubChannel){
+   void hubChannel.unsubscribe();hubChannel=null;
+   hubButton.textContent='Hub - Online: …';
+  }else void joinHubPresence();
+ },15000);
  byId('home-coop').onclick=()=>open('Co-op',()=>lobby(true));
  byId('home-pvp').onclick=()=>open('PvP',()=>lobby(false));
  byId('home-friendlist').onclick=()=>open('Friendlist',friends);

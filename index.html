@@ -936,7 +936,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 <button id="home-skills" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Skill Shop</strong><small>TM, TR, and HM moves</small></span></button>
 <button id="home-events" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Events</strong></span></button>
 </nav>
-<div class="home-feature"><div class="feature-orb" id="feature-sprite"></div><h2 id="feature-name"></h2><p id="feature-type"></p><button id="home-play" class="home-play"><span class="menu-pixel" aria-hidden="true"></span>Pokebattle<small class="home-mode-detail">Catch wild Pokémon</small></button>
+<div class="home-feature"><button id="home-hub" type="button" style="margin-bottom:12px">Hub - Online: …</button><div class="feature-orb" id="feature-sprite"></div><h2 id="feature-name"></h2><p id="feature-type"></p><button id="home-play" class="home-play"><span class="menu-pixel" aria-hidden="true"></span>Pokebattle<small class="home-mode-detail">Catch wild Pokémon</small></button>
 <div class="home-multiplayer" aria-label="Multiplayer modes">
 <button id="home-coop" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span class="home-mode-copy"><strong>Co-op</strong><small class="home-mode-detail">Clear raids with other players</small></span></button>
 <button id="home-pvp" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span class="home-mode-copy"><strong>PvP</strong><small class="home-mode-detail">Battle other players</small></span></button>
@@ -1909,28 +1909,31 @@ function addEVs(profile,yieldByStat) {
  return gained;
 }
 function capsuleControl(name) {
- const profile=profileFor(name);
- const current=abilityFor(name,profile);
  const group=element('div',null,'ability-capsule-controls');
- const label=element('label','Choose an ability ');
- const options=Object.keys(abilityCatalog).filter(ability=>ability!==current).sort();
  const button=element('button','Use Ability Capsule ×'+wildProgress.capsules);
- const select=gambitSelect('New ability',['',...options],'',value=>{
-  button.disabled=!wildProgress.capsules || !value;
- });
- select.options[0].textContent='Select an ability';
- select.disabled=!wildProgress.capsules;
- button.disabled=true;
+ button.type='button';
+ button.disabled=!wildProgress.capsules;
  button.onclick=()=>{
-  const next=select.value;
-  if(!wildProgress.capsules || !options.includes(next) || abilityFor(name,profile)===next)return;
+  if(!wildProgress.capsules)return;
+  const profile=profileFor(name),previous=abilityFor(name,profile);
+  const options=Object.keys(abilityCatalog).filter(ability=>ability!==previous);
+  if(!options.length)return;
+  const next=options[Math.floor(Math.random()*options.length)];
   profile.abilityOverride=next;
   wildProgress.capsules--;
   playerStorage.setItem(profileStorage,JSON.stringify(profiles));
   saveWildProgress();renderDetail();
+  const detail=ability=>arenaAbilityDescriptions[ability] ?? 'This ability currently has no supported arena effect.';
+  const dialog=element('dialog',null,'evolution-dialog');
+  const close=element('button','Close');
+  close.onclick=()=>dialog.close();
+  dialog.append(element('h2','Ability Capsule Use'),element('h3','Previous'),
+   element('strong',previous),element('p',detail(previous)),element('h3','New'),
+   element('strong',next),element('p',detail(next)),close);
+  dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+  document.body.append(dialog);dialog.showModal();
  };
- label.append(select);
- group.append(label,button);
+ group.append(button);
  return group;
 }
 function applyTrainingItem(profile,stat,{field,delta}) {
@@ -2541,7 +2544,7 @@ function pvpLoanerFor(name,roster,choices){
  const item=choices?.[name];
  return pvpLoanerItems.includes(item) && roster.find(member=>choices?.[member]===item)===name?item:null;
 }
-const wildProgress={favorites:[],pvpLoaners:{},autoCaptureBall:0,autoCaptureFallback:'standard',reservePremiumBalls:true,battlePass:{xp:0,claimed:[]},capsules:0,vitamins:{},copies:{},ai:{},owned:{},registered:[],coins:0,megaRaidRewards:[],items:{},held:{},skills:{},balls:[12,1,3,1,1,0,1,0,0],wins:0,autoCapture:false,autoRepeat:false,autoReserve:false,speed:1};
+const wildProgress={favorites:[],pvpLoaners:{},autoCaptureRare:true,autoCaptureRareBall:6,autoCaptureRareFallback:-1,autoCaptureBall:0,autoCaptureFallback:'standard',reservePremiumBalls:true,battlePass:{xp:0,claimed:[]},capsules:0,vitamins:{},copies:{},ai:{},owned:{},registered:[],coins:0,megaRaidRewards:[],items:{},held:{},skills:{},balls:[12,1,3,1,1,0,1,0,0],wins:0,autoCapture:false,autoRepeat:false,autoReserve:false,speed:1};
 try {
  const saved=JSON.parse(playerStorage.getItem(progressKey));
  for(const [name,item] of Object.entries(saved?.pvpLoaners ?? {}))
@@ -2573,6 +2576,12 @@ try {
  wildProgress.balls=migrateBallInventory(saved?.balls) ?? wildProgress.balls;
  if(Number.isInteger(saved?.wins)&&saved.wins>=0) wildProgress.wins=saved.wins;
  wildProgress.autoCapture=saved?.autoCapture===true;
+ wildProgress.autoCaptureRare=saved?.autoCaptureRare!==false;
+ for(const key of ['autoCaptureRareBall','autoCaptureRareFallback']){
+  const value=saved?.[key];
+  if(Number.isInteger(value) && (ballTypes[value] || key==='autoCaptureRareFallback' && value===-1))
+   wildProgress[key]=saved.balls?.length===8 && value===7?8:value;
+ }
  if (Number.isInteger(saved?.autoCaptureBall) && ballTypes[saved.autoCaptureBall])wildProgress.autoCaptureBall=saved.balls?.length===8 && saved.autoCaptureBall===7?8:saved.autoCaptureBall;
  if (['none','standard','any'].includes(saved?.autoCaptureFallback))wildProgress.autoCaptureFallback=saved.autoCaptureFallback;
  wildProgress.reservePremiumBalls=saved?.reservePremiumBalls!==false;
@@ -3597,11 +3606,17 @@ function playEvolutionScenes(done=()=>{}) {
  finish.disabled=true;
  dialog.append(title,stage,finish);
  dialog.addEventListener('cancel',event=>event.preventDefault());
- finish.onclick=()=>{dialog.close();dialog.remove();playEvolutionScenes(done);};
+ let closeTimer=null,finished=false;
+ finish.onclick=()=>{
+  if(finish.disabled || finished)return;
+  finished=true;clearTimeout(closeTimer);
+  dialog.close();dialog.remove();playEvolutionScenes(done);
+ };
  document.body.append(dialog);dialog.showModal();
  setTimeout(()=>{
   title.textContent=oldName+' evolved into '+newName+'!';
   finish.disabled=false;finish.focus();
+  closeTimer=setTimeout(()=>finish.click(),5000);
  },typeof matchMedia==='function' && matchMedia('(prefers-reduced-motion: reduce)').matches?0:5400);
 }
 function useExperienceCandy(name,item) {
@@ -3737,7 +3752,13 @@ function encounterIn(region,tier=currentWildTier()) {
  if(encounter) openBattle(null,encounter);
 }
 function autoCaptureChoice(result){
- const rare=isLegendaryEncounter(result.name) || result.profile?.shiny;
+ const legendary=isLegendaryEncounter(result.name);
+ if(legendary){
+  if(!wildProgress.autoCaptureRare)return -1;
+  return [wildProgress.autoCaptureRareBall,wildProgress.autoCaptureRareFallback]
+   .find(index=>index>=0 && wildProgress.balls[index]>0) ?? -1;
+ }
+ const rare=result.profile?.shiny;
  const eligible=index=>wildProgress.balls[index]>0 && (!wildProgress.reservePremiumBalls || rare || index<6);
  const preferred=wildProgress.autoCaptureBall;
  if(eligible(preferred))return preferred;
@@ -3769,7 +3790,7 @@ function renderAutoOptions(container,onChange) {
   }
   select.value=String(wildProgress[key]);
   select.onchange=()=>{
-   wildProgress[key]=key==='autoCaptureBall'?Number(select.value):select.value;
+   wildProgress[key]=['autoCaptureBall','autoCaptureRareBall','autoCaptureRareFallback'].includes(key)?Number(select.value):select.value;
    saveWildProgress();
    onChange?.();
   };
@@ -3789,6 +3810,16 @@ function renderAutoOptions(container,onChange) {
   };
   reserve.append(checkbox,element('span','Reserve Ultra, Event, and Master Balls for rare encounters'));
   container.append(reserve);
+  const rareLabel=element('label');
+  const rareToggle=element('input');
+  rareToggle.type='checkbox';rareToggle.checked=wildProgress.autoCaptureRare;
+  rareToggle.onchange=()=>{
+   wildProgress.autoCaptureRare=rareToggle.checked;saveWildProgress();onChange?.();
+  };
+  rareLabel.append(rareToggle,element('span','Auto capture Legendary / Mythical Pokémon'));
+  container.append(rareLabel);
+  addSelect('Legendary / Mythical preferred ball','autoCaptureRareBall',ballTypes.map(({name},index)=>[index,name]));
+  addSelect('Legendary / Mythical fallback ball','autoCaptureRareFallback',[[-1,'Ask me'],...ballTypes.map(({name},index)=>[index,name])]);
  }
 }
 function openWildRegions() {
@@ -3928,7 +3959,7 @@ function tryCatch(index) {
  const duration=reduced?250:captureDuration;
  result.capture={index,caught,pending:true,duration};
  if(caught) {
-  addCaughtPokemon(result.name,result.level,result.profile);
+  addCaughtPokemon(result.name,Math.max(1,Math.floor(result.level/2)),result.profile);
   const passNote=recordBattlePass({catches:1});
   if(passNote)result.message+=' '+passNote+'.';
  }
@@ -9943,6 +9974,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.55',changes:['Randomized Ability Capsules with result dialogs, added Legendary capture preferences, timed evolution dismissal, half-level wild captures, and an online Hub entrance.']},
  {version:'0.22.54',changes:['Smoothed online battle playback and shortened reconnect delays.']},
  {version:'0.22.53',changes:['Updated PFT rewards and pacing, added battle EV controls, and unlocked 3× speed at 34 badges and Lucky Coin at 68 Master badges.','Added Shell Bell to PvP loaners and restored charge times for Explosion, Misty Explosion, and Self-Destruct.']},
  {version:'0.22.52',changes:['Balanced Master raid residual damage and fixed Master room startup.']},
@@ -10226,4 +10258,4 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.53"></script><script src="./multiplayer.js?v=0.22.54"></script></html>
+<script src="./tactics.js?v=0.22.53"></script><script src="./multiplayer.js?v=0.22.55"></script></html>
