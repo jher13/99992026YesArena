@@ -1867,6 +1867,21 @@ function addCaughtPokemon(name,level,profile=rollProfile()) {
  registerPokemon(name);
 }
 function ownedPokemon(name) {return wildProgress.owned[name];}
+function applyArenaMarketMemory(save) {
+ const entries=save.entries;
+ const progress=JSON.parse(entries['pokemon-arena-wild-progress'] ?? '{}');
+ const roster=JSON.parse(entries['pokemon-arena-team'] ?? '[]');
+ const nextProfiles=JSON.parse(entries['pokemon-arena-profiles'] ?? '{}');
+ const nextMoves=JSON.parse(entries['pokemon-arena-moves'] ?? '{}');
+ if(!roster.length || !progress.owned || roster.some(name=>!progress.owned[name]))throw Error('The Hub returned an invalid PC roster.');
+ team.splice(0,team.length,...roster);
+ for(const key of Object.keys(profiles))delete profiles[key];Object.assign(profiles,nextProfiles);
+ for(const key of Object.keys(loadouts))delete loadouts[key];savedMoves=nextMoves;
+ Object.assign(wildProgress,progress);
+ registeredPokemon.clear();for(const name of [...(progress.registered ?? []),...Object.keys(progress.owned)])registeredPokemon.add(name);
+ wildProgress.registered=[...registeredPokemon];inspected=null;activeSlot=Math.min(activeSlot,team.length-1);
+}
+
 for(const name of team) wildProgress.owned[name] ??= {level:name===starterSave?.name?1:5,xp:0};
 for(const name of Object.keys(wildProgress.held)) if(!ownedPokemon(name)) delete wildProgress.held[name];
 const registeredPokemon=new Set([...wildProgress.registered,...Object.keys(wildProgress.owned)]);
@@ -4487,6 +4502,7 @@ function openTeamBuilder() {
  renderMenu();
 }
 function openBattle(gym=null,wild=null,trainer=null,run=null,master=false) {
+ if(window.isArenaMarketBusy?.())return;
  setArenaDimensions();
  byId('battle').classList.remove('is-mega-raid');
  if(master && (!gym || !masterGymsUnlocked()))return;
@@ -5546,6 +5562,7 @@ function updateScore() {
 }
 const clamp = (n,min,max) => Math.max(min,Math.min(max,n));
 function startBattle() {
+ if(window.isArenaMarketBusy?.())return;
  if(phase!=='setup') return;
  phase='battle';
  unlockSkillSound();
@@ -9754,6 +9771,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.63',changes:['Auto-updates wait for automatic wild and Trainer battle sessions, including results, captures and evolution.','Added the Trading Hub: searchable auctions, PC copy escrow, reserved bids, Buy now, exact-match asynchronous requests and completion notifications.']},
  {version:'0.22.62',changes:['Added Arena adaptations for the remaining 123 abilities, with working descriptions, temporary forms, team auras, items and reactions.','Fixed release smoke tests for the separate Legendary auto-capture settings and updated online-retry timing.']},
  {version:'0.22.61',changes:['Implemented 31 Arena ability adaptations, including defensive reactions, conversions, copy abilities, multi-hit skills, pacing and temporary stances.','Ability Capsules now roll working abilities only. Updated local and online combat, ability descriptions and battle indicators.']},
  {version:'0.22.60',changes:['Capped EXP Candy S, M, and L at 500, 1,000, and 2,000 XP per use.']},
@@ -9918,9 +9936,15 @@ const updateLogEntries=[
  {version:'0.1.0',changes:['Moved Item Bag beside the player profile and gave it a pixel-art bag icon.']},
 ];
 let clientVersionCheckPending=false;
+function automaticBattleLoopActive() {
+ return Boolean((typeof selectedWild!=='undefined' && selectedWild && wildProgress.autoRepeat) ||
+  (typeof selectedTrainer!=='undefined' && selectedTrainer && trainerOptions.autoRepeat) ||
+  (typeof wildResult!=='undefined' && wildResult?.capture?.pending) ||
+  (typeof repeatTimer!=='undefined' && repeatTimer!==null && repeatTimer!==undefined));
+}
 function canCheckGameVersion() {
- return typeof location!=='undefined' && !window.isPvpVersionContext?.() && !window.hasActiveTacticsRun?.() &&
-  !['setup','battle'].includes(phase) && !document.querySelector('.trainer-reward-dialog[open]') &&
+ return typeof location!=='undefined' && !automaticBattleLoopActive() && !window.isArenaMarketBusy?.() && !document.querySelector('.trade-hub-dialog[open]') && !window.isPvpVersionContext?.() && !window.hasActiveTacticsRun?.() &&
+  !['setup','battle'].includes(phase) && !document.querySelector('.trainer-reward-dialog[open]') && !document.querySelector('.evolution-dialog[open]') &&
   (phase!=='online-battle' || window.isCompletedRaid?.());
 }
 function isNewerGameVersion(candidate,current) {
@@ -9931,7 +9955,7 @@ function isNewerGameVersion(candidate,current) {
  return index>=0 && next[index]>installed[index];
 }
 async function restartUpdatedClient(version) {
- cancelWildRepeat();
+ if(!canCheckGameVersion())return;
  const dialog=element('dialog',null,'client-update-dialog');
  const heading=element('strong',"There's a new version available. Updating the game client and restarting.");
  const countdown=element('p');
@@ -9943,14 +9967,17 @@ async function restartUpdatedClient(version) {
  try {
   const deadline=Date.now()+5000;
   while(Date.now()<deadline) {
+   if(!canCheckGameVersion()){dialog.close();dialog.remove();return;}
    countdown.textContent='Restarting in '+Math.ceil((deadline-Date.now())/1000)+' seconds…';
    await new Promise(resolve=>setTimeout(resolve,Math.min(1000,Math.max(0,deadline-Date.now()))));
   }
+  if(!canCheckGameVersion()){dialog.close();dialog.remove();return;}
   countdown.textContent='Restarting…';
   if(typeof flushArenaSave==='function') {
    while(typeof saving!=='undefined' && saving)await new Promise(resolve=>setTimeout(resolve,100));
    await flushArenaSave();
   }
+  if(!canCheckGameVersion()){dialog.close();dialog.remove();return;}
   const destination=new URL(location.href);
   destination.searchParams.set('gameVersion',version);
   location.replace(destination.href);

@@ -511,6 +511,7 @@
   return data;
  }
  function show(title,...nodes) {
+  dialog.classList.remove('trade-hub-dialog');
   dialog.classList.toggle('collection-dialog',pvpVersionContext || title==='Hotkey Settings');
   byId('home-dialog-title').textContent=title;
   byId('home-dialog-content').replaceChildren(...nodes);
@@ -1334,6 +1335,7 @@
  const notificationKeys=data=>[
   ...data.friends.map(name=>'friend:'+name),
   ...data.invites.map(invite=>'invite:'+invite.code),
+  ...(data.trades ?? []).filter(notice=>!notice.read_at).map(notice=>'trade:'+notice.id),
  ];
  function updateNotificationUnread(data,markRead=false) {
   const keys=notificationKeys(data);
@@ -1342,22 +1344,31 @@
   playerStorage.setItem(notificationReadKey,JSON.stringify(seen));
   setToolbarUnread('toolbar-notices',keys.length-seen.length);
  }
- async function notifications() {
+ async function readNotifications(){
   const data=await rpc('notifications');
+  let hub={notices:[],pending:0};
+  if(window.arenaMarketNotifications)try{hub=await window.arenaMarketNotifications();}catch{}
+  return {...data,trades:hub.notices,tradePending:hub.pending};
+ }
+ async function notifications() {
+  const data=await readNotifications();
+  if(data.trades?.some(notice=>!notice.read_at))await window.arenaMarketMarkRead(data.trades.filter(notice=>!notice.read_at).map(notice=>notice.id));
   updateNotificationUnread(data,true);
-  show('Notifications',...data.friends.map(name=>element('div',name+' sent a friend request.')),
+  show('Notifications',...(data.trades ?? []).map(notice=>{const entry=element('article',null,'market-notice');entry.append(element('strong',notice.title),element('p',notice.message));return entry;}),
+   ...(data.tradePending>0?[button('Receive completed trades',async()=>{await window.arenaMarketMutate('claim');await notifications();})]:[]),
+   ...((data.trades?.length || data.tradePending)?[button('Open Trading Hub',()=>window.openTradingHub())]:[]),...data.friends.map(name=>element('div',name+' sent a friend request.')),
    ...data.friends.map(name=>button('Accept '+name,async()=>{await rpc('friend_request',{name});await notifications();})),
    ...data.invites.map(invite=>button('Join '+invite.name+' · '+invite.mode,async()=>{
     if(invite.raid){showRaidSeats(await raidRpc('join',{code:invite.code}));return;}
     active=await rpc('join',{code:invite.code});showMatch(isCoop(invite.mode)?'Co-op':'PvP');
    })),
-   ...(!data.friends.length&&!data.invites.length?[element('p','No new notifications.')]:[]));
+   ...(!data.friends.length&&!data.invites.length&&!data.trades?.length?[element('p','No new notifications.')]:[]));
  }
  byId('toolbar-notices').onclick=()=>open('Notifications',notifications);
  setInterval(async()=>{
   if(phase!=='home' || !cloudAccount)return;
   try {
-   const data=await rpc('notifications');
+   const data=await readNotifications();
    updateNotificationUnread(data);
   } catch {}
  },5000);
@@ -1387,8 +1398,7 @@
  hubButton.onclick=async()=>{
   if(!cloudAccount){show('Trading Hub',element('p','Sign in to enter the online Hub.'));return;}
   await joinHubPresence();
-  show('Trading Hub',element('p',hubButton.textContent),
-   element('p','Trading is being prepared. Pokémon exchange is currently unavailable.'));
+  await open('Trading Hub',()=>window.openTradingHub());
  };
  void joinHubPresence();
  setInterval(()=>{

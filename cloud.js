@@ -186,7 +186,7 @@ function updatePendingSave(){
  }catch(error){window.reportLocalSaveError(error);}
 }
 async function flushArenaSave() {
- if(!cloudAccount || !team.length || saving || !dirty) return;
+ if(!cloudAccount || !team.length || saving || !dirty || pendingMarketOperation()) return;
  saving=true;
  saveState.textContent='Syncing…';
  dirty=false;
@@ -461,3 +461,116 @@ function installAccountGate() {
  }).catch(error=>{status.textContent=error.message;});
 }
 installAccountGate();
+
+let arenaMarketWorking=false;
+const marketPendingKey=()=>cloudAccount?'arena-market-pending:'+cloudAccount:null;
+function pendingMarketOperation(){try{return JSON.parse(sessionStorage.getItem(marketPendingKey()) ?? 'null');}catch{return null;}}
+window.isArenaMarketBusy=()=>arenaMarketWorking || Boolean(cloudAccount && pendingMarketOperation());
+function setPendingMarketOperation(value){const key=marketPendingKey();if(key){if(value)sessionStorage.setItem(key,JSON.stringify(value));else sessionStorage.removeItem(key);}}
+function applyArenaMarketSnapshot(result) {
+ validateArenaSave(result.save_data);
+ restoreArenaSave(result.save_data);
+ applyArenaMarketMemory(result.save_data);
+ cloudRevision=result.updated_at;
+ sessionStorage.setItem('arena-cloud-revision',cloudRevision);
+ dirty=false;updatePendingSave();
+ if(!localSaveFailed){syncError.hidden=true;saveState.textContent='Cloud synced';}
+ if(phase==='home')openMenu();
+}
+async function waitForArenaSave(){
+ const deadline=Date.now()+15000;
+ while(saving){if(Date.now()>deadline)throw Error('Cloud sync is still busy. Try again shortly.');await new Promise(resolve=>setTimeout(resolve,50));}
+}
+async function marketRpc(action,args={}) {
+ if(!cloudAccount)throw Error('Sign in to use the Trading Hub.');
+ const {data,error}=await (await cloudClient()).rpc('arena_market',{action,args});
+ if(error){error.marketRpcRejected=Boolean(error.code);throw error;}
+ if(data?.status && data.status!=='ok'){
+  const failure=new Error(data.message ?? 'Your PC changed. Sync or reload before trading.');failure.marketStatus=data.status;throw failure;
+ }
+ return data;
+}
+window.arenaMarketRead=marketRpc;
+async function sendMarketOperation(operation) {
+ let error;
+ for(let attempt=0;attempt<2;attempt++) {
+  try{
+   let timer;
+   try{return await Promise.race([marketRpc(operation.action,operation.args),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('The Hub is taking too long to respond. Open Hub to retry this transaction safely.')),15000);})]);}
+   finally{clearTimeout(timer);}
+  }
+  catch(failure){error=failure;if(failure.marketStatus || failure.marketRpcRejected)throw failure;}
+ }
+ throw error;
+}
+window.arenaMarketRecover=async()=>{
+ const operation=pendingMarketOperation();if(!operation)return;
+ if(arenaMarketWorking)throw Error('A Hub transaction is still syncing.');
+ if(phase!=='home' || automaticBattleLoopActive())throw Error('Return to the main menu to sync your Hub transaction.');
+ arenaMarketWorking=true;document.body.setAttribute('aria-busy','true');
+ try {
+  await waitForArenaSave();saving=true;
+  const result=await sendMarketOperation(operation);
+  applyArenaMarketSnapshot(result);setPendingMarketOperation(null);return result;
+ }catch(error){if(error.marketStatus || error.marketRpcRejected)setPendingMarketOperation(null);throw error;}
+ finally {saving=false;arenaMarketWorking=false;document.body.removeAttribute('aria-busy');}
+};
+window.arenaMarketPrepare=async()=>{
+ if(!cloudAccount)throw Error('Sign in to use the Trading Hub.');
+ if(phase!=='home' || automaticBattleLoopActive())throw Error('Return to the main menu before trading.');
+ await window.arenaMarketRecover();await waitForArenaSave();await flushArenaSave();
+ if(dirty)throw Error('Sync your latest PC changes before trading.');
+};
+window.arenaMarketMutate=async(action,args={})=>{
+ if(arenaMarketWorking)throw Error('A Hub transaction is still syncing.');
+ await window.arenaMarketPrepare();
+ if(arenaMarketWorking)throw Error('A Hub transaction is still syncing.');
+ arenaMarketWorking=true;document.body.setAttribute('aria-busy','true');
+ saveState.textContent=action==='claim'?'Receiving Hub deliveries…':'Syncing Hub transaction…';
+ let operation;
+ try {
+  clearTimeout(saveTimer);await waitForArenaSave();
+  if(dirty)await flushArenaSave();
+  if(dirty)throw Error('Sync your PC before trading.');
+  saving=true;
+  operation={action,args:{...args,expected_revision:cloudRevision,request_id:crypto.randomUUID()}};
+  setPendingMarketOperation(operation);
+  const result=await sendMarketOperation(operation);
+  applyArenaMarketSnapshot(result);setPendingMarketOperation(null);return result;
+ }catch(error){
+  if(error.marketStatus || error.marketRpcRejected)setPendingMarketOperation(null);
+  if(pendingMarketOperation())saveState.textContent='Hub transaction pending · open Hub to retry';
+  else if(!localSaveFailed)saveState.textContent='Cloud synced';
+  throw error;
+ }finally{
+  saving=false;arenaMarketWorking=false;document.body.removeAttribute('aria-busy');
+  if(dirty && !pendingMarketOperation())window.queueArenaSave();
+ }
+};
+// A short inventory transaction can begin only from the main menu. Never lock an active battle.
+for(const eventName of ['click','submit','keydown'])document.addEventListener(eventName,event=>{
+ const pending=cloudAccount && pendingMarketOperation();
+ const recoveryControl=event.target?.closest?.('#home-hub, #toolbar-notices, #home-dialog, #toolbar-logout, #arena-market-recover');
+ if(arenaMarketWorking || pending && !recoveryControl){
+  event.preventDefault();event.stopImmediatePropagation();
+  if(!arenaMarketWorking){saveState.textContent='Hub transaction pending · open Hub to retry';syncError.hidden=false;
+   const recover=element('button','Retry Hub sync');recover.id='arena-market-recover';recover.onclick=()=>window.arenaMarketRecover().catch(error=>{saveState.textContent=error.message;});
+   syncError.replaceChildren(element('span','Finish syncing your Hub transaction before changing progress. '),recover);
+  }
+ }
+},true);
+byId('home-dialog').addEventListener('cancel',event=>{if(arenaMarketWorking)event.preventDefault();});
+let lastMarketDeliveryCheck=0;
+window.arenaMarketNotifications=async()=>{
+ const result=await marketRpc('notices');
+ if(result.pending>0 && phase==='home' && !automaticBattleLoopActive() && !document.querySelector('dialog[open]') &&
+  !saving && !dirty && !window.isArenaMarketBusy() && Date.now()-lastMarketDeliveryCheck>30000) {
+  lastMarketDeliveryCheck=Date.now();
+  queueMicrotask(()=>{
+   if(phase==='home' && !automaticBattleLoopActive() && !document.querySelector('dialog[open]'))
+    window.arenaMarketMutate('claim').catch(()=>{});
+  });
+ }
+ return result;
+};
+window.arenaMarketMarkRead=ids=>marketRpc('read_notices',{ids});
