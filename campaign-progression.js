@@ -111,7 +111,7 @@
  function renderPresets(){const target=byId('pc-battle-presets');if(target)target.replaceChildren(presetControls());}
  function guestHuntChoices(region){
   const generation=regions.find(row=>row.name===region)?.generation,found=new Map();
-  for(const name of dexNames)if(generationOf(name)===generation && !isLegendaryEncounter(name) && !found.has(family(name)))found.set(family(name),{root:family(name),name,min_level:minimumEncounterLevel(dex[name][0])});
+  for(const name of dexNames)if((typeof speciesForms!=='undefined' && speciesForms[dex[name][0]]?speciesForms[dex[name][0]].encounterRegion===region:generationOf(name)===generation) && !isLegendaryEncounter(name) && !found.has(family(name)))found.set(family(name),{root:family(name),name,min_level:minimumEncounterLevel(dex[name][0])});
   return [...found.values()].sort((a,b)=>hash(day()+region+a.root)-hash(day()+region+b.root)).slice(0,unlocked('Kalos')?6:3);
  }
  function activeHunt(){const hunt=state().hunt;return hunt && hunt.day===day() && hunt.remaining>0?hunt:null;}

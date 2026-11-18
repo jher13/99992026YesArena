@@ -1,4 +1,25 @@
-# Update to 0.22.63
+# Update to 0.22.69
+
+Apply this changed-files patch over **0.22.68**. Keep the complete `assets`
+directory and replace the included files at their original paths. The new atlas
+files and expanded `pokemon-icons.png` are required for offline rendering.
+
+This update includes all 1,025 National Dex species and 58 regional forms.
+Existing Pokémon retain their save IDs. Regional forms use separate internal
+IDs while displaying the original National Dex number. All available PMDCollab
+animations and offline fallback icons are included; there are no runtime image
+requests to third-party sprite servers.
+
+The new migration is
+`supabase/migrations/20261118030000_complete_pokedex.sql`. Push all included
+files to `main` and let the existing Supabase deployment workflow finish. It
+extends the shared species and family-hunt catalogs, preserves auction escrow
+and account session checks, and deploys the regenerated combat engine.
+
+The new roster-specific checks are available with `npm run test:roster`.
+Source import tools are `scripts/expand-roster.py` followed by
+`scripts/import-roster-sprites.py`; these are development tools, not runtime
+requirements. Source attribution is in `assets/roster-sprite-credits.json`.
 
 Copy the ZIP contents into the existing PokeArena repository, preserving the
 directory paths. This is a changed-files patch; keep all other files and assets.
@@ -18,7 +39,7 @@ supabase db push --remote --yes
 supabase functions deploy arena-combat --project-ref ckgcuhaiuwlccyaxewbv --no-verify-jwt
 ```
 
-The new migration is `supabase/migrations/20261118010000_trading_hub.sql`.
+The Trading Hub foundation migration is `supabase/migrations/20261118010000_trading_hub.sql`.
 It preserves existing account session checks, save validation, and reward ledgers.
 Auctions escrow the selected individual and bids reserve coins. Completed trades,
 expired listings, and outbid refunds are delivered safely from the main menu;

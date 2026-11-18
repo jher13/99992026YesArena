@@ -1,4 +1,33 @@
-# Arena evolutions — 0.22.65
+# Arena evolutions — 0.22.69
+
+The roster now contains all **1,025 National Dex species**, plus **58 regional
+forms** with separate PC profiles, stats, abilities and learnsets. Regional forms
+retain their National Dex number. Alolan forms appear in Alola, Galarian forms
+in Galar, Hisuian forms in Sinnoh, and Paldean forms in Paldea.
+
+New evolution goals:
+
+| Pokémon | Evolution | Arena requirements |
+|---|---|---|
+| Girafarig | Farigiraf | Lv. 32; equip Twin Beam |
+| Dunsparce | Dudunsparce | Lv. 32; equip Hyper Drill |
+| Bisharp | Kingambit | Lv. 52; 5 participating battle wins; 10 Dark skill uses |
+| Frigibax | Arctibax | Lv. 35 |
+| Arctibax | Baxcalibur | Lv. 54 |
+| Gimmighoul | Gholdengo | Lv. 35; 5 participating battle wins |
+| Applin | Dipplin | Lv. 25; 1 Leaf Stone |
+| Dipplin | Hydrapple | Lv. 45; equip Dragon Cheer |
+| Poltchageist | Sinistcha | Lv. 30; 3 participating battle wins |
+| Duraludon | Archaludon | Lv. 50; 15 Steel skill uses |
+
+Regional evolution choices appear in **PC → Evolution**. Set an automatic path
+when a base Pokémon can evolve into multiple regional forms. The pre-existing
+Arena training paths remain available for existing Pokémon; regional forms now
+also evolve into their appropriate regional successors.
+
+Directional PMDCollab animations are bundled where available. The remaining
+43 species/forms use bundled offline icons. Sprite attribution records are in
+`assets/roster-sprite-credits.json`.
 
 Open a Pokémon in **PC → Evolution** to see its requirements and training progress.
 The same section appears when you select a stored copy.
@@ -14,8 +43,9 @@ The same section appears when you select a stored copy.
 - Cosmoem has both Solgaleo and Lunala paths at level 53.
 - Nincada evolves into Ninjask at level 20. A spare Poké Ball creates one additional Shedinja in the PC and is consumed. Without a spare ball, Ninjask still evolves normally.
 
-All 474 evolution routes in the current catalog have a method. The 33 species
-without directional animation sheets use their existing offline pixel icons.
+All 513 primary evolution routes and 10 legacy training paths have a method.
+Regional forms use separate storage identities, so evolving or trading one does
+not overwrite the original form’s profile.
 
 ## New and adapted requirements
 

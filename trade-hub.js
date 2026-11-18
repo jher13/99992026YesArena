@@ -161,7 +161,7 @@
  function filters(kind,onSearch){
   const form=node('form',null,'market-filters');
   const definitions=[['query','Pokémon name','text'],['dex','Pokédex number','number'],['ign','Player IGN','text']];
-  for(const [key,label,type] of definitions){const f=field(label,type,state.filters[key] ?? '');if(type==='number'){f.input.min=1;f.input.max=980;}f.input.oninput=()=>state.filters[key]=f.input.value.trim();form.append(f.wrapper);}
+  for(const [key,label,type] of definitions){const f=field(label,type,state.filters[key] ?? '');if(type==='number'){f.input.min=1;f.input.max=1025;}f.input.oninput=()=>state.filters[key]=f.input.value.trim();form.append(f.wrapper);}
   const choices=[['generation','Generation',[['','Any generation'],...Array.from({length:9},(_,i)=>[String(i+1),'Generation '+(i+1)])]],
    ['element','Element',[['','Any element'],...Object.keys(moveColors).filter(type=>typeChart[type])]],
    ['nature','Nature',[['','Any nature'],...natureNames]],['personality','Personality',[['','Any personality'],...personalityTraits.flat().toSorted()]],
