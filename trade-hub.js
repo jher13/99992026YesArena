@@ -41,22 +41,119 @@
   if(refresh || !state.inventory){await window.arenaMarketPrepare();state.inventory=(await window.arenaMarketRead('inventory')).rows;}
   return state.inventory;
  }
+ function pokemonStatus(row){
+  const panel=node('section',null,'detail-panel market-pc-status');
+  panel.setAttribute('aria-label','Selected Pokémon status');
+  if(!row){panel.append(node('h3','Pokémon status','detail-title'),node('p','Select a Pokémon, then choose Active or a copy to preview its stats.','market-pc-empty'));return panel;}
+  const meta=row.pokemon,profile=row.profile,name=meta.name;
+  const title=node('h3',null,'detail-title');
+  title.append(idlePokemonPortrait(name,'portrait',meta.shiny?spriteVariants(name).shiny:null),node('span',name));
+  if(wildProgress.favorites?.includes(name)){
+   const favorite=node('span','★','market-pc-favorite');favorite.setAttribute('aria-label','Favorite Pokémon');title.append(favorite);
+  }
+  title.append(node('small','#'+String(meta.number).padStart(4,'0')));
+  const body=node('div',null,'detail-body'),summary=node('div',null,'detail-summary'),info=node('div');
+  const badges=node('div',null,'badges');
+  for(const type of meta.types){const badge=node('span',type,'badge');badge.style.background=moveColors[type]??'#dbe5f4';badges.append(badge);}
+  const nature=natureOf(profile),effect=nature.up===nature.down?' · Neutral':' · +'+statLabels[nature.up]+' / −'+statLabels[nature.down];
+  const [height,weight]=dimensions(name),ability=abilityFor(name,profile);
+  info.append(node('p',sourceLabel(row)+(row.selector.slot===0?'':' · Stored'),'market-pc-source'),
+   node('p','Lv. '+meta.level+(meta.level>=100?' · Max level':'')),
+   badges,node('p',height/10+' m · '+weight/10+' kg'),node('p','Nature · '+nature.name+effect),
+   node('p','Personality · '+personalityOf(profile)),node('p','Current stats · Lv. '+meta.level));
+  if(ability)info.append(node('p',(hiddenAbilityFor(name,profile)?'Hidden Ability':'Ability')+' · '+ability));
+  const chart=node('canvas',null,'stat-chart'),values=calculatedStats(name,profile,meta.level);chart.width=250;chart.height=168;
+  chart.setAttribute('role','img');chart.setAttribute('aria-label',statLabels.map((label,i)=>label+' '+values[i]).join(', '));
+  summary.append(info,chart);body.append(summary,individualTable(name,profile));panel.append(title,body);drawStats(chart,values);
+  return panel;
+ }
  function picker(rows,onPick){
-  const root=node('section',null,'market-picker'),search=field('Find a PC Pokémon'),list=node('div',null,'market-picker-list');
-  const summary=node('p','Choose Active or a specific PC copy.','market-selection');let selected=null,limit=12;
-  const render=()=>{
-   const query=search.input.value.trim().toLowerCase();
-   const matches=rows.filter(row=>(identity(row.pokemon)+' '+sourceLabel(row)).toLowerCase().includes(query));
-   list.replaceChildren(...matches.slice(0,limit).map(row=>{
-    const entry=node('div',null,'market-picker-row');
-    const choose=button(identity(row.pokemon)+' · '+sourceLabel(row),()=>{
-     selected=row;summary.textContent='Selected: '+identity(row.pokemon)+' · '+sourceLabel(row);onPick(row);render();
-    });choose.setAttribute('aria-pressed',String(selected===row));entry.append(choose);return entry;
-   }));
-   if(!matches.length)list.append(node('p','No matching PC copies.'));
-   if(matches.length>limit)list.append(button('Show more Pokémon',()=>{limit+=12;render();}));
+  const root=node('section',null,'market-picker market-pc-picker'),storage=node('section',null,'team-box market-pc-box');
+  const preview=node('div',null,'market-pc-preview'),toolbar=node('div',null,'market-pc-toolbar');
+  const search=field('Search PC storage','search'),generation=select('PC generation',[
+   ['','All generations'],...Array.from({length:9},(_,i)=>[String(i+1),'Generation '+(i+1)])]);
+  search.input.placeholder='Search PC storage';search.wrapper.classList.add('market-pc-search');generation.wrapper.classList.add('market-pc-generation');
+  const controls={},filterDetails=node('details',null,'pc-filters'),filterGrid=node('div',null,'pc-filter-grid');
+  filterDetails.append(node('summary','Filters & sorting'),filterGrid);
+  const options=[['nature','PC nature',[['','Any nature'],...natureNames.toSorted()]],
+   ['personality','PC personality',[['','Any personality'],...new Set(personalityTraits.flat().toSorted())]],
+   ['element','PC element',[['','Any element'],...Object.keys(moveColors).filter(type=>typeChart[type]).toSorted()]],
+   ['appearance','PC appearance',[['','Any appearance'],['true','Shiny'],['false','Standard']]],
+   ['source','PC copies',[['','Active & copies'],['active','Active only'],['stored','Stored copies only']]],
+   ['stat','PC stat',[['','All stats (total)'],...statLabels.map((label,i)=>[String(i),label])]],
+   ['sort','PC sort by',[['number','Pokédex number'],['favorite','Favorites first'],['name','Name'],['level','Level'],['ivs','IVs'],['evs','EVs'],['nature','Nature'],['personality','Personality']]],
+   ['order','PC sort order',[['asc','Ascending'],['desc','Descending']]],
+   ['favorites','PC favorites',[['','All Pokémon'],['only','Favorites only']]]];
+  let page=0,selected=null;
+  for(const [key,label,values] of options){const f=select(label,values,key==='sort'?'number':key==='order'?'asc':'');controls[key]=f.input;filterGrid.append(f.wrapper);}
+  for(const [key,label,max] of [['iv','PC minimum IV',186],['ev','PC minimum EV',510]]){
+   const f=field(label,'number');f.input.min=0;f.input.max=max;f.input.step=1;controls[key]=f.input;filterGrid.append(f.wrapper);
+  }
+  const previous=node('button','‹'),next=node('button','›');previous.type=next.type='button';
+  previous.onclick=()=>{page--;render();};next.onclick=()=>{page++;render();};
+  previous.setAttribute('aria-label','Previous PC box');next.setAttribute('aria-label','Next PC box');
+  toolbar.append(generation.wrapper,search.wrapper,previous,next);
+  const label=node('div',null,'box-label'),pageLabel=node('span'),count=node('span');label.append(pageLabel,count);
+  const grid=node('div',null,'tile-grid market-pc-grid'),copies=node('fieldset',null,'pc-copy market-pc-copies');
+  const selection=node('p','Choose a Pokémon from your PC.','market-selection');selection.setAttribute('aria-live','polite');
+  const valueFor=(row,key)=>{
+   const meta=row.pokemon,stat=controls.stat.value;
+   if(key==='ivs'||key==='evs'){const values=meta[key];return stat===''?values.reduce((sum,n)=>sum+n,0):values[Number(stat)];}
+   return key==='favorite'?(wildProgress.favorites?.includes(meta.name)?0:1):meta[key];
   };
-  search.input.oninput=()=>{limit=12;render();};root.append(search.wrapper,summary,list);render();return root;
+  function render(){
+   const query=search.input.value.trim().toLowerCase(),numeric=query.replace(/^#/,'');
+   const matches=rows.filter(row=>{
+    const meta=row.pokemon;
+    const searchable=[identity(meta),sourceLabel(row),...meta.types].join(' ').toLowerCase();
+    return (!query || searchable.includes(query) || /^\d+$/.test(numeric) && (meta.number===Number(numeric)||String(meta.number).padStart(4,'0').startsWith(numeric))) &&
+     (!generation.input.value || String(meta.generation)===generation.input.value) &&
+     (!controls.nature.value || meta.nature===controls.nature.value) && (!controls.personality.value || meta.personality===controls.personality.value) &&
+     (!controls.element.value || meta.types.includes(controls.element.value)) && (!controls.appearance.value || String(meta.shiny)===controls.appearance.value) &&
+     (!controls.source.value || (row.selector.slot===0)===(controls.source.value==='active')) &&
+     (controls.favorites.value!=='only' || wildProgress.favorites?.includes(meta.name)) &&
+     valueFor(row,'ivs')>=Math.max(0,Number(controls.iv.value)||0) && valueFor(row,'evs')>=Math.max(0,Number(controls.ev.value)||0);
+   });
+   if(selected && !matches.includes(selected)){selected=null;onPick(null);}
+   const groups=new Map();for(const row of matches){const name=row.pokemon.name;if(!groups.has(name))groups.set(name,[]);groups.get(name).push(row);}
+   const direction=controls.order.value==='desc'?-1:1,sort=controls.sort.value;
+   const compare=(a,b)=>{const av=valueFor(a,sort),bv=valueFor(b,sort);return direction*(typeof av==='number'?av-bv:String(av).localeCompare(String(bv)))||a.pokemon.number-b.pokemon.number||a.selector.slot-b.selector.slot;};
+   const names=[...groups.values()].map(group=>group.toSorted(compare)).toSorted((a,b)=>compare(a[0],b[0]));
+   const pages=Math.max(1,Math.ceil(names.length/30));page=Math.max(0,Math.min(page,pages-1));
+   previous.disabled=page===0;next.disabled=page>=pages-1;pageLabel.textContent=names.length?'Box '+(page+1)+' / '+pages:'No boxes';
+   count.textContent=names.length+' Pokémon · '+matches.length+' copies';
+   const choose=(row,copy=false)=>{selected=row;onPick(row);render();(copy?copies:grid).querySelector('[aria-pressed="true"]')?.focus();};
+   grid.replaceChildren(...names.slice(page*30,(page+1)*30).map(group=>{
+    const row=group.find(row=>row===selected)??group[0],meta=row.pokemon;
+    const tile=button('',()=>choose(row));tile.classList.add('tile');tile.title=meta.name;
+    tile.setAttribute('aria-label','Inspect '+meta.name);tile.setAttribute('aria-pressed',String(selected?.pokemon.name===meta.name));
+    tile.append(idlePokemonPortrait(meta.name,null,meta.shiny?spriteVariants(meta.name).shiny:null),node('small','#'+String(meta.number).padStart(4,'0')));
+    if(group.length>1)tile.append(node('span','×'+group.length,'market-pc-copy-count'));return tile;
+   }));
+   if(!names.length)grid.append(node('p',rows.length?'No Pokémon match these filters.':'No Pokémon are available in your PC.','market-pc-empty'));
+   copies.replaceChildren(node('legend','Copies:'));
+   if(selected){
+    const group=groups.get(selected.pokemon.name),total=rows.filter(row=>row.pokemon.name===selected.pokemon.name).length;
+    copies.append(node('p',selected.pokemon.name+' · '+total+' total'+(group.length<total?' · '+group.length+' matching':''),'pc-copy-summary'));
+    const tiles=node('div',null,'tile-grid pc-copy-grid');
+    for(const row of group.toSorted((a,b)=>a.selector.slot-b.selector.slot)){
+     const tile=button('',()=>choose(row,true));tile.classList.add('tile');tile.setAttribute('aria-label',row.pokemon.name+' · '+sourceLabel(row)+' · Lv. '+row.pokemon.level);
+     tile.setAttribute('aria-pressed',String(row===selected));tile.append(idlePokemonPortrait(row.pokemon.name,null,row.pokemon.shiny?spriteVariants(row.pokemon.name).shiny:null),node('strong',sourceLabel(row)),node('small','Lv. '+row.pokemon.level));tiles.append(tile);
+    }
+    copies.append(tiles,node('p',selected.pokemon.nature+' · IV '+selected.pokemon.ivs.join('/'),'pc-copy-details'));
+    selection.textContent='Selected: '+selected.pokemon.name+' · '+sourceLabel(selected);
+   }else{copies.append(node('p','Select a Pokémon above to see its Active and stored copies.'));selection.textContent='Choose a Pokémon from your PC.';}
+   preview.replaceChildren(pokemonStatus(selected));
+  }
+  const filter=()=>{page=0;render();};
+  for(const control of Object.values(controls))control.oninput=filter;
+  controls.stat.oninput=()=>{for(const [key,max] of [['iv',controls.stat.value===''?186:31],['ev',controls.stat.value===''?510:252]]){controls[key].max=max;if(Number(controls[key].value)>max)controls[key].value=String(max);}filter();};
+  search.input.oninput=filter;generation.input.onchange=filter;
+  filterGrid.append(button('Reset PC filters',()=>{
+   search.input.value='';generation.input.value='';for(const control of Object.values(controls))control.value='';
+   controls.sort.value='number';controls.order.value='asc';controls.stat.oninput();
+  }));
+  storage.append(toolbar,filterDetails,label,grid,copies,selection);root.append(storage,preview);render();return root;
  }
  async function mutate(action,args){
   const result=await window.arenaMarketMutate(action,args);state.inventory=null;state.message=result.message ?? 'Trade completed.';await render();return result;
@@ -94,9 +191,9 @@
      await mutate('fulfill',{id:listing.id,selector:chosen.selector});
     });offer.disabled=true;
     panel.append(node('h4','Choose your matching copy'));
-    if(rows.length)panel.append(picker(rows,row=>{chosen=row;offer.disabled=false;}),offer);
+    if(rows.length)panel.append(picker(rows,row=>{chosen=row;offer.disabled=!row;}),offer);
     else panel.append(node('p','You do not have a matching Pokémon in your PC.'));
-    card.querySelector('.market-offer')?.remove();card.append(panel);
+    card.querySelector('.market-offer')?.remove();card.classList.add('market-listing-expanded');card.append(panel);
    }));
   }else{
    card.append(node('p',listing.current_bid>0?'Current bid: '+money(listing.current_bid):listing.minimum_bid?'Starting bid: '+money(listing.minimum_bid):'Buy now only'));
@@ -139,7 +236,7 @@
   const token=state.token;root.append(node('p','Loading your PC…'));
   const rows=await inventory();if(token!==state.token)return;root.replaceChildren();let chosen=null;
   root.append(node('h3',request?'Create a trade request':'Sell a PC Pokémon'),node('p','Your selected Active Pokémon or copy is held securely until the listing ends. Held items stay in your bag.'));
-  const selection=node('div');root.append(picker(rows,row=>{chosen=row;selection.replaceChildren(pokemonPanel(row.pokemon));}),selection);
+  root.append(picker(rows,row=>{chosen=row;}));
   const form=node('form',null,'market-publish-form');
   const tags=field('Tags (comma separated, up to 8)');tags.input.maxLength=200;
   const controls={};

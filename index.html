@@ -899,6 +899,27 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .market-picker-row button[aria-pressed=true]{outline:2px solid #d08b35;background:#315d49;color:#fff}.market-selection{font-size:12px;line-height:1.5}.market-publish-form p{grid-column:1/-1;font-size:12px;line-height:1.6}.market-offer{grid-column:1/-1;border-top:1px solid #b5c8b9;margin-top:12px;padding-top:12px}.market-pagination{justify-content:center;margin-bottom:12px}.market-notice{border-bottom:1px solid #b7cbbd;padding:10px 0}
 @media(max-width:600px){.market-toolbar{align-items:stretch}.market-toolbar button{flex:1}.market-filters,.market-publish-form{grid-template-columns:repeat(2,minmax(0,1fr))}.market-listings{grid-template-columns:1fr}}
 
+.market-pc-picker{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:16px;align-items:start;margin-top:16px}
+.market-pc-picker :is(.team-box,.detail-panel,.pc-filters){background:#eaf3e7;color:#253d36;border-color:#c4d6c8}
+.market-pc-preview,.market-pc-box{min-width:0}.market-pc-picker .market-pc-box{padding:10px;border-radius:10px}
+.market-pc-toolbar{display:flex;gap:5px;align-items:end;margin-bottom:8px}.market-pc-toolbar label{min-width:0;display:grid;gap:3px;font-size:0}
+.market-pc-generation{flex:0 1 100px}.market-pc-search{flex:1}.market-pc-toolbar :is(input,select){min-height:32px;padding:6px 5px;font:12px system-ui}.market-pc-toolbar button{padding:6px 9px;min-height:32px;flex:none;font:16px system-ui}
+.market-pc-picker :is(.box-label,.pc-filters summary,.pc-filter-grid label,.detail-summary p,.individual-stats thead th){color:#354f44}
+.market-pc-picker .pc-filters{margin-bottom:10px}.market-pc-picker .pc-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.market-pc-picker .pc-filter-grid :is(input,select){padding:5px 3px;font:11px system-ui}.market-pc-picker .pc-filter-grid button{padding:6px;font:11px system-ui}
+.market-pc-picker .tile{background:#e0ebdf;color:#253d36;border-color:#c3d5c6;min-height:48px;aspect-ratio:auto;font:12px system-ui;gap:3px}
+.market-pc-picker .tile:hover{background:#d2e5d6;border-color:#8cab98}.market-pc-picker .tile[aria-pressed=true]{background:#c7dfcb;border:2px solid #426e54}.market-pc-picker .tile:focus-visible{outline:2px solid #34684b;outline-offset:2px}
+.market-pc-picker .tile small{font-size:10px;font-weight:700}.market-pc-picker .tile canvas{max-width:min(40px,100%);object-fit:contain}.market-pc-grid{min-height:250px;align-content:start}
+.market-pc-copy-count{position:absolute;top:2px;right:3px;border-radius:3px;padding:1px 3px;background:#eaf3e7;font-size:9px}
+.market-pc-copies{margin:14px 0 0;min-width:0;border:1px solid #b5cbb9;padding:10px}.market-pc-copies legend{padding:0 4px}.market-pc-copies .pc-copy-summary{margin:0 0 10px;font-size:13px}
+.market-pc-copies .pc-copy-grid{grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:7px;max-height:230px;overflow:auto;padding:2px}.market-pc-copies .tile{min-height:80px}.market-pc-copies .tile strong{font-size:13px}.market-pc-copies .pc-copy-details{font-size:12px;line-height:1.5;margin-bottom:0}
+.market-pc-status .detail-title{background:#dbeadd;color:#253d36;font-size:20px;flex-wrap:wrap;gap:8px}.market-pc-status .detail-title small{font-size:12px}.market-pc-status .detail-summary{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
+.market-pc-status .detail-body{padding:10px}.market-pc-status .detail-summary p{font-size:12px;line-height:1.5;margin:5px 0}.market-pc-status .market-pc-source{font-weight:700}.market-pc-status .stat-chart{background:#1b3040;border-radius:8px;width:100%;height:auto;aspect-ratio:250/168}
+.market-pc-status .individual-stats{font-size:12px}.market-pc-status .individual-stats :is(th,td){border-color:#c5d8ca}.market-pc-status .individual-stats .raised{color:#316b27}.market-pc-status .individual-stats .lowered{color:#a1362f}
+.market-pc-favorite{color:#fff;background:#173c2c;border-radius:6px;padding:2px 7px;font-size:19px}.market-pc-empty{padding:16px;font-size:13px;line-height:1.6}.market-pc-grid>.market-pc-empty{grid-column:1/-1}.market-listing-expanded{grid-column:1/-1}
+@media(max-width:900px){.market-pc-picker{grid-template-columns:1fr}.market-pc-status .detail-summary{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}}
+@media(max-width:440px){.market-pc-status .detail-summary{grid-template-columns:1fr}.market-pc-picker .box-label{align-items:start;flex-direction:column}.market-pc-picker .pc-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.market-pc-generation{flex-basis:85px}.market-pc-picker .stat-chart{max-width:340px;justify-self:center}}
+
 </style>
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
@@ -10925,6 +10946,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.64',changes:['Added PC storage boxes, per-copy search and filters, and a side-by-side Pokémon status preview to Trading Hub Sell and Request selectors.']},
  {version:'0.22.63',changes:['Auto-updates wait for automatic wild and Trainer battle sessions, including results, captures and evolution.','Added the Trading Hub: searchable auctions, PC copy escrow, reserved bids, Buy now, exact-match asynchronous requests and completion notifications.']},
  {version:'0.22.62',changes:['Added Arena adaptations for the remaining 123 abilities, with working descriptions, temporary forms, team auras, items and reactions.','Fixed release smoke tests for the separate Legendary auto-capture settings and updated online-retry timing.']},
  {version:'0.22.61',changes:['Implemented 31 Arena ability adaptations, including defensive reactions, conversions, copy abilities, multi-hit skills, pacing and temporary stances.','Ability Capsules now roll working abilities only. Updated local and online combat, ability descriptions and battle indicators.']},
@@ -11227,4 +11249,4 @@ byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPas
 byId('events-back').onclick=openMenu;
 </script>
 <script src="./tactics.js?v=0.22.59"></script><script src="./multiplayer.js?v=0.22.63"></script>
-<script src="./trade-hub.js?v=0.22.63"></script></html>
+<script src="./trade-hub.js?v=0.22.64"></script></html>

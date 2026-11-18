@@ -9771,6 +9771,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.64',changes:['Added PC storage boxes, per-copy search and filters, and a side-by-side Pokémon status preview to Trading Hub Sell and Request selectors.']},
  {version:'0.22.63',changes:['Auto-updates wait for automatic wild and Trainer battle sessions, including results, captures and evolution.','Added the Trading Hub: searchable auctions, PC copy escrow, reserved bids, Buy now, exact-match asynchronous requests and completion notifications.']},
  {version:'0.22.62',changes:['Added Arena adaptations for the remaining 123 abilities, with working descriptions, temporary forms, team auras, items and reactions.','Fixed release smoke tests for the separate Legendary auto-capture settings and updated online-retry timing.']},
  {version:'0.22.61',changes:['Implemented 31 Arena ability adaptations, including defensive reactions, conversions, copy abilities, multi-hit skills, pacing and temporary stances.','Ability Capsules now roll working abilities only. Updated local and online combat, ability descriptions and battle indicators.']},

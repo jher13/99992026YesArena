@@ -7,7 +7,7 @@ const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const html=read('index.html');
 let checks=0;
 class Node {
- constructor(tag='div',text='',cls=''){this.tagName=tag;this.textContent=text??'';this.children=[];this.attributes={};this.classes=new Set(cls.split(' ').filter(Boolean));this.style={setProperty(){}};this.value='';this.open=false;this.events={};
+ constructor(tag='div',text='',cls=''){this.tagName=tag;this.textContent=text??'';this.children=[];this.attributes={};this.classes=new Set((cls??'').split(' ').filter(Boolean));this.style={setProperty(){}};this.value='';this.open=false;this.events={};
   this.classList={add:(...xs)=>xs.forEach(x=>this.classes.add(x)),remove:(...xs)=>xs.forEach(x=>this.classes.delete(x)),toggle:(x,yes)=>yes?this.classes.add(x):this.classes.delete(x)};
  }
  append(...xs){for(const x of xs){if(x instanceof Node)x.parent=this;this.children.push(x);}}
@@ -16,10 +16,12 @@ class Node {
  setAttribute(k,v){this.attributes[k]=String(v);}
  removeAttribute(k){delete this.attributes[k];}
  addEventListener(k,fn){(this.events[k]??=[]).push(fn);}
+ focus(){this.focused=true;}
+ getContext(){return {beginPath(){},moveTo(){},lineTo(){},closePath(){},stroke(){},fill(){},fillText(){}};}
  showModal(){this.open=true;}
  close(){this.open=false;for(const f of this.events.close??[])f();}
  remove(){if(this.parent)this.parent.children=this.parent.children.filter(x=>x!==this);}
- matches(selector){return selector.startsWith('.')?this.classes.has(selector.split(/[\[ ]/)[0].slice(1))&&(!selector.includes('[open]')||this.open):selector.startsWith('dialog')?this.tagName==='dialog'&&(!selector.includes('[open]')||this.open):this.tagName===selector;}
+ matches(selector){if(selector.startsWith('[')){const parts=selector.match(/^\[([^=]+)="([^"]+)"\]$/);return parts&&this.attributes[parts[1]]===parts[2];}return selector.startsWith('.')?this.classes.has(selector.split(/[\[ ]/)[0].slice(1))&&(!selector.includes('[open]')||this.open):selector.startsWith('dialog')?this.tagName==='dialog'&&(!selector.includes('[open]')||this.open):this.tagName===selector;}
  all(){return this.children.filter(x=>x instanceof Node).flatMap(x=>[x,...x.all()]);}
  querySelector(selector){return this.all().find(x=>x.matches(selector))??null;}
 }
@@ -34,7 +36,7 @@ async function updateChecks(){
   Date:class extends Date{static now(){return now;}},setTimeout:fn=>{now+=1000;if(waitHook)waitHook();queueMicrotask(fn);},
   fetch:async()=>{if(fetchHook)await fetchHook();return {ok:true,json:async()=>({version:'9.0.0'})};},
   flushArenaSave:async()=>{if(flushHook)await flushHook();},saving:false,
-  phase:'home',selectedWild:null,selectedTrainer:null,repeatTimer:null,wildProgress:{autoRepeat:true},trainerOptions:{autoRepeat:true},updateLogEntries:[{version:'0.22.63'}]});
+  phase:'home',selectedWild:null,selectedTrainer:null,repeatTimer:null,wildProgress:{autoRepeat:true},trainerOptions:{autoRepeat:true},updateLogEntries:[{version:JSON.parse(read('version.json')).version}]});
  vm.runInContext(html.slice(html.indexOf('let clientVersionCheckPending='),html.indexOf("window.addEventListener('focus'")),ctx);
  const safe=()=>vm.runInContext('canCheckGameVersion()',ctx);
  assert(safe(),'Saved Auto repeat preferences alone must not block menu updates');checks++;
@@ -87,30 +89,63 @@ async function cloudChecks(){
 }
 async function hubChecks(){
  const d=dom();d.byId('home-dialog').append(d.byId('home-dialog-content'));
- const sample={name:'Bulbasaur',number:1,generation:1,types:['Grass','Poison'],level:50,nature:'Adamant',personality:'Resilient',shiny:false,iv_total:186,ivs:Array(6).fill(31),evs:Array(6).fill(0)};
- const rows=[0,1].map(slot=>({selector:{name:'Bulbasaur',slot,fingerprint:'copy-'+slot},pokemon:sample}));
+ const gameDex=JSON.parse(html.match(/^const dex = (.+);$/m)[1]);
+ const profile={pid:2,ivs:Array(6).fill(31),evs:Array(6).fill(0),abilityOverride:'Good as Gold'};
+ const copyProfile={pid:10,ivs:[20,30,17,22,25,31],evs:[4,0,0,0,4,252],abilityOverride:'Pressure',shiny:true};
+ const sample={name:'Bulbasaur',number:1,generation:1,types:['Grass','Poison'],level:50,nature:'Adamant',personality:'Resilient',shiny:false,iv_total:186,ivs:profile.ivs,evs:profile.evs};
+ const rows=[{selector:{name:'Bulbasaur',slot:0,fingerprint:'active'},pokemon:sample,profile},
+  {selector:{name:'Bulbasaur',slot:1,fingerprint:'copy-two'},pokemon:{...sample,level:80,nature:'Modest',personality:'Mischievous',shiny:true,ivs:copyProfile.ivs,evs:copyProfile.evs,iv_total:145},profile:copyProfile},
+  ...Object.entries(gameDex).filter(([,value])=>value[0]>1&&value[0]<=32||value[0]===152).map(([name,value])=>({selector:{name,slot:0,fingerprint:'species-'+value[0]},
+   pokemon:{...sample,name,number:value[0],generation:value[0]===152?2:1,types:value.slice(1,3).filter(Boolean)},profile}))];
  const calls=[],mutations=[];let listings=[];
  const ctx=vm.createContext({...d,window:{arenaMarketPrepare:async()=>{},arenaMarketRead:async(action,args)=>{calls.push({action,args});return action==='inventory'?{rows}:{rows:listings,total:listings.length};},
-  arenaMarketMutate:async(action,args)=>{mutations.push({action,args});return {message:'Saved.'};}},wildProgress:{coins:10000},
-  dexNames:['Bulbasaur','Charmander'],dex:{Bulbasaur:[1],Charmander:[4]},natureNames:['Adamant','Timid'],personalityTraits:[['Resilient','Swift']],statLabels:['HP','Attack','Defense','Speed','Sp. Def','Sp. Atk'],
-  moveColors:{Grass:'#00aa00',Fire:'#ff0000'},typeChart:{Grass:{},Fire:{}},pokemonPortrait:()=>new Node('img'),spriteVariants:()=>({shiny:'shiny'}),confirm:()=>true,console});
+  arenaMarketMutate:async(action,args)=>{mutations.push({action,args});return {message:'Saved.'};}},wildProgress:{coins:10000,favorites:['Bulbasaur']},
+  dexNames:Object.keys(gameDex),dex:gameDex,moveColors:{Grass:'#00aa00',Poison:'#aa00aa',Fire:'#ff0000'},typeChart:{Grass:{},Poison:{},Fire:{}},
+  pokemonPortrait:()=>new Node('canvas'),idlePokemonPortrait:()=>new Node('canvas'),spriteVariants:()=>({shiny:'shiny'}),
+  dimensions:()=>[7,69],abilityFor:(_,p)=>p.abilityOverride,hiddenAbilityFor:()=>null,
+  profileFor:()=>{throw Error('A Hub preview must never read or activate a local PC profile');},confirm:()=>true,console});
+ vm.runInContext(html.match(/^const dexStats = .+;$/m)[0],ctx);
+ vm.runInContext(html.slice(html.indexOf('const natureNames=['),html.indexOf('const profileStorage=')),ctx);
+ vm.runInContext(html.slice(html.indexOf('function natureOf('),html.indexOf('function isAvailablePokemon(')),ctx);
+ vm.runInContext(html.slice(html.indexOf('function drawStats('),html.indexOf('function addEVs(')),ctx);
  vm.runInContext(read('trade-hub.js'),ctx);
- const content=d.byId('home-dialog-content');const text=()=>content.all().map(n=>n.textContent).join(' ');
+ const content=d.byId('home-dialog-content'),allText=n=>[n,...n.all()].map(n=>n.textContent).join(' '),text=()=>allText(content);
  const button=label=>content.all().find(n=>n.tagName==='button'&&n.textContent===label);
  const input=label=>content.all().find(n=>n.attributes['aria-label']===label);
+ const control=label=>content.all().find(n=>n.tagName==='button'&&n.attributes['aria-label']===label);
+ const selectCopy=async(slot=0)=>{await control('Inspect Bulbasaur').onclick();if(slot)await control('Bulbasaur · Copy '+(slot+1)+' · Lv. 80').onclick();};
  await ctx.window.openTradingHub();assert(d.byId('home-dialog').open);for(const tab of ['Search','Sell','Request'])assert(button(tab));checks++;
  for(const label of ['Pokémon name','Pokédex number','Player IGN','Generation','Element','Nature','Personality','Appearance','Sort by'])assert(input(label));checks++;
  input('Nature').value='Timid';input('Nature').onchange();input('Player IGN').value='Nifty';input('Player IGN').oninput();
  content.all().find(n=>n.tagName==='form').onsubmit({preventDefault(){}});await tick();assert.equal(calls.at(-1).args.nature,'Timid');assert.equal(calls.at(-1).args.ign,'Nifty');checks++;
- await button('Sell').onclick();assert.match(text(),/Active/);assert.match(text(),/Copy 2/);checks++;
- await content.all().find(n=>n.tagName==='button'&&n.textContent.endsWith('Copy 2')).onclick();input('Starting bid (optional)').value='100';input('Buy now price (optional)').value='500';
- await content.all().find(n=>n.tagName==='form').onsubmit({preventDefault(){}});assert.equal(mutations.at(-1).action,'create_auction');assert.equal(mutations.at(-1).args.selector.slot,1);assert.equal(mutations.at(-1).args.buy_now,500);checks++;
- await button('Request').onclick();assert(input('Search requests for'));await button('Create request').onclick();
- await content.all().find(n=>n.tagName==='button'&&n.textContent.endsWith('Active')).onclick();input('Pokémon you want').value='charmander';input('Wanted nature').value='Timid';input('Wanted personality').value='Swift';input('Wanted appearance').value='true';
- await content.all().find(n=>n.tagName==='form').onsubmit({preventDefault(){}});const wanted=mutations.at(-1);assert.equal(wanted.action,'create_request');assert.equal(wanted.args.want.name,'Charmander');assert.equal(wanted.args.want.personality,'Swift');assert.equal(wanted.args.want.shiny,true);checks++;
+ await button('Sell').onclick();assert(content.querySelector('.market-pc-box'));assert(content.querySelector('.market-pc-preview'));assert.match(text(),/Box 1 \/ 2/);checks++;
+ assert.equal(content.querySelector('.market-pc-grid').children.length,30);assert(control('Previous PC box').disabled);assert(!control('Next PC box').disabled);checks++;
+ await control('Next PC box').onclick();assert.match(text(),/Box 2 \/ 2/);assert(control('Next PC box').disabled);assert.equal(content.querySelector('.market-pc-grid').children.length,3);checks++;
+ await control('Previous PC box').onclick();assert(control('Previous PC box').disabled);checks++;
+ await selectCopy();let status=content.querySelector('.market-pc-status');assert.match(allText(status),/Adamant/,text());assert.match(allText(status),/Good as Gold/);assert(status.querySelector('.individual-stats'));checks++;
+ const activeChart=status.querySelector('.stat-chart').attributes['aria-label'];await control('Bulbasaur · Copy 2 · Lv. 80').onclick();status=content.querySelector('.market-pc-status');
+ assert.match(allText(status),/Modest/);assert.match(allText(status),/Pressure/);assert.match(allText(status),/Copy 2 · Stored/);assert.match(allText(status),/Lv. 80/);assert.notEqual(status.querySelector('.stat-chart').attributes['aria-label'],activeChart);checks++;
+ assert.equal(status.querySelector('.stat-chart').attributes['aria-label'],['HP','Attack','Defense','Speed','Sp. Def','Sp. Atk'].map((name,i)=>name+' '+ctx.calculatedStats('Bulbasaur',copyProfile,80)[i]).join(', '));checks++;
+ assert.equal(mutations.length,0,'Previewing a copy must not mutate or activate it');assert.equal(profile.pid,2);checks++;
+ input('PC nature').value='Modest';input('PC nature').oninput();assert.equal(content.querySelector('.market-pc-grid').children.length,1);assert.match(text(),/2 total · 1 matching/);checks++;
+ input('PC nature').value='Adamant';input('PC nature').oninput();assert.match(allText(content.querySelector('.market-pc-status')),/Select a Pokémon/);checks++;
+ input('Starting bid (optional)').value='100';input('Buy now price (optional)').value='500';await content.all().find(n=>n.tagName==='form').onsubmit({preventDefault(){}});assert.equal(mutations.length,0,'A filter hiding the selected copy must clear the trade selection');checks++;
+ await button('Reset PC filters').onclick();input('PC generation').value='2';input('PC generation').onchange();assert.equal(content.querySelector('.market-pc-grid').children.length,1);assert(control('Inspect Chikorita'));checks++;
+ await button('Reset PC filters').onclick();input('Search PC storage').value='#0001';input('Search PC storage').oninput();assert.equal(content.querySelector('.market-pc-grid').children.length,1);checks++;
+ input('Search PC storage').value='mischievous';input('Search PC storage').oninput();await selectCopy();assert.match(allText(content.querySelector('.market-pc-status')),/Copy 2 · Stored/);checks++;
+ await content.all().find(n=>n.tagName==='form').onsubmit({preventDefault(){}});assert.equal(mutations.at(-1).action,'create_auction');assert.equal(mutations.at(-1).args.selector.fingerprint,'copy-two');assert.equal(mutations.at(-1).args.buy_now,500);checks++;
+ input('PC stat').value='5';input('PC stat').oninput();assert.equal(input('PC minimum IV').max,31);assert.equal(input('PC minimum EV').max,252);checks++;
+ input('PC minimum EV').value='252';input('PC minimum EV').oninput();assert.equal(content.querySelector('.market-pc-grid').children.length,1);checks++;
+ await button('Reset PC filters').onclick();input('PC favorites').value='only';input('PC favorites').oninput();assert.equal(content.querySelector('.market-pc-grid').children.length,1);assert(control('Inspect Bulbasaur'));checks++;
+ await button('Reset PC filters').onclick();input('PC sort by').value='level';input('PC sort by').oninput();input('PC sort order').value='desc';input('PC sort order').oninput();assert.equal(content.querySelector('.market-pc-grid').children[0].attributes['aria-label'],'Inspect Bulbasaur');await selectCopy();assert.match(allText(content.querySelector('.market-pc-status')),/Lv. 80/);checks++;
+ await button('Request').onclick();assert(input('Search requests for'));await button('Create request').onclick();await selectCopy(1);assert.match(allText(content.querySelector('.market-pc-status')),/Copy 2 · Stored/);checks++;
+ input('Pokémon you want').value='charmander';input('Wanted nature').value='Timid';input('Wanted personality').value='Swift';input('Wanted appearance').value='true';
+ await content.all().find(n=>n.tagName==='form').onsubmit({preventDefault(){}});const wanted=mutations.at(-1);assert.equal(wanted.action,'create_request');assert.equal(wanted.args.selector.fingerprint,'copy-two');assert.equal(wanted.args.want.name,'Charmander');assert.equal(wanted.args.want.personality,'Swift');assert.equal(wanted.args.want.shiny,true);checks++;
  assert(ctx.window.arenaMarketMatchesWanted({...sample,name:'Charmander',nature:'Timid',personality:'Swift',shiny:true},wanted.args.want));assert(!ctx.window.arenaMarketMatchesWanted({...sample,name:'Charmander'},wanted.args.want));checks++;
- await button('Browse requests').onclick();listings=[{id:'request-one',kind:'request',pokemon:sample,seller:'Brock',want:{name:'Bulbasaur',nature:'Adamant',personality:'Resilient'},ends_at:new Date(Date.now()+86400000).toISOString(),status:'open'}];
- await button('Refresh').onclick();await button('Offer a matching Pokémon').onclick();await content.all().find(n=>n.tagName==='button'&&n.textContent.endsWith('Copy 2')).onclick();await button('Complete this trade').onclick();assert.equal(mutations.at(-1).action,'fulfill');assert.equal(mutations.at(-1).args.selector.slot,1);checks++;
+ await button('Browse requests').onclick();listings=[{id:'request-one',kind:'request',pokemon:sample,seller:'Brock',want:{name:'Bulbasaur'},ends_at:new Date(Date.now()+86400000).toISOString(),status:'open'}];
+ await button('Refresh').onclick();await button('Offer a matching Pokémon').onclick();assert(content.querySelector('.market-listing-expanded'));await selectCopy(1);input('PC appearance').value='false';input('PC appearance').oninput();assert(button('Complete this trade').disabled);checks++;
+ input('PC appearance').value='';input('PC appearance').oninput();await selectCopy(1);await button('Complete this trade').onclick();assert.equal(mutations.at(-1).action,'fulfill');assert.equal(mutations.at(-1).args.selector.fingerprint,'copy-two');checks++;
  d.byId('home-dialog').close();assert(!d.byId('home-dialog').classes.has('trade-hub-dialog'));checks++;
 }
+
 (async()=>{await updateChecks();await cloudChecks();await hubChecks();console.log(checks+' client checks passed: automatic session update guards, transaction recovery, live PC imports and all Hub tabs.');})().catch(error=>{console.error(error);process.exitCode=1;});
