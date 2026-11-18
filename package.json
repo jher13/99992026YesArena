@@ -1,14 +1,15 @@
 {
   "name": "pokearena",
-  "version": "0.22.67",
+  "version": "0.22.68",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/release-smoke.cjs && node tests/trade-hub-sql.cjs",
+    "test": "node tests/release-smoke.cjs && node tests/trade-hub-sql.cjs && node tests/regional-progression-sql.cjs",
     "test:evolution": "node tests/arena-evolutions.cjs",
     "test:trade": "node tests/update-and-trade-client.cjs && node tests/trade-hub-sql.cjs",
     "test:tactics": "node tests/arena-tactics.cjs",
-    "test:maps": "node tests/arena-maps.cjs"
+    "test:maps": "node tests/arena-maps.cjs",
+    "test:campaign": "node tests/regional-progression-client.cjs && node tests/regional-contracts.cjs && node tests/regional-progression-sql.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.16"

@@ -661,6 +661,6 @@ async function verifyMasterRaids(){
 }
 Promise.all([verifyPendingRecovery(),verifyLoanerGear(),verifyOpenArenaChase(),verifyMasterRaids(),verifyRaidRetry()]).then(()=>{
  console.log('Manual Capture, full-bench fusion, pending-save recovery, and server loaner gear checks passed.');
- for(const file of ['ability-adaptations.cjs','remaining-abilities.cjs','update-and-trade-client.cjs','arena-evolutions.cjs','arena-tactics.cjs','arena-maps.cjs'])
+ for(const file of ['ability-adaptations.cjs','remaining-abilities.cjs','update-and-trade-client.cjs','arena-evolutions.cjs','arena-tactics.cjs','arena-maps.cjs','regional-progression-client.cjs','regional-contracts.cjs'])
   require('node:child_process').execFileSync(process.execPath,[path.join(__dirname,file)],{stdio:'inherit'});
 }).catch(error=>{console.error(error);process.exitCode=1;});

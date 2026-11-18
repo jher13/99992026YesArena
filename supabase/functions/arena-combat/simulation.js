@@ -279,3 +279,33 @@ export function onlineView(state,side,mode) {
   normalAttacks:[...state.allies,...state.enemies].find(actor=>actor.side===side)?.normalAttacksEnabled ?? true,
   recall:Math.max(0,(state.recalls[side] ?? 0)-state.clock),sounds:state.sounds};
 }
+// Contracts replay the same immutable saved build in the browser and on the server.
+export const campaignEngineVersion=updateLogEntries[0].version;
+export function campaignContractMatch(entries,definition,runId) {
+ const region=definition.region,regional=gymTeams.filter(gym=>gym.region===region);
+ if(!regional.length || !['daily','elite'].includes(definition.kind))throw Error('Invalid regional contract.');
+ const progress=JSON.parse(entries['pokemon-arena-wild-progress']??'{}');
+ const savedTeam=JSON.parse(entries['pokemon-arena-team']??'[]');
+ if(definition.kind==='elite' && savedTeam.length!==6)throw Error('Elite contracts require a full six-Pokémon team.');
+ const count=Math.min(definition.kind==='elite'?6:3,savedTeam.length);
+ const host=savedTeam.slice(0,count);if(!host.length || host.some(name=>!isAvailablePokemon(name) || !progress.owned?.[name]))throw Error('Save a healthy PC team first.');
+ const gym=regional.at(-1),elite=definition.kind==='elite';
+ const rotation=(definition.seed>>>0)%gym.roster.length;
+ const foes=Array.from({length:count},(_,i)=>gym.roster[(i+rotation)%gym.roster.length]);
+ const average=host.reduce((sum,name)=>sum+progress.owned[name].level,0)/host.length;
+ const level=clamp(Math.round(elite?Math.max(80,average):average-3),1,100);
+ const npcProgress={owned:{},held:{},items:{},ai:{},battlePlan:elite?'Burst':'Balanced'};
+ const npcProfiles={},npcMoves={};
+ foes.forEach(name=>{
+  const slot=gym.roster.indexOf(name),physical=dexStats[dex[name][0]-1][1]>=dexStats[dex[name][0]-1][5];
+  const profile={pid:physical?3:15,ivs:Array(6).fill(elite?31:18),evs:elite?(physical?[100,252,0,158,0,0]:[100,0,0,158,0,252]):Array(6).fill(0)};
+  npcProfiles[dex[name][0]]=profile;npcProgress.owned[name]={level,xp:0};
+  npcMoves[name]=gymMoves(name,gym,slot);npcProgress.ai[name]={style:elite?'Aggressive':'Balanced',position:'Auto',target:elite?'Type weakness':'Nearest'};
+  const item=elite?(gymHeldItem(name)??'Leftovers'):null;
+  if(item){npcProgress.held[name]=item;npcProgress.items[item]=(npcProgress.items[item]??0)+1;}
+ });
+ const seed=(definition.seed>>>0).toString(16).padStart(8,'0');
+ return {id:seed+'-'+runId.slice(9),mode:'campaign',format:count,host_pick:host,guest_pick:foes,
+  host_entries:entries,guest_entries:{'pokemon-arena-wild-progress':JSON.stringify(npcProgress),
+   'pokemon-arena-profiles':JSON.stringify(npcProfiles),'pokemon-arena-moves':JSON.stringify(npcMoves)}};
+}

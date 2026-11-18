@@ -11,6 +11,9 @@ const document = {
 const localStorage={getItem(){return null;},setItem(){}};
 const sessionStorage=localStorage;
 const window={addEventListener(){}};
+// Keep the simulation isolated when imported by a browser contract replay.
+const location=undefined;
+const matchMedia=undefined;
 const setInterval=()=>{};
 const Image=class {};
 const requestAnimationFrame=()=>{};
@@ -639,6 +642,7 @@ function enableBoxDrag(tile,name) {
 function renderRoster() {
  const container=byId('team-slots');
  byId('pc-battle-plan').replaceChildren(battlePlanControls());
+ window.ArenaCampaign?.renderPresets();
  byId('team-count').textContent=team.length+' / 6';
  const slots=team.length<6?[...team,null]:team;
  container.replaceChildren(...slots.map((name,index)=>{
@@ -1620,6 +1624,7 @@ function pvpLoanerFor(name,roster,choices){
 const wildProgress={battlePlan:'Balanced',battleCarry:'',favorites:[],pvpLoaners:{},autoCaptureRare:true,autoCaptureRareBall:6,autoCaptureRareFallback:-1,autoCaptureBall:0,autoCaptureFallback:'standard',reservePremiumBalls:true,battlePass:{xp:0,claimed:[]},capsules:0,vitamins:{},copies:{},ai:{},owned:{},registered:[],coins:0,megaRaidRewards:[],items:{},held:{},skills:{},balls:[12,1,3,1,1,0,1,0,0],wins:0,autoCapture:false,autoRepeat:false,autoReserve:false,speed:1};
 try {
  const saved=JSON.parse(playerStorage.getItem(progressKey));
+ if(saved?.campaign && typeof saved.campaign==='object' && !Array.isArray(saved.campaign))wildProgress.campaign=saved.campaign;
  wildProgress.battlePlan=normalizeTeamPlan(saved?.battlePlan);
  wildProgress.battleCarry=isAvailablePokemon(saved?.battleCarry)?saved.battleCarry:'';
  for(const [name,item] of Object.entries(saved?.pvpLoaners ?? {}))
@@ -3044,7 +3049,8 @@ function rollWildEncounter(region,tier) {
  const pool=rare.length && onlineRandom()<legendaryEncounterRate ? rare :
   eligible.filter(name=>!isLegendaryEncounter(name));
  if(!pool.length) return null;
- const name=pool[Math.floor(onlineRandom()*pool.length)];
+ let name=pool[Math.floor(onlineRandom()*pool.length)];
+ name=window.ArenaCampaign?.pickEncounter(pool,region,name) ?? name;
  return {region,name,level,tier:tier.label,shiny:Boolean(spriteVariants(name).shiny && onlineRandom()<shinyEncounterRate)};
 }
 function encounterIn(region,tier=currentWildTier()) {
@@ -3939,7 +3945,11 @@ try {
  const saved=JSON.parse(playerStorage.getItem(gymSaveKey+'/master'));
  if(Array.isArray(saved))for(const id of saved)if(gymTeams.some(gym=>gym.id===id))masterGymClears.add(id);
 } catch {}
-function masterGymsUnlocked() {return clearedGyms.length===gymTeams.length;}
+function gymRegionCleared(region,master=false) {
+ const gyms=gymTeams.filter(gym=>gym.region===region);
+ return gyms.length>0 && gyms.every(gym=>master?masterGymClears.has(gym.id):clearedGyms.includes(gym.id));
+}
+function masterGymsUnlocked(gym=null) {return gym?gymRegionCleared(gym.region):gymRegions.some(([region])=>gymRegionCleared(region));}
 const masterOpponentExclusions=['Dragonite','Gardevoir','Magnezone','Milotic','Krookodile','Chandelure'];
 function masterGymOpponent(gym) {
  const types=gym.types.split(',').map(type=>type.trim());
@@ -4058,6 +4068,7 @@ function gymHeldItem(name) {
 function awardBadge(gym) {
  if(gymTeams[clearedGyms.length]!==gym) return false;
  clearedGyms.push(gym.id);
+ if(gymRegionCleared(gym.region))window.ArenaCampaign?.regionComplete(gym.region,false);
  try {playerStorage.setItem(gymSaveKey,JSON.stringify(clearedGyms));} catch {}
  return true;
 }
@@ -4069,7 +4080,7 @@ function maximumBattleSpeed() {
  return clearedGyms.length>=halfBadgeCount?3:2;
 }
 function speedUnlockMessage() {
- if(clearedGyms.length===gymTeams.length) return ' Master Campaign and 4× battle speed unlocked!';
+ if(clearedGyms.length===gymTeams.length) return ' Champion! All regional Master challenges and 4× battle speed unlocked!';
  if(clearedGyms.length===halfBadgeCount && maximumBattleSpeed()===3) return ' 3× battle speed unlocked!';
  return '';
 }
@@ -4406,7 +4417,7 @@ musicButton.onclick=()=>{
  battleMusicEnabled=!battleMusicEnabled;
  try {playerStorage.setItem('pokemon-arena-music',battleMusicEnabled?'on':'off');} catch {}
  updateMusicButton();
- if(battleMusicEnabled && (phase==='setup' || phase==='battle' || phase==='online-battle')) startBattleMusic();
+ if(battleMusicEnabled && (phase==='setup' || phase==='battle' || phase==='online-battle' || phase==='contract-battle')) startBattleMusic();
  else stopBattleMusic();
 };
 updateMusicButton();
@@ -4672,6 +4683,7 @@ function openMenu() {
  }));
  
  showScreen('home');
+ window.ArenaCampaign?.refreshCosmetics();
  animateHomeSprite(lead);
 }
 function openTeamBuilder() {
@@ -4684,7 +4696,7 @@ function openBattle(gym=null,wild=null,trainer=null,run=null,master=false) {
  if(window.isArenaMarketBusy?.())return;
  setArenaDimensions();
  byId('battle').classList.remove('is-mega-raid');
- if(master && (!gym || !masterGymsUnlocked()))return;
+ if(master && (!gym || !masterGymsUnlocked(gym)))return;
  selectedMasterGym=master;
  rogueRun=run;
  cancelWildRepeat();
@@ -4716,6 +4728,7 @@ function renderCampaign(collection) {
  byId(collection?'collection-progress':'gym-progress').textContent=progressText()+
   ' · Master Collection '+masterGymClears.size+' / '+gymTeams.length+' · '+(hasLuckyCoin()?'Lucky Coin active':'Lucky Coin at 68 Master badges');
  list.replaceChildren();
+ window.ArenaCampaign?.entrance(list);
  if(!collection && clearedGyms.length<gymTeams.length){
   const next=element('button','Continue Campaign · '+gymTeams[clearedGyms.length].name);
   next.type='button';
@@ -4728,11 +4741,12 @@ function renderCampaign(collection) {
   mode.type='button';mode.disabled=!masterGymsUnlocked();
   mode.onclick=()=>{masterGymMode=!masterGymMode;renderCampaign(false);};
   list.append(mode);
-  if(!masterGymsUnlocked())list.append(element('p','Clear all '+gymTeams.length+' gyms to unlock Master mode.'));
+  if(!masterGymsUnlocked())list.append(element('p','Complete a standard gym region to unlock its level-100 Master challenges.'));
  }
  for(const [region,generation] of gymRegions) {
   if(!collection && !gymTeams.slice(0,clearedGyms.length+1).some(gym=>gym.region===region)) continue;
   list.append(element('h3',region+' · Generation '+generation,'bag-section-title'));
+  if(!collection && masterGymMode && !gymRegionCleared(region)){list.append(element('p','Clear all standard '+region+' gyms to unlock these Master challenges.'));continue;}
   const grid=element('div',null,collection?'shop-grid':'gym-grid');
   for(const gym of gymTeams.filter(entry=>entry.region===region)) {
    const index=gymTeams.indexOf(gym);
@@ -5608,7 +5622,7 @@ function arenaFieldMoveWeight(actor,target,move) {
  return kind==='Guard' && actor.hp<actor.max*.6?1.12:1.05;
 }
 function paintArenaSkillFields() {
- if(phase!=='battle' && phase!=='online-battle')return;
+ if(phase!=='battle' && phase!=='online-battle' && phase!=='contract-battle')return;
  const time=phase==='online-battle'?onlineMatchDuration:clock;
  for(const field of arenaSkillFields){
   if(field.expires<=time)continue;
@@ -5870,7 +5884,7 @@ function renderControls() {
  updateScore();
  updateBattleRosters();
  byId('status').textContent = {
-  setup:selectedWild ? selectedWild.region+' · Choose one Pokémon to battle.' : selectedTrainer ? selectedTrainer.region+' Trainer · Difficulty '+selectedTrainer.tier.label+' · '+selectedTrainer.format+'v'+selectedTrainer.format+(selectedTrainer.format===1?' · Ready to battle.':' · Choose your lead Pokémon.') : selectedMasterGym ? 'Master Campaign · Choose your lead Pokémon.' : selectedGym ? selectedGym.name+' · Choose your lead Pokémon. '+gymBrief(selectedGym)+' '+arenaMap.name+' · '+arenaMap.rocks.length+' pillars.'+(clearedGyms.includes(selectedGym.id)?' Rematch challenge: win without losing a Pokémon.':'') : 'Choose your lead Pokémon.',
+  setup:selectedWild ? selectedWild.region+' · Choose one Pokémon to battle.' : selectedTrainer ? selectedTrainer.region+' Trainer · Difficulty '+selectedTrainer.tier.label+' · '+selectedTrainer.format+'v'+selectedTrainer.format+(selectedTrainer.format===1?' · Ready to battle.':' · Choose your lead Pokémon.') : selectedMasterGym ? 'Master Campaign · Choose your lead Pokémon.' : selectedGym ? selectedGym.name+' · Choose your lead Pokémon. '+gymBrief(selectedGym)+' '+arenaMap.name+' · Open arena.'+(clearedGyms.includes(selectedGym.id)?' Rematch challenge: win without losing a Pokémon.':'') : 'Choose your lead Pokémon.',
   battle:rogueRun?'Roguelit · Battle '+rogueRun.round:'Tap a healthy teammate on the left to switch Pokémon.',
   draw:'Draw. Neither side won the battle.',
   win:selectedTrainer ? 'Victory! You earned '+selectedTrainer.coins+' coins.' : selectedWild ? 'Wild Pokémon defeated!' : newBadge ? 'Victory! You earned the '+selectedGym.badge+'.'+speedUnlockMessage() : 'Victory! Your team defeated all six opponents.',
@@ -8879,6 +8893,7 @@ function advance(dt,realDt=dt) {
   if(phase==='win' && selectedGym && selectedMasterGym && !timedOut) {
    const hadLuckyCoin=hasLuckyCoin();
    masterGymClears.add(selectedGym.id);
+   if(gymRegionCleared(selectedGym.region,true))window.ArenaCampaign?.regionComplete(selectedGym.region,true);
    try {playerStorage.setItem(gymSaveKey+'/master',JSON.stringify([...masterGymClears]));} catch {}
    byId('status').textContent+=' Master clear · '+masterGymClears.size+' / '+gymTeams.length+'.';
    if(!hadLuckyCoin && hasLuckyCoin())byId('status').textContent+=' Lucky Coin unlocked! All coin rewards are doubled.';
@@ -9276,6 +9291,7 @@ function paint() {
   ctx.drawImage(image,(arenaWidth-width)/2,(arenaHeight-height)/2,width,height);
   ctx.fillStyle='#0c13223b';ctx.fillRect(0,0,arenaWidth,arenaHeight);
  }
+ window.ArenaCampaign?.paintTrim(ctx,arenaWidth,arenaHeight);
  if (phase === 'setup') {
   const {x,y} = sendOut.player;
   ctx.beginPath(); ctx.arc(x,y,30,0,2*Math.PI);
@@ -9285,7 +9301,7 @@ function paint() {
   phase==='setup' ? [allies[selected],enemies[0]] :
   [playerSwitch?null:activePlayer,enemySwitch?null:activeEnemy].filter(Boolean);
  paintArenaSkillFields();
- if(phase==='battle' || phase==='online-battle') for(const area of pendingCasts) drawSkillWarning(area);
+ if(phase==='battle' || phase==='online-battle' || phase==='contract-battle') for(const area of pendingCasts) drawSkillWarning(area);
  if(arenaMap?.master && arenaMap.phase===2){
   ctx.save();
   ctx.fillStyle='#ff3b151c';
@@ -9327,7 +9343,7 @@ function paint() {
   ctx.fillText('BOSS BERSERK',canvas.width/2,canvas.height/2+16);
   ctx.restore();
  }
- if(phase==='battle' || phase==='online-battle')for(const actor of visible) {
+ if(phase==='battle' || phase==='online-battle' || phase==='contract-battle')for(const actor of visible) {
   if(actor.hp>0 && actor.exhaustedUntil>battleClock)drawExhaustedAlert(actor);
  }
 }
@@ -9867,6 +9883,7 @@ function frame(now) {
  previous = now;
  if(byId('battle').hidden) {requestAnimationFrame(frame);return;}
  if(phase==='online-battle') {window.paintOnlineBattle(dt);requestAnimationFrame(frame);return;}
+ if(phase==='contract-battle'){window.ArenaCampaign?.advanceBattle(dt);paint();requestAnimationFrame(frame);return;}
  const wasBattling=phase==='battle';
  const before=clock;
  if(wasBattling) {advance(dt*speed,dt);renderBattleDps(clock,damageBuckets);}
@@ -9992,6 +10009,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.68',changes:['Added regional Master unlocks and one-time standard and Master reward bundles.','Added battle presets, daily regional bounties, family hunts, training reward upgrades and weekly elite contracts with server verification.','Added Champion and regional Master titles, the Kalos Laurel frame, and Master Arena pennants. Existing badge progress unlocks these automatically.']},
  {version:'0.22.67',changes:['Redesigned all 18 Arena biomes as textured pixel environments, including grassland plains with shrub zones, wetlands, snowfields, volcanic terrain, ruins and industrial floors.','Natural terrain patches now share their exact boundaries with the combat engine and online spectators.','Cached scenery preserves open movement, attack indicators, and existing raid artwork.']},
  {version:'0.22.66',changes:['Removed pillars from every Arena battlefield and older reconnect snapshots.','Added tactical Gambits, shared team battle plans and three held items with trade-offs, all available as PvP loaners.','Added short-lived, walkable Water, Guard, Mud and Wind skill fields with side limits and no stacking.']},
  {version:'0.22.65',changes:['Added Arena evolution requirements, per-Pokémon training progress, branching path choices and direct PC-copy evolution.','Restored missing level evolutions, added Linking Cord and move-mastery adaptations, fixed Cosmoem branching and enabled existing offline icons for forms without animation sheets.']},
@@ -10168,8 +10186,8 @@ function automaticBattleLoopActive() {
   (typeof repeatTimer!=='undefined' && repeatTimer!==null && repeatTimer!==undefined));
 }
 function canCheckGameVersion() {
- return typeof location!=='undefined' && !automaticBattleLoopActive() && !window.isArenaMarketBusy?.() && !document.querySelector('.trade-hub-dialog[open]') && !window.isPvpVersionContext?.() && !window.hasActiveTacticsRun?.() &&
-  !['setup','battle'].includes(phase) && !document.querySelector('.trainer-reward-dialog[open]') && !document.querySelector('.evolution-dialog[open]') &&
+ return typeof location!=='undefined' && !automaticBattleLoopActive() && !window.isArenaMarketBusy?.() && !document.querySelector('.trade-hub-dialog[open]') && !document.querySelector('.campaign-dialog[open]') && !window.ArenaCampaign?.isBusy?.() && !window.isPvpVersionContext?.() && !window.hasActiveTacticsRun?.() &&
+  !['setup','battle','contract-battle'].includes(phase) && !document.querySelector('.trainer-reward-dialog[open]') && !document.querySelector('.evolution-dialog[open]') &&
   (phase!=='online-battle' || window.isCompletedRaid?.());
 }
 function isNewerGameVersion(candidate,current) {
@@ -10573,4 +10591,34 @@ export function onlineView(state,side,mode) {
   weather:state.battleWeather,weatherTime:state.weatherTime,terrain:state.battleTerrain,clock:state.clock,
   normalAttacks:[...state.allies,...state.enemies].find(actor=>actor.side===side)?.normalAttacksEnabled ?? true,
   recall:Math.max(0,(state.recalls[side] ?? 0)-state.clock),sounds:state.sounds};
+}
+// Contracts replay the same immutable saved build in the browser and on the server.
+export const campaignEngineVersion=updateLogEntries[0].version;
+export function campaignContractMatch(entries,definition,runId) {
+ const region=definition.region,regional=gymTeams.filter(gym=>gym.region===region);
+ if(!regional.length || !['daily','elite'].includes(definition.kind))throw Error('Invalid regional contract.');
+ const progress=JSON.parse(entries['pokemon-arena-wild-progress']??'{}');
+ const savedTeam=JSON.parse(entries['pokemon-arena-team']??'[]');
+ if(definition.kind==='elite' && savedTeam.length!==6)throw Error('Elite contracts require a full six-Pokémon team.');
+ const count=Math.min(definition.kind==='elite'?6:3,savedTeam.length);
+ const host=savedTeam.slice(0,count);if(!host.length || host.some(name=>!isAvailablePokemon(name) || !progress.owned?.[name]))throw Error('Save a healthy PC team first.');
+ const gym=regional.at(-1),elite=definition.kind==='elite';
+ const rotation=(definition.seed>>>0)%gym.roster.length;
+ const foes=Array.from({length:count},(_,i)=>gym.roster[(i+rotation)%gym.roster.length]);
+ const average=host.reduce((sum,name)=>sum+progress.owned[name].level,0)/host.length;
+ const level=clamp(Math.round(elite?Math.max(80,average):average-3),1,100);
+ const npcProgress={owned:{},held:{},items:{},ai:{},battlePlan:elite?'Burst':'Balanced'};
+ const npcProfiles={},npcMoves={};
+ foes.forEach(name=>{
+  const slot=gym.roster.indexOf(name),physical=dexStats[dex[name][0]-1][1]>=dexStats[dex[name][0]-1][5];
+  const profile={pid:physical?3:15,ivs:Array(6).fill(elite?31:18),evs:elite?(physical?[100,252,0,158,0,0]:[100,0,0,158,0,252]):Array(6).fill(0)};
+  npcProfiles[dex[name][0]]=profile;npcProgress.owned[name]={level,xp:0};
+  npcMoves[name]=gymMoves(name,gym,slot);npcProgress.ai[name]={style:elite?'Aggressive':'Balanced',position:'Auto',target:elite?'Type weakness':'Nearest'};
+  const item=elite?(gymHeldItem(name)??'Leftovers'):null;
+  if(item){npcProgress.held[name]=item;npcProgress.items[item]=(npcProgress.items[item]??0)+1;}
+ });
+ const seed=(definition.seed>>>0).toString(16).padStart(8,'0');
+ return {id:seed+'-'+runId.slice(9),mode:'campaign',format:count,host_pick:host,guest_pick:foes,
+  host_entries:entries,guest_entries:{'pokemon-arena-wild-progress':JSON.stringify(npcProgress),
+   'pokemon-arena-profiles':JSON.stringify(npcProfiles),'pokemon-arena-moves':JSON.stringify(npcMoves)}};
 }

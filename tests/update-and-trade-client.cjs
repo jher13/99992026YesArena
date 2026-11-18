@@ -45,7 +45,9 @@ async function updateChecks(){
   assert(!safe(),kind+' automatic session in '+phase);checks++;
  }
  ctx.selectedWild=null;ctx.selectedTrainer=null;ctx.phase='home';ctx.repeatTimer=42;assert(!safe());checks++;
- ctx.repeatTimer=null;ctx.window.isArenaMarketBusy=()=>true;assert(!safe());ctx.window.isArenaMarketBusy=()=>false;checks++;
+ ctx.repeatTimer=null;ctx.phase='contract-battle';assert(!safe());ctx.phase='home';checks++;
+ ctx.window.ArenaCampaign={isBusy:()=>true};assert(!safe());ctx.window.ArenaCampaign={isBusy:()=>false};checks++;
+ ctx.window.isArenaMarketBusy=()=>true;assert(!safe());ctx.window.isArenaMarketBusy=()=>false;checks++;
  ctx.wildResult={capture:{pending:true}};assert(!safe(),'A single automatic capture also needs protection');ctx.wildResult=null;checks++;
  const evolution=new Node('dialog',null,'evolution-dialog');d.body.append(evolution);evolution.showModal();assert(!safe());evolution.close();checks++;
  fetchHook=()=>{ctx.selectedWild={};};await ctx.checkGameVersion();assert.equal(redirects.length,0,'A battle started during manifest fetch must win the race');checks++;
@@ -62,7 +64,7 @@ async function cloudChecks(){
   'pokemon-arena-wild-progress':JSON.stringify({coins:9000,owned:{Charmander:{level:50,xp:1}},copies:{},registered:['Charmander'],autoRepeat:true,items:{'Rare Candy':2}})});
  const client={rpc:async(name,params)=>{
   if(name==='arena_write_save'){saveWrites++;return {data:{status:'ok',updated_at:'r1'}};}
-  marketCalls.push(params);if(heldResolve)await new Promise(resolve=>{heldResolve=resolve;});
+  marketCalls.push({...params,rpc:name});if(heldResolve)await new Promise(resolve=>{heldResolve=resolve;});
   if(params.action==='notices')return {data:{notices:[],pending:1}};
   if(failures>0){failures--;throw Error('Offline');}
   lastResult={status:'ok',save_data:structuredClone(save),updated_at:'r2'};
@@ -85,6 +87,7 @@ async function cloudChecks(){
  vm.runInContext('dirty=true',ctx);await ctx.flushArenaSave();assert.equal(saveWrites,0,'Pending ambiguous transactions must never upload an older PC snapshot');checks++;
  vm.runInContext('dirty=false',ctx);const retryId=marketCalls.at(-1).args.request_id;await ctx.window.arenaMarketRecover();assert.equal(marketCalls.at(-1).args.request_id,retryId);assert(!ctx.window.isArenaMarketBusy());checks++;
  heldResolve=true;const pending=ctx.window.arenaMarketMutate('claim');await tick();assert(ctx.window.isArenaMarketBusy());await assert.rejects(()=>ctx.window.arenaMarketMutate('claim'),/still syncing/);const resolve=heldResolve;heldResolve=null;resolve();await pending;checks++;
+ ctx.phase='gyms';failures=2;await assert.rejects(()=>ctx.window.arenaCampaignMutate('claim_region',{region:'Kanto'}),/Offline/);assert(ctx.window.isArenaMarketBusy());const campaignRetry=marketCalls.at(-1).args.request_id;ctx.phase='menu';await ctx.window.arenaMarketRecover();assert.equal(marketCalls.at(-1).rpc,'arena_campaign');assert.equal(marketCalls.at(-1).args.request_id,campaignRetry);assert(!ctx.window.isArenaMarketBusy());checks++;
  const before=marketCalls.length;ctx.phase='battle';await ctx.window.arenaMarketNotifications();await tick();assert.equal(marketCalls.length,before+1,'Do not claim offline deliveries during battle');checks++;
 }
 async function hubChecks(){

@@ -481,9 +481,9 @@ async function waitForArenaSave(){
  const deadline=Date.now()+15000;
  while(saving){if(Date.now()>deadline)throw Error('Cloud sync is still busy. Try again shortly.');await new Promise(resolve=>setTimeout(resolve,50));}
 }
-async function marketRpc(action,args={}) {
+async function marketRpc(action,args={},service='market') {
  if(!cloudAccount)throw Error('Sign in to use the Trading Hub.');
- const {data,error}=await (await cloudClient()).rpc('arena_market',{action,args});
+ const {data,error}=await (await cloudClient()).rpc(service==='campaign'?'arena_campaign':'arena_market',{action,args});
  if(error){error.marketRpcRejected=Boolean(error.code);throw error;}
  if(data?.status && data.status!=='ok'){
   const failure=new Error(data.message ?? 'Your PC changed. Sync or reload before trading.');failure.marketStatus=data.status;throw failure;
@@ -496,7 +496,7 @@ async function sendMarketOperation(operation) {
  for(let attempt=0;attempt<2;attempt++) {
   try{
    let timer;
-   try{return await Promise.race([marketRpc(operation.action,operation.args),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('The Hub is taking too long to respond. Open Hub to retry this transaction safely.')),15000);})]);}
+   try{return await Promise.race([marketRpc(operation.action,operation.args,operation.service??'market'),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('The Hub is taking too long to respond. Open Hub to retry this transaction safely.')),15000);})]);}
    finally{clearTimeout(timer);}
   }
   catch(failure){error=failure;if(failure.marketStatus || failure.marketRpcRejected)throw failure;}
@@ -506,7 +506,8 @@ async function sendMarketOperation(operation) {
 window.arenaMarketRecover=async()=>{
  const operation=pendingMarketOperation();if(!operation)return;
  if(arenaMarketWorking)throw Error('A Hub transaction is still syncing.');
- if(phase!=='home' || automaticBattleLoopActive())throw Error('Return to the main menu to sync your Hub transaction.');
+ const allowed=operation.service==='campaign'?['home','menu','gyms','collection','wild-regions','trainer-regions'].includes(phase):phase==='home';
+ if(!allowed || automaticBattleLoopActive())throw Error('Return to the main menu to sync this transaction.');
  arenaMarketWorking=true;document.body.setAttribute('aria-busy','true');
  try {
   await waitForArenaSave();saving=true;
@@ -515,31 +516,31 @@ window.arenaMarketRecover=async()=>{
  }catch(error){if(error.marketStatus || error.marketRpcRejected)setPendingMarketOperation(null);throw error;}
  finally {saving=false;arenaMarketWorking=false;document.body.removeAttribute('aria-busy');}
 };
-window.arenaMarketPrepare=async()=>{
+window.arenaMarketPrepare=async(service='market')=>{
  if(!cloudAccount)throw Error('Sign in to use the Trading Hub.');
- if(phase!=='home' || automaticBattleLoopActive())throw Error('Return to the main menu before trading.');
+ if((service==='campaign'?!['home','menu','gyms','collection','wild-regions','trainer-regions'].includes(phase):phase!=='home') || automaticBattleLoopActive())throw Error(service==='campaign'?'Finish your battle before opening regional rewards.':'Return to the main menu before trading.');
  await window.arenaMarketRecover();await waitForArenaSave();await flushArenaSave();
  if(dirty)throw Error('Sync your latest PC changes before trading.');
 };
-window.arenaMarketMutate=async(action,args={})=>{
+window.arenaMarketMutate=async(action,args={},service='market')=>{
  if(arenaMarketWorking)throw Error('A Hub transaction is still syncing.');
- await window.arenaMarketPrepare();
+ await window.arenaMarketPrepare(service);
  if(arenaMarketWorking)throw Error('A Hub transaction is still syncing.');
  arenaMarketWorking=true;document.body.setAttribute('aria-busy','true');
- saveState.textContent=action==='claim'?'Receiving Hub deliveries…':'Syncing Hub transaction…';
+ saveState.textContent=service==='campaign'?'Syncing regional progress…':action==='claim'?'Receiving Hub deliveries…':'Syncing Hub transaction…';
  let operation;
  try {
   clearTimeout(saveTimer);await waitForArenaSave();
   if(dirty)await flushArenaSave();
   if(dirty)throw Error('Sync your PC before trading.');
   saving=true;
-  operation={action,args:{...args,expected_revision:cloudRevision,request_id:crypto.randomUUID()}};
+  operation={action,...(service==='campaign'?{service}:{}),args:{...args,expected_revision:cloudRevision,request_id:crypto.randomUUID()}};
   setPendingMarketOperation(operation);
   const result=await sendMarketOperation(operation);
   applyArenaMarketSnapshot(result);setPendingMarketOperation(null);return result;
  }catch(error){
   if(error.marketStatus || error.marketRpcRejected)setPendingMarketOperation(null);
-  if(pendingMarketOperation())saveState.textContent='Hub transaction pending · open Hub to retry';
+  if(pendingMarketOperation())saveState.textContent=service==='campaign'?'Regional transaction pending · retry reward sync':'Hub transaction pending · open Hub to retry';
   else if(!localSaveFailed)saveState.textContent='Cloud synced';
   throw error;
  }finally{
@@ -550,12 +551,12 @@ window.arenaMarketMutate=async(action,args={})=>{
 // A short inventory transaction can begin only from the main menu. Never lock an active battle.
 for(const eventName of ['click','submit','keydown'])document.addEventListener(eventName,event=>{
  const pending=cloudAccount && pendingMarketOperation();
- const recoveryControl=event.target?.closest?.('#home-hub, #toolbar-notices, #home-dialog, #toolbar-logout, #arena-market-recover');
+ const recoveryControl=event.target?.closest?.('#home-hub, #toolbar-notices, #home-dialog, .campaign-dialog, #toolbar-logout, #arena-market-recover');
  if(arenaMarketWorking || pending && !recoveryControl){
   event.preventDefault();event.stopImmediatePropagation();
-  if(!arenaMarketWorking){saveState.textContent='Hub transaction pending · open Hub to retry';syncError.hidden=false;
-   const recover=element('button','Retry Hub sync');recover.id='arena-market-recover';recover.onclick=()=>window.arenaMarketRecover().catch(error=>{saveState.textContent=error.message;});
-   syncError.replaceChildren(element('span','Finish syncing your Hub transaction before changing progress. '),recover);
+  if(!arenaMarketWorking){saveState.textContent=pending?.service==='campaign'?'Regional transaction pending · retry reward sync':'Hub transaction pending · open Hub to retry';syncError.hidden=false;
+   const recover=element('button',pending?.service==='campaign'?'Retry reward sync':'Retry Hub sync');recover.id='arena-market-recover';recover.onclick=()=>window.arenaMarketRecover().catch(error=>{saveState.textContent=error.message;});
+   syncError.replaceChildren(element('span','Finish syncing this transaction before changing progress. '),recover);
   }
  }
 },true);
@@ -574,3 +575,23 @@ window.arenaMarketNotifications=async()=>{
  return result;
 };
 window.arenaMarketMarkRead=ids=>marketRpc('read_notices',{ids});
+
+window.arenaCampaignMutate=(action,args={})=>window.arenaMarketMutate(action,args,'campaign');
+window.arenaCampaignRead=async(action='status',args={})=>{
+ await waitForArenaSave();if(dirty && !saving)await flushArenaSave();
+ if(dirty)throw Error('Sync your current progress before opening regional rewards.');
+ return marketRpc(action,args,'campaign');
+};
+window.arenaCampaignVerify=async(run_id,campaign='verify')=>{
+ if(!cloudAccount)throw Error('Sign in to verify this contract.');
+ for(let attempt=0;attempt<40;attempt++){
+  let timer;let response;
+  try{response=await Promise.race([(await cloudClient()).functions.invoke('arena-combat',{body:{campaign,run_id}}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Contract verification timed out. Retry from Regional Progress.')),15000);})]);}finally{clearTimeout(timer);}
+  const {data,error}=response;
+  if(error){const body=await error.context?.json?.().catch(()=>null);throw Error(body?.error??error.message);}
+  if(data?.error)throw Error(data.error);
+  if(data?.pending && campaign==='verify')continue;
+  return data;
+ }
+ throw Error('Verification is still in progress. Retry from Regional Progress.');
+};

@@ -1,4 +1,5 @@
 import { simulateOnline, onlineView } from "./engine.js";
+import {prepareCampaignContract,advanceCampaignVerification} from './campaign.js';
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -49,13 +50,18 @@ Deno.serve(async request => {
     const auth = await fetch(url + "/auth/v1/user", { headers: { apikey: serviceKey, Authorization: authorization } });
     if (!auth.ok) return reply({ error: "Sign in to battle." }, 401);
     const { id: player } = await auth.json();
-    const lease = await fetch(url + "/rest/v1/rpc/arena_session_active", {
-      method: "POST",
-      headers: { apikey: serviceKey, Authorization: authorization, "Content-Type": "application/json" },
-      body: "{}",
-    });
-    if (!lease.ok || await lease.json() !== true) return reply({ error: "Your game session is inactive. Sign in again." }, 403);
-    const { id, command } = await request.json();
+    const body = await request.json();
+    if(body.campaign){
+      if(!['prepare','verify'].includes(body.campaign) || typeof body.run_id!=='string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(body.run_id))return reply({error:'Invalid contract.'},400);
+      const run=await db('arena_campaign_read',{player_id:player,run_id:body.run_id});
+      if(!run)return reply({error:'This contract is unavailable. Return to Regional Progress.'},404);
+      if(body.campaign==='prepare')return reply(prepareCampaignContract(run));
+      if(run.verified)return reply({won:run.won,duration:run.duration});
+      const result=advanceCampaignVerification(run);
+      const committed=await db('arena_campaign_checkpoint',{player_id:player,run_id:body.run_id,revision:run.verification_revision,state:result.state,won:result.complete?result.won:null});
+      return reply(committed && result.complete?{won:result.won,duration:result.duration}:{pending:true});
+    }
+    const { id, command } = body;
     if (typeof id !== "string" || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) return reply({ error: "Invalid match." }, 400);
     if (command && !command.ai && typeof command.normalAttacks !== "boolean" && (!/^(host|guest):[0-5]$/.test(command.incoming) ||
       !Number.isInteger(command.slot) || command.slot < 0 || command.slot > 5))
