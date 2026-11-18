@@ -5478,14 +5478,53 @@ const arenaBiomes=[
  {name:'Fairy Glade',type:'Fairy',floor:'#412f43',tile:'#533b53',zone:'#94618e'},
 ];
 let arenaMap=null;
+function arenaZoneContains(zone,x,y) {
+ const w=zone.w ?? zone.r,h=zone.h ?? zone.r;
+ if(!(w>0 && h>0))return false;
+ const nx=(x-zone.x)/w,ny=(y-zone.y)/h;
+ if(nx < -1-1e-8 || nx > 1+1e-8 || ny < -1-1e-8 || ny > 1+1e-8)return false;
+ if(zone.patches?.length){
+  for(const patch of zone.patches){
+   const dx=(nx-patch[0])/patch[2],dy=(ny-patch[1])/patch[3];
+   if(dx*dx+dy*dy<=1+1e-8)return true;
+  }
+  return false;
+ }
+ if(zone.vertices?.length){
+  let inside=false;
+  for(let i=0,j=zone.vertices.length-1;i<zone.vertices.length;j=i++){
+   const [ax,ay]=zone.vertices[i],[bx,by]=zone.vertices[j];
+   const cross=(nx-ax)*(by-ay)-(ny-ay)*(bx-ax);
+   if(Math.abs(cross)<1e-8 && nx>=Math.min(ax,bx)-1e-8 && nx<=Math.max(ax,bx)+1e-8 && ny>=Math.min(ay,by)-1e-8 && ny<=Math.max(ay,by)+1e-8)return true;
+   if((ay>ny)!==(by>ny) && nx<(bx-ax)*(ny-ay)/(by-ay)+ax)inside=!inside;
+  }
+  return inside;
+ }
+ return zone.shape==='rectangle'?Math.max(Math.abs(nx),Math.abs(ny))<=1:zone.shape==='diamond'?Math.abs(nx)+Math.abs(ny)<=1:nx*nx+ny*ny<=1;
+}
+function arenaPatchOutline(seed) {
+ let value=seed>>>0;
+ const random=()=>{value=(Math.imul(value,1664525)+1013904223)>>>0;return value/4294967296;};
+ return Array.from({length:20},(_,i)=>{
+  const angle=i*Math.PI/10,r=.82+random()*.18;
+  return [Math.round(Math.cos(angle)*r*1000)/1000 || 0,Math.round(Math.sin(angle)*r*1000)/1000 || 0];
+ });
+}
+function arenaPatchClusters(seed) {
+ let value=seed>>>0;
+ const random=()=>{value=(Math.imul(value,1664525)+1013904223)>>>0;return value/4294967296;};
+ return [[-.51,-.23],[0,-.48],[.5,-.22],[.46,.32],[0,.48],[-.48,.3],[0,0]].map(([x,y])=>
+  [x+(random()-.5)*.08,y+(random()-.5)*.08,.4+random()*.05,.4+random()*.05]);
+}
 function randomArenaMap() {
  const biome=arenaBiomes[Math.floor(onlineRandom()*arenaBiomes.length)];
- const zones=Array.from({length:3},(_,i)=>({
-  x:155+i*325+onlineRandom()*125,y:95+onlineRandom()*290,
-  shape:['ellipse','rectangle','diamond'][Math.floor(onlineRandom()*3)],
-  w:55+onlineRandom()*35,h:40+onlineRandom()*40,
- }));
- return {...biome,zones,rocks:[]};
+ const zones=Array.from({length:3},(_,i)=>{
+  const x=155+i*325+onlineRandom()*125,y=95+onlineRandom()*290,seed=Math.floor(onlineRandom()*4294967296);
+  const w=55+onlineRandom()*35,h=40+onlineRandom()*40;
+  return {x:clamp(x,w+32,canvas.width-w-32),y:clamp(y,h+32,canvas.height-h-32),
+   shape:'patch',w,h,seed,...(['Normal','Fighting','Psychic','Steel','Dragon'].includes(biome.type)?{vertices:arenaPatchOutline(seed)}:{patches:arenaPatchClusters(seed)})};
+ });
+ return {...biome,seed:zones[0].seed,zones,rocks:[]};
 }
 const megaRaidArenaSize={width:960,height:480};
 function setArenaDimensions({width=960,height=480}={}) {
@@ -5499,11 +5538,7 @@ function megaRaidArena(raid) {
  return {...biome,...megaRaidArenaSize,raid:true,rocks:[],zones:[]};
 }
 function arenaBonus(actor,type) {
- return arenaMap?.type===type && (arenaMap.raid || arenaMap.zones.some(zone=>{
-  const x=Math.abs(actor.x-zone.x)/(zone.w ?? zone.r);
-  const y=Math.abs(actor.y-zone.y)/(zone.h ?? zone.r);
-  return zone.shape==='rectangle'?Math.max(x,y)<=1:zone.shape==='diamond'?x+y<=1:x*x+y*y<=1;
- }));
+ return arenaMap?.type===type && (arenaMap.raid || arenaMap.zones.some(zone=>arenaZoneContains(zone,actor.x,actor.y)));
 }
 // Arena tactics: soft team decisions and temporary, fully walkable fields.
 function normalizeTeamPlan(plan) {return arenaTeamPlans.includes(plan)?plan:'Balanced';}
@@ -9231,36 +9266,16 @@ function paintArenaWeather() {
 let raidBattleBackdrop=null;
 function paint() {
  const {width:arenaWidth,height:arenaHeight}=canvas;
- ctx.fillStyle = arenaMap?.floor ?? '#1c372d';
- ctx.fillRect(0,0,arenaWidth,arenaHeight);
- for (let y=0;y<arenaHeight;y+=40) for (let x=0;x<arenaWidth;x+=40) {
-  ctx.fillStyle = arenaMap ? ((x/40+y/40)%2?arenaMap.floor:arenaMap.tile) : ((x/40+y/40)%2 ? '#223d33' : '#254137');
-  ctx.fillRect(x,y,40,40);
- }
+ const renderer=globalThis.ArenaMapRenderer;
+ if(renderer)renderer.draw(ctx,arenaMap,arenaWidth,arenaHeight);
+ else {ctx.fillStyle=arenaMap?.floor ?? '#829c53';ctx.fillRect(0,0,arenaWidth,arenaHeight);}
  if(phase==='online-battle' && raidBattleBackdrop?.naturalWidth) {
   const image=raidBattleBackdrop;
   const scale=Math.max(arenaWidth/image.naturalWidth,arenaHeight/image.naturalHeight);
   const width=image.naturalWidth*scale,height=image.naturalHeight*scale;
   ctx.drawImage(image,(arenaWidth-width)/2,(arenaHeight-height)/2,width,height);
-  ctx.fillStyle='#0c13223b';
-  ctx.fillRect(0,0,arenaWidth,arenaHeight);
+  ctx.fillStyle='#0c13223b';ctx.fillRect(0,0,arenaWidth,arenaHeight);
  }
- for(const zone of arenaMap?.zones ?? []) {
-  ctx.fillStyle=arenaMap.zone;ctx.beginPath();
-  const w=zone.w ?? zone.r,h=zone.h ?? zone.r;
-  if(zone.shape==='rectangle')ctx.rect(zone.x-w,zone.y-h,w*2,h*2);
-  else if(zone.shape==='diamond'){
-   ctx.moveTo(zone.x,zone.y-h);ctx.lineTo(zone.x+w,zone.y);ctx.lineTo(zone.x,zone.y+h);
-   ctx.lineTo(zone.x-w,zone.y);ctx.closePath();
-  } else ctx.ellipse(zone.x,zone.y,w,h,0,0,2*Math.PI);
-  ctx.fill();
- }
- ctx.strokeStyle = '#577967';
- ctx.lineWidth = 2;
- ctx.strokeRect(24,24,arenaWidth-48,arenaHeight-48);
- ctx.beginPath();
- ctx.moveTo(arenaWidth/2,24); ctx.lineTo(arenaWidth/2,arenaHeight-24); ctx.stroke();
- ctx.beginPath(); ctx.arc(arenaWidth/2,arenaHeight/2,88,0,2*Math.PI); ctx.stroke();
  if (phase === 'setup') {
   const {x,y} = sendOut.player;
   ctx.beginPath(); ctx.arc(x,y,30,0,2*Math.PI);
@@ -9977,6 +9992,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.67',changes:['Redesigned all 18 Arena biomes as textured pixel environments, including grassland plains with shrub zones, wetlands, snowfields, volcanic terrain, ruins and industrial floors.','Natural terrain patches now share their exact boundaries with the combat engine and online spectators.','Cached scenery preserves open movement, attack indicators, and existing raid artwork.']},
  {version:'0.22.66',changes:['Removed pillars from every Arena battlefield and older reconnect snapshots.','Added tactical Gambits, shared team battle plans and three held items with trade-offs, all available as PvP loaners.','Added short-lived, walkable Water, Guard, Mud and Wind skill fields with side limits and no stacking.']},
  {version:'0.22.65',changes:['Added Arena evolution requirements, per-Pokémon training progress, branching path choices and direct PC-copy evolution.','Restored missing level evolutions, added Linking Cord and move-mastery adaptations, fixed Cosmoem branching and enabled existing offline icons for forms without animation sheets.']},
  {version:'0.22.64',changes:['Added PC storage boxes, per-copy search and filters, and a side-by-side Pokémon status preview to Trading Hub Sell and Request selectors.']},

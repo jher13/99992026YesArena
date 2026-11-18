@@ -336,8 +336,8 @@
   });
   if(visualSnapshots.length>64)visualSnapshots.shift();
   battleWeather=data.weather;battleTerrain=data.terrain;weatherTime=data.weatherTime ?? 0;
-  arenaMap=data.arenaMap?{...data.arenaMap,rocks:[],
-   zones:data.arenaMap.zones.map(zone=>({...zone,x:mx(zone.x)})),
+  arenaMap=data.arenaMap?{...data.arenaMap,viewMirror:mirror,rocks:[],
+   zones:data.arenaMap.zones.map(zone=>({...zone,x:mx(zone.x),vertices:zone.vertices?.map(([x,y])=>[dx(x),y]),patches:zone.patches?.map(([x,y,rx,ry])=>[dx(x),y,rx,ry])})),
    meteors:data.arenaMap.meteors?.map(meteor=>({...meteor,x:mx(meteor.x)}))}:null;
   arenaSkillFields=(data.arenaSkillFields ?? []).map(field=>({...field,x:mx(field.x),
    friendly:mirror?!field.friendly:field.friendly}));
