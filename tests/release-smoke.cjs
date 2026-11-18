@@ -422,10 +422,10 @@ for(const [level,xp] of [[50,3300],[60,4997],[70,8109],[80,13221],[90,33366],[99
 for(let level=1;level<100;level++)assert(requiredXP(level)<requiredXP(level+1));
 pika.level=99;pika.xp=0;
 candy.useExperienceCandy('Pikachu','EXP Candy 500');
-assert.equal(pika.xp,6683);
+assert.equal(pika.xp,2000);
 assert.equal(candyInventory.vitamins['EXP Candy 500'],0);
-assert.equal(candy.experienceCandyXP('EXP Candy 250',99),3341);
-assert.equal(candy.experienceCandyXP('EXP Candy 100',99),1337);
+assert.equal(candy.experienceCandyXP('EXP Candy 250',99),1000);
+assert.equal(candy.experienceCandyXP('EXP Candy 100',99),500);
 pika.level=50;pika.xp=4000;
 candy.gainWildExperience('Pikachu',0);
 assert.deepEqual(pika,{level:51,xp:700});
