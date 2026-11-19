@@ -34,6 +34,7 @@ const world=vm.createContext({Math:renderMath});
 vm.runInContext(read('assets/arena-move-effects.js'),world);
 vm.runInContext(read('assets/arena-move-effects-gym.js'),world);
 vm.runInContext(read('assets/arena-move-effects-field.js'),world);
+vm.runInContext(read('assets/arena-move-effects-signature.js'),world);
 const art=world.ArenaMoveEffects;
 const engine=read('supabase/functions/arena-combat/engine.js');
 function snapshotFromClient(mode,side,effects,casts) {
@@ -60,6 +61,16 @@ export function campaignMoves(){
  });
  return {gyms,masters,listed:gymTeams.flatMap(g=>g.plan.team.flatMap(slot=>slot[3])),
   starters:starterNames.map(name=>wildMoves(name)),field:dexNames.map(name=>wildMoves(name))};
+}
+export function playerMoveCoverage() {
+ const visible=visibleArenaMoves(),rareLearners=new Set(),ordinaryLearners=new Set();
+ for(const name of dexNames){
+  const learners=isLegendaryEncounter(name)?rareLearners:ordinaryLearners;
+  for(const move of Object.keys(levelUpMoves[dex[name][0]] ?? {}))learners.add(move);
+ }
+ return {player:dexNames.map(name=>movesFor(name)),
+  machines:visible.filter(move=>['HM','TM','TR'].includes(machineKinds[move]) && !moveCatalog[move][4]),
+  signatures:visible.filter(move=>rareLearners.has(move) && !ordinaryLearners.has(move) && !moveCatalog[move][4])};
 }
 export function triggerHazards(opts={}) {
  const match={id:'ab347c12-0000-4000-8000-000000000001',mode:'free_fight',
@@ -110,6 +121,11 @@ export function captureMove(move,opts={}) {
   Object.assign(trainerFields[side][slot],{actor,transition:null});
  }
  a.hp=sacrificeProfiles.has(move)?200:1500;
+ if(move==='Substitute')a.hp=opts.userHP ?? a.max;
+ if(move==='Sleep Talk'){
+  if(opts.sleeping!==false){a.ailment=2;a.ailmentTime=8;}
+  if(opts.calledMove!==false){a.moves.push(opts.calledMove ?? 'Pound');a.moveTimers.push(0);a.moveCooldowns.push(4);}
+ }
  if(move==='Steel Beam'){a.hp=a.max;b.type=opts.defenderType ?? 'Fairy';}
  if(reserves){clock=2;a.enteredAt=0;b.enteredAt=0;}
  if(opts.weather)setWeather(opts.weather);
@@ -140,15 +156,20 @@ export function captureMove(move,opts={}) {
  }
  return {warnings,events:saved.effects.filter(e=>e.move===move),initialWarning,targetHP:enemies[0].hp,fields:saved.arenaSkillFields ?? [],
   helped:allies.filter(member=>member.helpingHandUntil>clock).map(member=>[member.x,member.y]),
-  recall:saved.fields[0][0].transition,casterMoves:allies[0].moves,resumedFlight};
+  recall:saved.fields[0][0].transition,casterMoves:allies[0].moves,resumedFlight,
+  userHP:allies[0].hp,decoy:allies[0].substituteHP,seedAt:enemies[0].seedAt,
+  calledEffects:move==='Sleep Talk'?saved.effects.filter(e=>e.move!==move):[]};
 }
 `;
 (async()=>{
- const {captureMove,raidMoves,campaignMoves,triggerHazards}=await import('data:text/javascript;base64,'+Buffer.from(engine+probe).toString('base64'));
+ const {captureMove,raidMoves,campaignMoves,playerMoveCoverage,triggerHazards}=await import('data:text/javascript;base64,'+Buffer.from(engine+probe).toString('base64'));
  const {gyms,starters,listed,masters,field}=campaignMoves();
  assert.equal(gyms.length,68);assert.equal(starters.length,27);
  assert.equal(masters.length,68);assert.equal(field.length,1083);
- const allMoves=[...new Set([...moves,...listed,...gyms.flat(),...masters.flat(),...field.flat()])];
+ const {player,machines,signatures}=playerMoveCoverage();
+ assert.equal(player.length,field.length);
+ const allMoves=[...new Set([...moves,...listed,...gyms.flat(),...masters.flat(),...field.flat(),
+  ...player.flat(),...machines,...signatures,'Rest','Substitute','Endure','Sleep Talk','Leech Seed'])];
  const paints=command=>['stroke','fill','fillRect'].includes(command[0]);
  const captures=new Map(),missing=[];
  for(const move of allMoves){
@@ -324,5 +345,51 @@ export function captureMove(move,opts={}) {
  const grid=captureMove('Electroweb',{group:true,resume:true});
  assert.equal(grid.events.filter(e=>e.zone).length,1);
  assert.equal(grid.events.filter(e=>e.impactOnly && e.damage>0).length,3);
- console.log(allMoves.length+' moves rendered on actual casts across all six Mega raids, 68 standard and 68 Master Gym teams, and '+field.length+' default wild and Trainer kits.');
+ const decoy=captures.get('Substitute');
+ assert.equal(decoy.decoy,1250);assert.equal(decoy.userHP,3750);
+ assert.deepEqual(captureMove('Substitute',{userHP:900}).events,[]);
+ const sleep=captures.get('Sleep Talk');
+ assert.deepEqual(sleep.calledEffects.map(e=>e.move),['Pound']);
+ for(const name of ['Pound','Accelerock','Cut','Dynamax Cannon']){
+  const hits=captureMove('Sleep Talk',{calledMove:name}).calledEffects;
+  assert.equal(hits.length,1,name);const hit=hits[0];assert.equal(hit.move,name);
+  assert(!hit.zone && !hit.sector && !hit.line);assert(art.aboveUnits(hit));
+  const view=snapshotFromClient('free_fight','guest',[hit],[]);
+  for(const [e,mirror] of [[hit,false],[view.effects[0],true]]){
+   const recorded=JSON.stringify(e);const ops=draw('drawEffect',{...e,life:.39},mirror);
+   assert(ops.some(paints),name+' landed through Sleep Talk');assert.equal(JSON.stringify(e),recorded);
+   if(name==='Dynamax Cannon')assert(ops.some(([op,x,y,w,h])=>op==='rect' && w===Math.hypot(e.tx-e.x,e.ty-e.y) && h===14));
+  }
+ }
+ const calledArea=captureMove('Sleep Talk',{calledMove:'Precipice Blades'}).calledEffects;
+ assert.equal(calledArea.filter(e=>e.zone).length,1);
+ assert.equal(calledArea.filter(e=>draw('drawEffect',{...e,life:.39}).some(paints)).length,1,'one area release per called move');
+ assert.equal(sleep.events.length,1);assert.equal(sleep.events[0].x,sleep.events[0].tx);
+ for(const opts of [{sleeping:false},{calledMove:false}])assert.deepEqual(captureMove('Sleep Talk',opts).events,[]);
+ assert(captures.get('Leech Seed').seedAt>0);assert.deepEqual(captureMove('Leech Seed',{defenderType:'Grass'}).events,[]);
+ for(const name of ['Roar Of Time','Spacial Rend','Judgment','Sacred Fire']){
+  const hit=captures.get(name).events[0];
+  assert(art.aboveUnits(hit),name+' stays visible over raid sprites');
+  assert(!draw('drawEffect',{...hit,damage:'Miss',life:.39}).some(paints),name+' has no hit image on a miss');
+ }
+ for(const name of ['Precipice Blades','Tera Starstorm','Glaciate','Zap Cannon']){
+  const battle=captureMove(name,{group:true,resume:true}),releases=battle.events.filter(e=>e.zone);
+  assert.equal(releases.length,1);assert.equal(battle.events.filter(e=>e.impactOnly && e.damage>0).length,3);
+  const cast=battle.warnings[0],release=releases[0];
+  assert.deepEqual([release.tx,release.ty,release.radius],[cast.center.x,cast.center.y,cast.radius]);
+  const miss=captureMove(name,{dodge:true});assert(miss.events.some(e=>e.zone));assert(!miss.events.some(e=>e.damage>0));
+ }
+ for(const name of ['Photon Geyser','Dynamax Cannon','Sandsear Storm']){
+  const trajectory=captures.get(name).events.find(e=>e.line);
+  assert(draw('drawEffect',{...trajectory,life:.39}).some(([op,x,y,w,h])=>op==='rect' && y===-trajectory.halfWidth && h===trajectory.halfWidth*2));
+ }
+ for(const name of ['Triple Axel','Double Iron Bash','Tail Slap','Scale Shot','Comet Punch']){
+  const strikes=captures.get(name).events.filter(e=>e.damage>0);assert(strikes.length>=2,name);
+  assert(!draw('drawEffect',{...strikes[1],life:.575}).some(paints));
+  assert(draw('drawEffect',{...strikes[1],life:.44}).some(paints));
+  assert.equal(captureMove(name,{defenderHP:1}).events.filter(e=>e.damage>0).length,1);
+ }
+ console.log(allMoves.length+' distinct moves rendered on actual casts, including all '+player.length+
+  ' default player and encounter kits, '+machines.length+' damaging HMs, TMs and TRs, '+signatures.length+
+  ' damaging moves learned by level only by legendary or mythical Pokémon, all six raids and all 136 Gym teams.');
 })().catch(error=>{console.error(String(error.stack).replace(/data:text\/javascript;base64,[^:)]*/g,'engine.js').slice(0,1400));process.exitCode=1;});

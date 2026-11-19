@@ -1055,6 +1055,15 @@
   function failed(e) {
     return e.multiplier===0 || e.damage==='Miss' || e.damage==='Ability blocked' || e.damage==='Failed';
   }
+  // Called attacks such as Sleep Talk can land directly on one Pokémon with no area cast.
+  function isDirectHit(e) {
+    return !e.zone && !e.sector && !e.line && !e.impactOnly && Number.isFinite(e.damage) && e.damage>0 && !failed(e);
+  }
+  function directSector(e,sign) {
+    const dx=e.tx-e.x,dy=e.ty-e.y,d=Math.hypot(dx,dy),length=Math.min(32,d||16);
+    const ux=d?dx/d:sign,uy=d?dy/d:0;
+    return {x:e.tx-ux*length*.74,y:e.ty-uy*length*.74,dx:ux,dy:uy,length,halfAngle:Math.PI/4};
+  }
   function drawTechnique(ctx,e,style,age,sign) {
     const {anchor,paint,colors}=style;
     ctx.globalAlpha*=1-ease((age-.31)/.27);
@@ -1064,14 +1073,17 @@
       ctx.beginPath();ctx.arc(0,0,e.radius,0,turn);ctx.clip();
       paint(ctx,e,age,colors,e.radius);
     }else if(anchor==='fan'){
-      const s=e.sector;if(!s)return;
+      const s=e.sector ?? (isDirectHit(e)?directSector(e,sign):null);if(!s)return;
       ctx.translate(s.x,s.y);ctx.rotate(Math.atan2(s.dy,s.dx));
       if(sign<0)ctx.scale(1,-1);
       ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,s.length,-s.halfAngle,s.halfAngle);ctx.closePath();ctx.clip();
-      paint(ctx,e,age,colors,s.length);
+      paint(ctx,e.sector?e:{...e,sector:s},age,colors,s.length);
     }else{
       if(anchor==='lane'){
-        if(!e.line)return;
+        if(!e.line){
+          if(!isDirectHit(e))return;
+          e={...e,line:true,halfWidth:7};
+        }
       }else if(failed(e) || !(e.status || Number.isFinite(e.damage) && e.damage>0))return;
       if(anchor==='target'){
         ctx.translate(e.tx,e.ty);ctx.scale(e.tx===e.x?sign:Math.sign(e.tx-e.x),1);
@@ -1135,6 +1147,7 @@
     if(!style)return false;
     const {kind,anchor}=style;
     return anchor==='target'||anchor==='link'||(anchor==='lane' && e.shape==='dash')||
+      ((anchor==='lane'||anchor==='fan') && isDirectHit(e))||
       kind==='sky'||kind==='bolt'||kind==='heal'||kind==='guard'||
       (kind==='slash' && !e.sector)||e.move==='Draco Meteor';
   }

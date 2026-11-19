@@ -8033,6 +8033,8 @@ function act(actor, opponents, dt) {
   if(slot>=0 && target && actor.moveTimers[slot]<=0 && !moveRestricted(actor,'Sleep Talk') && actor.moves.some(callableAttack)) {
    beginMoveCooldown(actor,slot);
    additionalStatusMoves['Sleep Talk'].apply(actor,target);
+   effects.push({x:actor.x,y:actor.y,tx:actor.x,ty:actor.y,move:'Sleep Talk',status:true,
+    color:moveColors.Normal,damage:'',multiplier:1,life:0.58});
   }
   return;
  }
@@ -10107,6 +10109,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.78',changes:['Added 106 move animations. Every default player moveset and every damaging HM, TM, and TR now has dedicated artwork.','Roar of Time winds back a clock face, Spacial Rend tears open a rift, and Precipice Blades drive lava-edged spires through the marked ground. Rest, Substitute, and Sleep Talk also have distinct cast effects.']},
  {version:'0.22.77',changes:['147 more skill animations cover every default wild and Trainer moveset and all 68 Master Gym teams, including moves filled in by the loadout system.','Whirlpool coils around its target, Tri Attack combines three elements, and Weather Ball shows the weather at launch. Helping Hand now shows which ally received the boost.']},
  {version:'0.22.76',changes:['130 more moves have dedicated animations, covering the moves equipped by every standard Gym leader and the default moves of every regional starter.','Entry hazards show up on the Pokémon that triggers them. Bonemerang arcs back to its user, and Brick Break splits bricks on impact.']},
  {version:'0.22.75',changes:['74 more Arena moves have their own animations, including every move equipped by the three Standard and Master Mega raid bosses.','Psystrike closes in with floating stones, Swords Dance raises paired blades, and Giga Drain draws energy back to its user. Look for distinct fang, punch, sound, and support effects.']},

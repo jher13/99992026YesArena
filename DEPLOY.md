@@ -1,3 +1,9 @@
+# Update to 0.22.78
+
+Extract the changed files over **0.22.77** with their folders intact. Push to
+`main` to publish the artwork and deploy the updated `arena-combat` function.
+It sends the Sleep Talk cast alongside the move the sleeping Pokémon calls.
+
 # Update to 0.22.77
 
 Extract the changed files over **0.22.76** with their folders intact. Push to
