@@ -1,3 +1,9 @@
+# Update to 0.22.75
+
+Extract the changed files over **0.22.74**, keeping the folder structure, and push to
+`main` to publish the new move artwork. This release uses the existing combat event
+format for local battles, PvP and Co-op.
+
 # Update to 0.22.74
 
 Extract the changed files over **0.22.73** with their folders intact. Push to

@@ -6,7 +6,12 @@ const read=file=>fs.readFileSync(path.join(__dirname,'..',file),'utf8');
 const moves=('Thunder|Thunderbolt|Thunder Shock|Electro Ball|Shadow Ball|Aura Sphere|Focus Blast|Energy Ball|Sludge Bomb|'+
  'Hyper Beam|Solar Beam|Ice Beam|Aurora Beam|Psybeam|Flash Cannon|Dragon Pulse|Surf|Muddy Water|Blizzard|Heat Wave|Sludge Wave|Earthquake|'+
  'Flamethrower|Dragon Breath|Icy Wind|Hurricane|Twister|Bleakwind Storm|Rock Slide|Draco Meteor|Fire Blast|Explosion|Self-Destruct|Misty Explosion|'+
- 'Slash|X Scissor|Night Slash|Leaf Blade|Quick Attack|Extreme Speed|Flare Blitz|Brave Bird|Protect|Reflect|Light Screen|Recover|Moonlight|Synthesis|Roost').split('|');
+ 'Slash|X Scissor|Night Slash|Leaf Blade|Quick Attack|Extreme Speed|Flare Blitz|Brave Bird|Protect|Reflect|Light Screen|Recover|Moonlight|Synthesis|Roost|'+
+ 'Confusion|Psychic|Psyshock|Psystrike|Future Sight|Night Shade|Hex|Moonblast|Dazzling Gleam|Swift|Magical Leaf|Ancient Power|Stone Edge|Earth Power|'+
+ 'Hydro Pump|Hydro Cannon|Bubble Beam|Water Pulse|Dark Pulse|Origin Pulse|Giga Drain|Mega Drain|Dream Eater|Hyper Voice|Boomburst|Bug Buzz|Snarl|'+
+ 'Bite|Crunch|Fire Fang|Ice Fang|Thunder Fang|Fire Punch|Ice Punch|Thunder Punch|Sucker Punch|Close Combat|Shadow Claw|Dragon Claw|Psycho Cut|Aqua Jet|Dragon Ascent|Aerial Ace|Fly|Bounce|'+
+ 'Dragon Rush|Fire Spin|Dragon Tail|Hypnosis|Venoshock|Confuse Ray|Outrage|Blast Burn|Flame Charge|Overheat|Air Slash|Toxic|Shadow Punch|Iron Head|'+
+ 'Swords Dance|Dragon Dance|Quiver Dance|Calm Mind|Nasty Plot|Agility|Iron Defense|Tailwind|Will O Wisp|Thunder Wave|Sleep Powder|Poison Powder|Stun Spore|Spore|Sing').split('|');
 
 function surface() {
  const commands=[],stack=[];
@@ -44,8 +49,10 @@ function snapshotFromClient(mode,side,effects,casts) {
  return {...view.visualSnapshots[0],mirrored:view.arenaMap.viewMirror};
 }
 const probe=String.raw`
+export function raidMoves(){return Object.values(megaRaidTiers).map(raid=>raid.moves);}
 export function captureMove(move,opts={}) {
- const match={id:'ab347c12-0000-4000-8000-000000000001',mode:'free_fight',format:1,host_pick:['Mew'],guest_pick:['Blissey'],host_entries:{},guest_entries:{}};
+ const match={id:'ab347c12-0000-4000-8000-000000000001',mode:'free_fight',format:opts.group?3:1,
+  host_pick:opts.group?['Mew','Raichu','Umbreon']:['Mew'],guest_pick:opts.group?['Blissey','Snorlax','Wigglytuff']:['Blissey'],host_entries:{},guest_entries:{}};
  initializeOnline(match);
  const a=allies[0],b=enemies[0];
  for(const [index,actor] of [a,b].entries()){
@@ -54,11 +61,17 @@ export function captureMove(move,opts={}) {
    moves:[index?'Pound':move],moveTimers:[0],moveCooldowns:[4],moveCooldownStarts:[],side:index?'guest':'host',revealed:true});
   Object.assign(trainerFields[index][0],{actor,transition:null});
  }
- b.type='Water';b.moves=['Pound','Psychic'];b.moveTimers=[0,0];b.moveCooldowns=[3,4];
+ b.type=opts.defenderType ?? 'Water';b.ability=opts.defenderAbility ?? null;b.moves=['Pound','Psychic'];b.moveTimers=[0,0];b.moveCooldowns=[3,4];
+ if(move==='Dream Eater'){b.ailment=2;b.ailmentTime=8;}
+ if(opts.group)for(const [side,team] of [allies,enemies].entries())for(let slot=1;slot<3;slot++){
+  const actor=team[slot],lead=team[0];
+  Object.assign(actor,{x:lead.x+slot*3,y:lead.y+slot*6,hp:3500,max:5000,ability:null,heldItem:null,type:'Normal',singleType:true});
+  Object.assign(trainerFields[side][slot],{actor,transition:null});
+ }
  a.hp=sacrificeProfiles.has(move)?200:1500;
  a.ability='No Guard';
  a.ai=normalizeBattleAI({mode:'Advanced',gambits:[{target:'Any',condition:'Always',operator:'Equal',value:'True',move}]});
- if(opts.immune){b.type='Ground';resolveOffensiveMove(a,move,moveRules(move),b,[b]);}
+ if(opts.resolve)resolveOffensiveMove(a,move,moveRules(move),b,[b]);
  const warnings=[];
  const snapshot=cast=>JSON.parse(JSON.stringify({...cast,actor:{friendly:cast.actor.friendly}}));
  for(let tries=0;tries<5 && !pendingCasts.length && !effects.length;tries++) {
@@ -80,11 +93,12 @@ export function captureMove(move,opts={}) {
   const publicEvents=onlineView(saved,side,match.mode).effects;
   if(JSON.stringify(publicEvents)!==JSON.stringify(saved.effects))throw Error('Missing move events in '+side+' view');
  }
- return {warnings,events:saved.effects.filter(e=>e.move===move),initialWarning,targetHP:enemies[0].hp};
+ return {warnings,events:saved.effects.filter(e=>e.move===move),initialWarning,targetHP:enemies[0].hp,fields:saved.arenaSkillFields ?? []};
 }
 `;
 (async()=>{
- const {captureMove}=await import('data:text/javascript;base64,'+Buffer.from(engine+probe).toString('base64'));
+ const {captureMove,raidMoves}=await import('data:text/javascript;base64,'+Buffer.from(engine+probe).toString('base64'));
+ const paints=command=>['stroke','fill','fillRect'].includes(command[0]);
  const captures=new Map(),missing=[];
  for(const move of moves){
   const record=captureMove(move);captures.set(move,record);
@@ -92,18 +106,22 @@ export function captureMove(move,opts={}) {
   const packet=JSON.stringify(record);
   let castArtwork=false;
   for(const cast of record.warnings){
-   if(art.activeCast(ctx,cast))castArtwork=true;
+   const before=commands.length;
+   if(art.activeCast(ctx,cast) && commands.slice(before).some(paints))castArtwork=true;
    art.charge(ctx,{...cast,remaining:cast.warning*.35});
   }
   for(const effect of record.events){
-   const handled=art.drawEffect(ctx,{...effect,life:.39});
-   if(handled && !effect.impactOnly)castArtwork=true;
+   const before=commands.length,handled=art.drawEffect(ctx,{...effect,life:.39});
+   if(handled && !effect.impactOnly && commands.slice(before).some(paints))castArtwork=true;
   }
   if(!castArtwork || !commands.length)missing.push(move);
   assert.equal(stack.length,0,move);assert.equal(ctx.globalAlpha,1,move);
   assert.equal(JSON.stringify(record),packet,'mutated combat event for '+move);
  }
  assert.deepEqual(missing,[],'no special artwork on normal casts');
+ assert.equal(captures.size,moves.length,'count each catalog entry once');
+ const raidLoadouts=raidMoves();assert.deepEqual(raidLoadouts.map(set=>set.length).sort((a,b)=>a-b),[8,8,8,16,16,16]);
+ for(const raid of raidLoadouts)for(const name of raid)assert(captures.has(name),'untested raid boss move '+name);
  const draw=(method,event,mirror=false)=>{
   const {ctx,commands,stack}=surface();art[method](ctx,event,mirror);
   assert.equal(stack.length,0);return commands;
@@ -113,7 +131,7 @@ export function captureMove(move,opts={}) {
  assert(thunderDraw.some(([op,x,y])=>op==='moveTo' && y<0),'strike starts overhead');
  assert(thunderDraw.some(([op,x,y])=>op==='lineTo' && x===thunder.tx && y===thunder.ty));
  assert(draw('drawEffect',{...bolt,life:.39}).some(([op,x,y])=>op==='translate'&&x===bolt.x&&y===bolt.y));
- for(const event of [{...thunder,damage:'Miss'},...captureMove('Thunder',{immune:true}).events]){
+ for(const event of [{...thunder,damage:'Miss'},...captureMove('Thunder',{defenderType:'Ground',resolve:true}).events]){
   assert(!draw('drawEffect',{...event,life:.39}).some(([op])=>op==='gradient'),'failed strike played hit flash');
  }
  assert.equal(captures.get('Hyper Beam').initialWarning,2);
@@ -151,5 +169,39 @@ export function captureMove(move,opts={}) {
  assert.equal(art.activeCast(ctx,charge),false,'winding up keeps the standard danger indicator');
  assert.equal(art.aboveUnits(thunder),true);assert.equal(art.aboveUnits(wave),false);
  assert.equal(art.aboveUnits(captures.get('X Scissor').events[0]),true,'contact slashes must be visible over the target sprite');
- console.log(moves.length+' move animations passed on authoritative battle events, including dodges, immunity, mirrored coordinates and restored Earthquake rings.');
+ assert.equal(art.aboveUnits(captures.get('Dragon Ascent').events.find(e=>e.line)),true,'a large raid sprite must not cover its dash trail');
+ assert.equal(art.aboveUnits({move:'Dragon Ascent',shape:'dash',dashSprite:{}}),false,'mobility afterimages keep their original layer');
+ for(const name of ['Moonblast','Hydro Cannon','Swift','Boomburst','Fly','Bounce','Blast Burn']){
+  const group=captureMove(name,{group:true,resume:true}),areas=group.events.filter(e=>e.zone);
+  assert.equal(areas.length,1,name+' should release once with three targets');
+  assert.equal(group.events.filter(e=>e.impactOnly && Number.isFinite(e.damage) && e.damage>0).length,3,name+' target impacts');
+  const cast=group.warnings[0],release=areas[0];
+  assert.deepEqual([release.tx,release.ty,release.radius],[cast.center.x,cast.center.y,cast.radius],name+' ground anchor');
+  const artOps=draw('drawEffect',{...release,life:.39});
+  assert(artOps.some(([op,x,y,r])=>op==='arc' && x===0 && y===0 && r===release.radius) && artOps.some(([op])=>op==='clip'));
+ }
+ const missedLanding=captureMove('Fly',{dodge:true});
+ assert(missedLanding.events.some(e=>e.zone));assert(!missedLanding.events.some(e=>e.impactOnly));
+ const wind=captureMove('Tailwind',{group:true});
+ const recipients=wind.events.filter(e=>e.status);
+ assert.equal(new Set(recipients.map(e=>e.tx+','+e.ty)).size,3,'Tailwind animates on each active recipient');
+ assert.equal(wind.fields.filter(f=>f.kind==='Wind').length,1,'the cast creates a single Wind field');
+ const blockedPowder=captureMove('Sleep Powder',{defenderAbility:'Overcoat',resolve:true}).events;
+ const immunePunch=captureMove('Thunder Punch',{defenderType:'Ground',resolve:true}).events;
+ for(const event of [blockedPowder[0],immunePunch[0],{...captures.get('Psychic').events[0],damage:'Miss'}]){
+  assert(event.multiplier===0 || event.damage==='Miss');
+  assert(!draw('drawEffect',{...event,life:.39}).some(paints),'unsuccessful targeted move painted a successful hit');
+ }
+ const drink=captures.get('Giga Drain').events[0];
+ const firstMote=life=>draw('drawEffect',{...drink,life}).find(op=>op[0]==='arc')[1];
+ assert(firstMote(.48)>firstMote(.32),'drained energy travels back to the attacker');
+ const pulse=captures.get('Origin Pulse').events.find(e=>e.line);
+ const roar=captures.get('Snarl').events.find(e=>e.sector);
+ for(const [mode,side,mirrored] of [['free_fight','guest',true],['coop_mega_master','raid:p1',false]]){
+  const x=value=>mirrored?960-value:value,view=snapshotFromClient(mode,side,[pulse,roar,drink],[]);
+  assert.equal(view.mirrored,mirrored);
+  assert.equal(view.effects[0].tx,x(pulse.tx));assert.equal(view.effects[1].sector.dx,mirrored?-roar.sector.dx:roar.sector.dx);
+  for(const e of view.effects)assert(draw('drawEffect',{...e,life:.4},mirrored).some(paints),e.move);
+ }
+ console.log(moves.length+' move animations passed on authoritative casts across all six Mega raids, including dodges, team buffs, immunities, mirrored views and resumed area attacks.');
 })().catch(error=>{console.error(String(error.stack).replace(/data:text\/javascript;base64,[^:)]*/g,'engine.js').slice(0,1400));process.exitCode=1;});

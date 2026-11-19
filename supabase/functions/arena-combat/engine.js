@@ -10091,6 +10091,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.75',changes:['74 more Arena moves have their own animations, including every move equipped by the three Standard and Master Mega raid bosses.','Psystrike closes in with floating stones, Swords Dance raises paired blades, and Giga Drain draws energy back to its user. Look for distinct fang, punch, sound, and support effects.']},
  {version:'0.22.74',changes:['Thunder strikes from the sky and Hyper Beam charges into a gold-white ray.','New move animations include rolling Surf, three Earthquake rings, electric and ghost projectiles, elemental slashes, shields, and healing.']},
  {version:'0.22.73',changes:['Profile tier numbers sit above their milestone markers.','Transform copies up to four equipped moves, including when Imposter triggers it in a Mega raid.']},
  {version:'0.22.72',changes:['The Kalos Laurel sits in front of the trainer card. Your featured Pokémon and its terrain effect share one center.','Claim all earned Standard and Master regional rewards together in Profile → Missions.']},
