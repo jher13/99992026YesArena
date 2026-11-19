@@ -1,3 +1,9 @@
+# Update to 0.22.81
+
+Extract the changed files over **0.22.80** with their folders intact and push to
+`main`. Deploy the updated `arena-combat` function so online rooms show the
+recipient of support skills and the moment Wish restores HP.
+
 # Update to 0.22.80
 
 Extract the changed files over **0.22.79** with their folders intact and push to

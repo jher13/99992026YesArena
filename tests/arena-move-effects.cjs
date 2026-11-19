@@ -31,12 +31,13 @@ function surface() {
 const renderMath=Object.create(Math);
 renderMath.random=()=>{throw Error('Move artwork used combat RNG');};
 const world=vm.createContext({Math:renderMath});
-vm.runInContext(read('assets/arena-move-effects.js'),world);
-vm.runInContext(read('assets/arena-move-effects-gym.js'),world);
-vm.runInContext(read('assets/arena-move-effects-field.js'),world);
-vm.runInContext(read('assets/arena-move-effects-signature.js'),world);
-vm.runInContext(read('assets/arena-move-effects-techniques.js'),world);
-vm.runInContext(read('assets/arena-move-effects-attacks.js'),world);
+function artworkSources(file){
+ return [...read(file).matchAll(/<script src="\.{1,2}\/(assets\/arena-move-effects(?:-[a-z]+)?\.js)(\?[^"]*)?"><\/script>/g)]
+  .map(([,src,version])=>[src,version]);
+}
+const webPacks=artworkSources('index.html');
+assert.deepEqual(artworkSources('local-test/PokeArena_Local_Test.html'),webPacks,'local and web releases load the same artwork in order');
+for(const [src] of webPacks)vm.runInContext(read(src),world);
 const art=world.ArenaMoveEffects;
 const recoveryMoves=['Refresh','Heal Bell','Aromatherapy','Psycho Shift','Purify','Lunar Blessing','Jungle Healing','Take Heart',
  'Wake Up Slap','Smelling Salts','Dire Claw','Baneful Bunker','Burning Bulwark','Mist'];
@@ -72,7 +73,7 @@ export function playerMoveCoverage() {
   const learners=isLegendaryEncounter(name)?rareLearners:ordinaryLearners;
   for(const move of Object.keys(levelUpMoves[dex[name][0]] ?? {}))learners.add(move);
  }
- return {player:dexNames.map(name=>movesFor(name)),
+ return {catalog:visible,player:dexNames.map(name=>movesFor(name)),
   damaging:visible.filter(move=>!moveCatalog[move][4]),
   machines:visible.filter(move=>['HM','TM','TR'].includes(machineKinds[move])),
   ailments:visible.filter(move=>{const rules=moveRules(move);return rules.ailment>=1 && rules.ailment<=6 && (moveCatalog[move][4] || rules.ailmentChance>0);}),
@@ -102,8 +103,8 @@ export function triggerHazards(opts={}) {
   ailment:defender.ailment,hazards:saved.entryHazards,x:defender.x,y:defender.y};
 }
 export function captureMove(move,opts={}) {
- const reserves=opts.bench ?? (Object.hasOwn(hazardCaps,move) || ['Roar','Parting Shot','Baton Pass','Teleport','Whirlwind'].includes(move));
- const group=opts.group ?? ['Helping Hand','Ally Switch','Coaching','Dragon Cheer'].includes(move);
+ const reserves=opts.bench ?? (Object.hasOwn(hazardCaps,move) || ['Roar','Parting Shot','Baton Pass','Teleport','Whirlwind','Shed Tail','Chilly Reception','Perish Song','Healing Wish','Lunar Dance','Revival Blessing','Assist'].includes(move));
+ const group=opts.group ?? ['Helping Hand','Ally Switch','Coaching','Dragon Cheer','After You','Aromatic Mist','Bestow','Decorate','Floral Healing','Follow Me','Gear Up','Heal Pulse','Instruct','Magnetic Flux','Rage Powder','Spotlight'].includes(move);
  const match={id:'ab347c12-0000-4000-8000-000000000001',mode:'free_fight',format:group?3:1,
   host_pick:group?['Mew','Raichu','Umbreon']:reserves?['Mew','Vaporeon']:['Mew'],
   guest_pick:group?['Blissey','Snorlax','Wigglytuff']:reserves?['Blissey','Snorlax']:['Blissey'],host_entries:{},guest_entries:{}};
@@ -143,6 +144,35 @@ export function captureMove(move,opts={}) {
   Object.assign(allies[1],{x:235,y:250});Object.assign(allies[2],{x:206,y:318});
   Object.assign(enemies[1],{x:530,y:310});Object.assign(enemies[2],{x:580,y:340});
  }
+ // Exercise the prerequisites that the normal AI and move resolver enforce.
+ if(['Belly Drum','Follow Me','Rage Powder','Shed Tail'].includes(move))a.hp=a.max;
+ if(['Healing Wish','Lunar Dance','Revival Blessing','Assist'].includes(move) && reserves){
+  const reserve=allies[1];reserve.moves=['Pound'];reserve.moveTimers=[2];
+  reserve.hp=move==='Revival Blessing'?0:Math.floor(reserve.max*.4);
+  if(move==='Healing Wish'||move==='Lunar Dance')a.hp=a.max*.2;
+ }
+ if(['Acupressure','Heal Pulse','Floral Healing','Bestow','Spotlight','After You','Instruct','Magnetic Flux','Gear Up'].includes(move) && group){
+  const ally=allies[1];Object.assign(ally,{x:260,y:185,hp:move==='Spotlight'?ally.max:ally.max*.2});
+  if(move==='After You')ally.charge=2;
+  if(move==='Instruct')ally.lastUsedMove='Pound';
+  if(move==='Magnetic Flux'||move==='Gear Up')ally.ability='Plus';
+  if(move==='Bestow')a.heldItem='Oran Berry';
+  if(opts.blockHeal)ally.healBlockUntil=100;
+ }
+ if(move==='Happy Hour'){selectedTrainer={name:'Test Trainer'};happyHourBonus=Boolean(opts.alreadyUsed);}
+ if(move==='Court Change')entryHazards[0]={Spikes:1};
+ if(move==='Teatime'){a.heldItem='Oran Berry';a.itemUsed=false;a.hp=a.max*.8;}
+ if(move==='Mud Sport')b.moves[1]='Thunderbolt';
+ if(move==='Water Sport')b.moves[1]='Flamethrower';
+ if(move==='Soak')b.type=opts.defenderType ?? 'Normal';
+ if(['Switcheroo','Corrosive Gas'].includes(move))b.heldItem='Leftovers';
+ if(['Gastro Acid','Role Play','Doodle'].includes(move))b.ability=opts.defenderAbility ?? 'Pressure';
+ if(['Heart Swap','Topsy-Turvy'].includes(move))b.stages[2]=2;
+ if(move==='Power Shift'||move==='Power Trick'){a.stats[2]=a.stats[1]+50;a.stats[4]=a.stats[5]+50;}
+ if(move==='Power Split')b.stats[1]=a.stats[1]+50;
+ if(['Copycat','Me First','Mirror Move','Disable','Conversion 2'].includes(move))b.lastUsedMove=opts.calledMove===false?null:'Pound';
+ if(move==='Me First')b.charge=2;
+ if(move==='Conversion'){a.moves.push('Ember');a.moveTimers.push(5);a.moveCooldowns.push(5);}
  if(opts.userType)a.type=opts.userType;
  if(move==='Curse' && opts.userType==='Ghost')a.hp=a.max;
  if(move==='Sleep Talk'){
@@ -173,6 +203,13 @@ export function captureMove(move,opts={}) {
    if(c.flight)resumedFlight=true;
   }
  }
+ if(move==='Wish' && opts.finishWish){
+  effects=[];
+  if(opts.resume)loadOnlineState(JSON.parse(JSON.stringify(saveOnlineState())));
+  const user=allies[0];
+  if(opts.blockHeal)user.healBlockUntil=100;
+  clock=user.wishAt+.01;tickStatus(user,.01);tickStatus(user,.01);
+ }
  const saved=saveOnlineState();
  for(const side of ['host','guest']){
   const publicEvents=onlineView(saved,side,match.mode).effects;
@@ -182,7 +219,9 @@ export function captureMove(move,opts={}) {
   helped:allies.filter(member=>member.helpingHandUntil>clock).map(member=>[member.x,member.y]),
   recall:saved.fields[0][0].transition,casterMoves:allies[0].moves,resumedFlight,
   userHP:allies[0].hp,decoy:allies[0].substituteHP,seedAt:enemies[0].seedAt,
-  calledEffects:move==='Sleep Talk'?saved.effects.filter(e=>e.move!==move):[]};
+  allyState:group||reserves?allies.slice(1).map(member=>({x:member.x,y:member.y,hp:member.hp,max:member.max,
+   item:member.heldItem,charge:member.charge,stages:member.stages,redirect:member.redirectUntil>clock,moveTimers:member.moveTimers})):[],
+  calledEffects:['Sleep Talk','Copycat','Assist','Instruct','Me First','Mirror Move'].includes(move)?saved.effects.filter(e=>e.move!==move):[]};
 }
 `;
 (async()=>{
@@ -190,10 +229,13 @@ export function captureMove(move,opts={}) {
  const {gyms,starters,listed,masters,field}=campaignMoves();
  assert.equal(gyms.length,68);assert.equal(starters.length,27);
  assert.equal(masters.length,68);assert.equal(field.length,1083);
- const {player,machines,signatures,ailments,damaging}=playerMoveCoverage();
+ const {catalog,player,machines,signatures,ailments,damaging}=playerMoveCoverage();
  assert.equal(player.length,field.length);
- const allMoves=[...new Set([...moves,...listed,...gyms.flat(),...masters.flat(),...field.flat(),
+ const required=[...new Set([...moves,...listed,...gyms.flat(),...masters.flat(),...field.flat(),
   ...player.flat(),...machines,...signatures,...ailments,...damaging,...recoveryMoves,'Rest','Substitute','Endure','Sleep Talk','Leech Seed'])];
+ const allMoves=[...new Set(catalog)];
+ assert.deepEqual(allMoves.length,catalog.length,'duplicate entry in visible move catalog');
+ for(const name of required)assert(allMoves.includes(name),'expected in visible move catalog: '+name);
  const paints=command=>['stroke','fill','fillRect'].includes(command[0]);
  const captures=new Map(),missing=[];
  for(const move of allMoves){
@@ -260,7 +302,7 @@ export function captureMove(move,opts={}) {
  assert.deepEqual(quake.events.map(e=>[e.innerRadius,e.radius]),[[0,full/3],[full/3,2*full/3],[2*full/3,full]]);
  assert.equal(quake.targetHP,3500,'quake drew in empty space without hurting a distant target');
  const {ctx}=surface();
- assert.equal(art.drawEffect(ctx,{move:'Celebrate'}),false);
+ assert.equal(art.drawEffect(ctx,{move:'Unknown arena move'}),false);
  assert.equal(art.drawEffect(ctx,{move:'Quick Attack',dashSprite:{}}),false);
  assert.equal(art.activeCast(ctx,charge),false,'winding up keeps the standard danger indicator');
  assert.equal(art.aboveUnits(thunder),true);assert.equal(art.aboveUnits(wave),false);
@@ -468,6 +510,56 @@ export function captureMove(move,opts={}) {
   const hit=captures.get(name).events[0];assert(art.aboveUnits(hit));
   for(const damage of ['Miss','Ability blocked','Failed'])assert(!draw('drawEffect',{...hit,damage,life:.4}).some(paints),name);
  }
+ for(const name of ['Heal Pulse','Floral Healing','Bestow','Spotlight','After You','Gear Up','Magnetic Flux']){
+  const {events,allyState}=captures.get(name),ally=allyState[0];
+  assert.equal(events.length,1,name+' draws once for the affected ally');
+  assert.deepEqual([events[0].tx,events[0].ty],[ally.x,ally.y],name+' follows the recipient');
+  assert.equal(captureMove(name,{group:false}).events.length,0,name+' without a suitable ally');
+  if(name==='Heal Pulse'||name==='Floral Healing'){
+   assert.equal(ally.hp,1625);assert.equal(captures.get(name).targetHP,3500);
+   assert.equal(captureMove(name,{blockHeal:true}).events.length,0,name+' must not show a blocked heal');
+  }
+  if(name==='Bestow')assert.equal(ally.item,'Oran Berry');
+  if(name==='After You')assert.equal(ally.charge,0);
+  if(name==='Spotlight')assert(ally.redirect);
+ }
+ const pinch=captureMove('Acupressure',{group:true}),boosted=pinch.allyState[0];
+ assert(boosted.stages.some(stage=>stage===2),'Acupressure applied to selected teammate');
+ assert.deepEqual([pinch.events[0].tx,pinch.events[0].ty],[boosted.x,boosted.y]);
+ const selfPinch=captures.get('Acupressure').events[0];
+ assert.deepEqual([selfPinch.tx,selfPinch.ty],[selfPinch.x,selfPinch.y],'solo Acupressure');
+ for(const name of ['Switcheroo','Trick']){
+  const event=captureMove(name,{defenderAbility:'Sticky Hold'}).events[0];
+  assert.equal(event.damage,'Failed');
+  assert(!draw('drawEffect',{...event,life:.4}).some(paints),'blocked item exchange');
+ }
+ assert(captures.get('Shed Tail').recall);
+ assert.equal(captureMove('Shed Tail',{bench:false}).events.length,0,'no decoy animation without a reserve');
+ const wishCast=captures.get('Wish').events[0],wish=captureMove('Wish',{finishWish:true,resume:true});
+ assert(!wishCast.wishResolved);assert.equal(wish.events.length,1,'Wish resolves once after restoring the saved cast');
+ assert(wish.events[0].wishResolved && wish.userHP>1500);
+ assert.notDeepEqual(draw('drawEffect',{...wishCast,life:.4}),draw('drawEffect',{...wish.events[0],life:.4}));
+ assert.equal(captureMove('Wish',{finishWish:true,blockHeal:true}).events.length,0,'no landing flash for a blocked Wish');
+ for(const name of ['Healing Wish','Lunar Dance','Revival Blessing']){
+  const result=captures.get(name),reserve=result.allyState[0],event=result.events[0];
+  assert.equal(reserve.hp,name==='Revival Blessing'?Math.ceil(reserve.max/2):reserve.max);
+  if(name!=='Revival Blessing')assert.equal(result.userHP,0);
+  if(name==='Lunar Dance')assert(reserve.moveTimers.every(value=>value===0));
+  assert.deepEqual([event.tx,event.ty],[event.x,event.y],name+' appears at the caster on the battlefield');
+  assert.equal(captureMove(name,{bench:false}).events.length,0);
+ }
+ for(const name of ['Assist','Copycat','Instruct','Me First','Mirror Move']){
+  const record=captures.get(name);
+  assert.equal(record.events.length,1,name+' cue');
+  assert.equal(record.calledEffects.filter(e=>e.move==='Pound'&&!e.impactOnly).length,1,name+' called attack');
+ }
+ for(const name of ['Chilly Reception','Corrosive Gas','Cotton Spore','Flower Shield','Growl','Leer','Rototiller','Tail Whip']){
+  const record=captures.get(name),areas=record.events.filter(e=>e.zone);
+  assert.equal(areas.length,1,name+' single area release');assert.equal(areas[0].radius,record.warnings[0].radius);
+  assert(draw('drawEffect',{...areas[0],life:.4}).some(op=>op[0]==='clip'),name+' uses telegraphed radius');
+ }
+ assert.equal(captureMove('Happy Hour',{alreadyUsed:true}).events.length,0,'Happy Hour plays once per trainer battle');
+ console.log((allMoves.length-damaging.length)+' status and support moves have tested artwork.');
  console.log(damaging.length+' damaging moves have tested artwork.');
  console.log(allMoves.length+' distinct moves rendered on actual casts, including all '+player.length+
   ' default player and encounter kits, '+machines.length+' HMs, TMs and TRs, '+signatures.length+

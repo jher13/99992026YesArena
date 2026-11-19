@@ -6702,7 +6702,14 @@ function tickStatus(actor,dt) {
   actor.yawnAt=0;
   tryAilment(actor,2,actor);
  }
- if(actor.wishAt && clock>=actor.wishAt){actor.wishAt=0;healActor(actor,actor.max*battleDamageScale/2);}
+ if(actor.wishAt && clock>=actor.wishAt){
+  actor.wishAt=0;
+  const before=actor.hp;
+  healActor(actor,actor.max*battleDamageScale/2);
+  if(actor.hp>before && fieldActors().includes(actor))effects.push({
+   x:actor.x,y:actor.y,tx:actor.x,ty:actor.y,move:'Wish',color:moveColors.Normal,damage:'',multiplier:1,life:.58,status:true,wishResolved:true
+  });
+ }
  if(actor.ingrainAt && clock>=actor.ingrainAt){actor.ingrainAt+=1;healActor(actor,actor.max*battleDamageScale/32);}
 
  if(!actor.guard)actor.contactShield=null;
@@ -7003,10 +7010,17 @@ function lowestHealthAlly(actor) {
  return fieldActors().filter(member=>member?.hp>0 && member!==actor && member.friendly===actor.friendly)
   .sort((a,b)=>carryHealingRank(actor,a)-carryHealingRank(actor,b))[0];
 }
+const recipientStatusMoves=new Set(['Acupressure','After You','Ally Switch','Bestow','Floral Healing','Heal Pulse','Helping Hand','Spotlight']);
 function allyHealingMove(percent) {
  return {description:'Restores '+percent+'% max HP to the lowest-HP active teammate.',
   score:actor=>{const ally=lowestHealthAlly(actor);return ally?100*(1-ally.hp/ally.max):0;},
-  apply:actor=>{const ally=lowestHealthAlly(actor);if(ally && ally.hp<ally.max)healActor(ally,ally.max*percent/100);}};
+  apply:actor=>{
+   const ally=lowestHealthAlly(actor);
+   if(!ally || ally.hp>=ally.max)return;
+   const before=ally.hp;
+   healActor(ally,ally.max*percent/100);
+   if(ally.hp>before)return ally;
+  }};
 }
 function stageMove(description,changes) {
  return {description,score:actor=>changes.some(([stat,amount])=>actor.stages[stat]<battleStageCap && amount>0)?45:0,
@@ -7249,7 +7263,10 @@ const additionalStatusMoves={
   apply:actor=>{
    const cost=Math.max(1,Math.floor(actor.max/2));
    if(actor.hp>cost && !voluntaryRecallBlocked(actor) &&
-      recallWithMove(actor,false,Math.max(1,Math.floor(actor.max/4))))actor.hp-=cost;
+      recallWithMove(actor,false,Math.max(1,Math.floor(actor.max/4)))){
+    actor.hp-=cost;
+    return true;
+   }
   }},
  'Revival Blessing':{description:'Once per battle, revives a knocked-out reserve with half its max HP.',
   score:actor=>!actor.revivalUsed && arenaBench(actor).some(member=>member.hp<=0)?85:0,
@@ -7276,7 +7293,7 @@ const additionalStatusMoves={
   apply:actor=>{actor.powderRedirectUntil=clock+4;}},
  Spotlight:{description:'Draws enemy targeting to another active teammate for 4 seconds.',
   score:actor=>activeTeammates(actor).some(member=>member!==actor && member.hp>member.max*.75 && !(member.redirectUntil>clock))?40:0,
-  apply:actor=>{const ally=activeTeammates(actor).find(member=>member!==actor && member.hp>member.max*.75);if(ally)ally.redirectUntil=clock+4;}},
+  apply:actor=>{const ally=activeTeammates(actor).find(member=>member!==actor && member.hp>member.max*.75);if(ally)ally.redirectUntil=clock+4;return ally;}},
  'Ally Switch':{description:'Exchanges positions with the lowest-health mobile teammate when both can fit.',
   score:actor=>!actor.ingrainAt && actor.hp>actor.max*.65 && positionedAlly(actor)?.hp/positionedAlly(actor)?.max<.45?52:0,
   apply:actor=>{
@@ -7291,7 +7308,7 @@ const additionalStatusMoves={
   }},
  'After You':{description:'Makes another active teammate ready to act by clearing its action delay.',
   score:actor=>activeTeammates(actor).some(member=>member!==actor && member.charge>.5)?40:0,
-  apply:actor=>{const ally=activeTeammates(actor).find(member=>member!==actor && member.charge>.5);if(ally)ally.charge=0;}},
+  apply:actor=>{const ally=activeTeammates(actor).find(member=>member!==actor && member.charge>.5);if(ally)ally.charge=0;return ally;}},
  Quash:{description:'Delays the target’s next action by adding 1.5 seconds to its action timer.',
   score:(_,target)=>target.charge<1?38:0,
   apply:(_,target)=>{target.charge+=1.5;}},
@@ -7366,7 +7383,7 @@ const additionalStatusMoves={
   score:actor=>actor.heldItem && activeTeammates(actor).some(member=>member!==actor && !member.heldItem)?40:0,
   apply:actor=>{
    const ally=activeTeammates(actor).find(member=>member!==actor && !member.heldItem);
-   if(ally && actor.heldItem)exchangeHeldItems(actor,ally);
+   if(ally && actor.heldItem){exchangeHeldItems(actor,ally);return ally;}
   }},
  'Corrosive Gas':{description:'Removes the target’s held item for this battle.',
   score:(_,target)=>target.heldItem?50:0,
@@ -7449,7 +7466,10 @@ const additionalStatusMoves={
   apply:actor=>{
    const recipient=lowestHealthAlly(actor) ?? actor;
    const stats=[2,3,4,5,6,7,8].filter(i=>recipient.stages[i]<battleStageCap);
-   if(stats.length)applyChanges(recipient,[[stats[Math.floor(onlineRandom()*stats.length)],2]],actor);
+   if(stats.length){
+    applyChanges(recipient,[[stats[Math.floor(onlineRandom()*stats.length)],2]],actor);
+    return recipient;
+   }
   }},
  Entrainment:{description:'Gives the target the user’s ability.',
   score:(actor,target)=>actor.ability && actor.ability!==target.ability?34:0,
@@ -8321,9 +8341,9 @@ function act(actor, opponents, dt) {
   if(Object.hasOwn(additionalStatusMoves,move)) {
    const outcome=additionalStatusMoves[move].apply(actor,target);
    playSkillSound(move,'release');
-   if(move==='Helping Hand' || move==='Ally Switch'){
+   if(recipientStatusMoves.has(move)){
     if(outcome)effect(outcome,'',1,{status:true});
-   }else if(move!=='Teleport' || outcome)effect(actor,'',1,{status:true});
+   }else if((move!=='Teleport' && move!=='Shed Tail') || outcome)effect(actor,'',1,{status:true});
    return;
   }
   playSkillSound(move,'release');
@@ -8552,7 +8572,15 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
    victim.flinch=0.5;
   if(status) {
    if(move==='Parting Shot' && rules.changes.some(([stat])=>victim.stages[stat]!==beforeDebuff[stat]))pivot=true;
-   if(Object.hasOwn(additionalStatusMoves,move))additionalStatusMoves[move].apply(actor,victim);
+   const outcome=Object.hasOwn(additionalStatusMoves,move)?additionalStatusMoves[move].apply(actor,victim):null;
+   if(recipientStatusMoves.has(move)){
+    if(outcome)effect(outcome,'',1,{status:true,impactOnly:Boolean(cast)});
+    continue;
+   }
+   if(outcome===false && additionalStatusMoves[move]===itemSwapMove){
+    effect(victim,'Failed',1,{status:true,impactOnly:Boolean(cast)});
+    continue;
+   }
    if(forcedSwitchMoves.has(move)) {
     effect(victim,forceSwitch(victim,defender)?'Forced switch':'Failed',1,{status:true,impactOnly:Boolean(cast)});
     continue;
@@ -10134,6 +10162,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.81',changes:['Added animations for the final 129 status and support moves. All 846 Arena moves now have artwork. Ally heals and item gifts show their recipient, and Wish has a second animation when its heal lands.']},
  {version:'0.22.80',changes:['Added animations for the final 117 damaging moves, bringing the total to 717 illustrated skills. Make It Rain showers the target area with coins, Eternabeam charges and fires a braided beam, and Population Bomb sends one mouse per landed strike.']},
  {version:'0.22.79',changes:['Burn, paralysis, poison, freeze, sleep, and confusion now animate on the affected Pokémon until the condition ends. Frozen sprites turn blue beneath a translucent ice shell.','Added 94 skill animations, including Dark Void, Pyro Ball, Aurora Veil, Heal Bell, and every remaining HM, TM, and TR.']},
  {version:'0.22.78',changes:['Added 106 move animations. Every default player moveset and every damaging HM, TM, and TR now has dedicated artwork.','Roar of Time winds back a clock face, Spacial Rend tears open a rift, and Precipice Blades drive lava-edged spires through the marked ground. Rest, Substitute, and Sleep Talk also have distinct cast effects.']},
