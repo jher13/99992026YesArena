@@ -1,3 +1,10 @@
+# Update to 0.22.74
+
+Extract the changed files over **0.22.73** with their folders intact. Push to
+`main` to publish the new client artwork and deploy the updated `arena-combat`
+function. The function sends the three Earthquake rings to Co-op and PvP
+clients. This release requires no database migration.
+
 # Update to 0.22.73
 
 Extract this patch over **0.22.72**, preserving the folder structure. Push the

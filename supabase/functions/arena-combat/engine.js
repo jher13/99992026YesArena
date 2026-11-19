@@ -8428,8 +8428,15 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
  const line=cast?.line;
  const radius=cast?.roaming?0:cast?.radius ?? rules.radius;
  let pivot=false;
- if(line && !cast.flight) effect(line.end,'',1,{x:line.x,y:line.y,line:!line.halfAngle,sector:line.halfAngle?line:null,shape:cast.shape,halfWidth:line.halfWidth,beamScale:move==='Hyper Beam'?1.5:1});
- else if(radius && !cast?.flight && cast?.quakeRing===undefined) effect(center,'',1,{radius,zone:true,shape:cast?.shape});
+ if(!strike?.index) {
+  if(line && !cast.flight) effect(line.end,'',1,{x:line.x,y:line.y,line:!line.halfAngle,sector:line.halfAngle?line:null,shape:cast.shape,halfWidth:cast.shape==='beam'?line.radius:line.halfWidth,beamScale:move==='Hyper Beam'?1.5:1});
+  else if(radius && !cast?.flight) {
+   const ring=cast?.quakeRing;
+   const zone={zone:true,radius,shape:cast?.shape};
+   if(ring!==undefined)zone.innerRadius=radius*ring/(ring+1);
+   effect(center,'',1,zone);
+  }
+ }
  const victims=cast?.flight ? opponents : line || radius ?
   opponents.filter(other=>other.hp>0 && inSkill(other,center,radius,line)) : opponents;
  for(const victim of victims) {
@@ -9343,6 +9350,7 @@ let raidBattleBackdrop=null;
 function paint() {
  const {width:arenaWidth,height:arenaHeight}=canvas;
  const renderer=globalThis.ArenaMapRenderer;
+ const moveArt=globalThis.ArenaMoveEffects;
  if(renderer)renderer.draw(ctx,arenaMap,arenaWidth,arenaHeight);
  else {ctx.fillStyle=arenaMap?.floor ?? '#829c53';ctx.fillRect(0,0,arenaWidth,arenaHeight);}
  if(phase==='online-battle' && raidBattleBackdrop?.naturalWidth) {
@@ -9362,7 +9370,8 @@ function paint() {
   phase==='setup' ? [allies[selected],enemies[0]] :
   [playerSwitch?null:activePlayer,enemySwitch?null:activeEnemy].filter(Boolean);
  paintArenaSkillFields();
- if(phase==='battle' || phase==='online-battle' || phase==='contract-battle') for(const area of pendingCasts) drawSkillWarning(area);
+ const battling=phase==='battle' || phase==='online-battle' || phase==='contract-battle';
+ if(battling)for(const cast of pendingCasts)drawSkillWarning(cast);
  if(arenaMap?.master && arenaMap.phase===2){
   ctx.save();
   ctx.fillStyle='#ff3b151c';
@@ -9385,12 +9394,18 @@ function paint() {
   }
   ctx.restore();
  }
- for(const effect of effects) drawMove(effect);
+ const foreground=[];
+ for(const effect of effects) {
+  if(moveArt?.aboveUnits(effect))foreground.push(effect);
+  else drawMove(effect);
+ }
  paintArenaWeather();
  for(const actor of visible.sort((a,b)=>a.y-b.y)){drawUnit(actor);drawAbilityState(actor);}
  if(playerSwitch) drawSwitch(playerSwitch);
  if(enemySwitch) drawSwitch(enemySwitch);
  for(const slot of trainerFields?.flat() ?? []) if(slot.transition) drawSwitch(slot.transition);
+ if(battling && moveArt)for(const cast of pendingCasts)moveArt.charge(ctx,cast);
+ for(const effect of foreground)drawMove(effect);
  for(const effect of effects) drawImpactLabel(effect);
  drawMoveBubbles(visible);
  const battleClock=phase==='online-battle'?onlineMatchDuration:clock;
@@ -9436,7 +9451,9 @@ function traceSector(line) {
  ctx.arc(line.x,line.y,line.length,line.angle-line.halfAngle,line.angle+line.halfAngle);
  ctx.closePath();
 }
-function drawSkillWarning({actor,center,radius,remaining,line,warning,flight,travel,move,quakeRing,roaming}) {
+function drawSkillWarning(cast) {
+ if(globalThis.ArenaMoveEffects?.activeCast(ctx,cast,arenaMap?.viewMirror))return;
+ const {actor,center,radius,remaining,line,warning,flight,travel,move,quakeRing,roaming}=cast;
  if(roaming) {
   ctx.save();
   ctx.translate(center.x,center.y);
@@ -9765,6 +9782,7 @@ function drawDashAfterimages(effect) {
 }
 function drawMove(e) {
  if(e.dashSprite){drawDashAfterimages(e);return;}
+ if(globalThis.ArenaMoveEffects?.drawEffect(ctx,e,arenaMap?.viewMirror))return;
  const age = 0.58-e.life;
  if(e.sector) {
   drawSkillSector(e.sector,e.color,e.shape,age);
@@ -10073,6 +10091,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.74',changes:['Thunder strikes from the sky and Hyper Beam charges into a gold-white ray.','New move animations include rolling Surf, three Earthquake rings, electric and ghost projectiles, elemental slashes, shields, and healing.']},
  {version:'0.22.73',changes:['Profile tier numbers sit above their milestone markers.','Transform copies up to four equipped moves, including when Imposter triggers it in a Mega raid.']},
  {version:'0.22.72',changes:['The Kalos Laurel sits in front of the trainer card. Your featured Pokémon and its terrain effect share one center.','Claim all earned Standard and Master regional rewards together in Profile → Missions.']},
  {version:'0.22.71',changes:['Find regional rewards, hunts and contracts in Profile → Missions. Campaign opens the same page.','Achievements displays your badge sprites and Master marks. Choose your campaign cosmetics under Edit trainer card.','Trading Hub and Online now have separate menu tabs. Browse signed-in trainers and open their profiles.']},
