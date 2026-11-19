@@ -27,6 +27,7 @@ const ctx=vm.createContext({console,Math,Date,Set,Map,JSON,crypto,structuredClon
  isLegendaryEncounter:name=>[144,145,146,150,151,249,250,251,377,378,379,380,381,382,383,384,385,386].includes(dex[name][0]),
  minimumEncounterLevel:()=>1,updateLogEntries:[{version:JSON.parse(read('version.json')).version}],
 });
+vm.runInContext(read('assets/arena-sound.js'),ctx);
 vm.runInContext(html.slice(html.indexOf('function gymRegionCleared('),html.indexOf('const masterOpponentExclusions=')),ctx);
 ctx.loadContractEngine=()=>import('../supabase/functions/arena-combat/engine.js');
 vm.runInContext(read('campaign-progression.js').replace(/async function engine\(\)\{return import\([^;]+;\}/, 'async function engine(){return await globalThis.loadContractEngine();}'),ctx);const c=ctx.window.ArenaCampaign;

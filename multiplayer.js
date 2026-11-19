@@ -11,7 +11,7 @@
  window.isPvpVersionContext=()=>pvpVersionContext;
  window.isCompletedRaid=()=>Boolean(active?.result && isCoop(active.mode));
  let arenaActors=new Map(), rosterRows=new Map(), displayedTurn=-1, recallSlotOnline=null;
- let frameAge=0, playbackClock=null, playbackDelay=0.32, snapshotArrival=0, arrivalGaps=[], visualSnapshots=[], soundsPlayed=new Set(), battleSnapshot=null;
+ let frameAge=0, playbackClock=null, playbackDelay=0.32, snapshotArrival=0, arrivalGaps=[], visualSnapshots=[], soundTimeline=null, battleSnapshot=null;
  const commands={Attack:'a',Select:'s',Ranged:'r',Backline:'d',Melee:'m','Mid-Range':'c',Auto:'z',
   Aggressive:'q',Balanced:'w',Defensive:'e'};
  for(let i=1;i<=6;i++){commands['Ally '+i]=String(i);commands['Enemy '+i]='ctrl+'+i;}
@@ -232,7 +232,7 @@
   if(phase!=='online-battle') {
    lastDpsRender=-1;renderBattleDps(0,[]);
    selectedUnit=null;commandMode=null;
-   arenaActors=new Map();rosterRows=new Map();soundsPlayed=new Set();displayedTurn=-1;
+   arenaActors=new Map();rosterRows=new Map();soundTimeline=globalThis.ArenaMoveAudio?.createTimeline();displayedTurn=-1;
    recallSlotOnline=null;battleSnapshot=null;playbackClock=null;playbackDelay=0.32;snapshotArrival=0;arrivalGaps=[];visualSnapshots=[];trainerFields=[[],[]];trainerPanels=null;
    phase='online-battle';speed=1;
    const mega=Object.hasOwn(megaRaidTiers,match.mode);
@@ -343,13 +343,7 @@
   arenaSkillFields=(data.arenaSkillFields ?? []).map(field=>({...field,x:mx(field.x),
    friendly:mirror?!field.friendly:field.friendly}));
   byId('score').textContent='Online battle · 1×'+(data.weather?' · '+data.weather+' '+Math.ceil(data.weatherTime ?? 0)+'s'+(abilityWeather()?'':' (suppressed)'):'');
-  const freshSounds=new Set();
-  for(const sound of data.sounds ?? []) {
-   const key=[sound.clock,sound.move,sound.event,sound.shape].join(':');
-   if(!soundsPlayed.has(key))playSkillSound(sound.move,sound.event,sound.shape);
-   freshSounds.add(key);
-  }
-  soundsPlayed=freshSounds;
+  if(data.sounds?.length)soundTimeline?.collect(data.sounds,data.clock);
   const boss=data.actors.find(actor=>actor.side==='boss' && actor.raidForm?.startsWith('Mega '));
   byId('raid-boss-hud').hidden=!boss;
   if(boss){
@@ -452,6 +446,7 @@
    playbackClock=active?.result?latest:Math.min(latest,playbackClock+dt*rate);
   }
   onlineVisualClock=playbackClock ?? 0;
+  if(battleSnapshot)soundTimeline?.advance(onlineVisualClock,playSkillSound);
   for(const actor of arenaActors.values()) {
    const samples=actor.motionSamples;
    while(samples.length>2 && samples[1].time<=playbackClock)samples.shift();

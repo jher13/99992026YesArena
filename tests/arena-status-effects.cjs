@@ -114,27 +114,36 @@ function checkActorRendering() {
 
 // Feed the actual snapshot receiver and interpolation loop. A cure or new ailment must follow its displayed frame.
 function checkOnlinePlayback(initial,cleared,id,mode,side,mirror) {
- const source=read('multiplayer.js');
+ const source=read('multiplayer.js'),heard=[];
  const view=vm.createContext({active:{mode,side},megaRaidTiers:{coop_mega_master:{}},window:{},canvas:{width:960},
-  performance:{now:()=>3200},arenaActors:new Map(),soundsPlayed:new Set(),visualSnapshots:[],arrivalGaps:[],
+  performance:{now:()=>3200},arenaActors:new Map(),playSkillSound:(...args)=>heard.push(args),visualSnapshots:[],arrivalGaps:[],
   displayedTurn:0,battleSnapshot:null,playbackClock:null,playbackDelay:.25,snapshotArrival:0,
   frameAge:0,visualTime:0,onlineVisualClock:0,byId:()=>({}),clamp:(n,min,max)=>Math.min(max,Math.max(min,n)),
   setArenaDimensions(){},updateNormalAttackToggle(){},renderBattleDps(){},updateOnlineRoster(){},updateActivePanels(){},paint(){}});
+ vm.runInContext(read('assets/arena-sound.js'),view);
+ view.soundTimeline=view.ArenaMoveAudio.createTimeline();
  vm.runInContext(source.split('\n').find(line=>line.includes('const isCoop='))+'\n'+
   between(source,' function showBattleSnapshot(',' function updateOnlineRoster(')+'\n'+
   between(source,' window.paintOnlineBattle=dt=>',' const originalMenu='),view);
  const post=(turn,battle)=>view.showBattleSnapshot({turn,battle},()=>{});
  const at=t=>{view.playbackClock=t;view.window.paintOnlineBattle(0);return view.arenaActors.get(id);};
- post(1,initial);
+ const startCue={clock:initial.clock,order:0,move:'Thunder',event:'release'};
+ post(1,{...initial,sounds:[startCue]});
+ assert.equal(heard.length,0,'snapshot receipt is silent until displayed');
  const before=at(initial.clock);
+ assert.equal(heard.length,1);assert.equal(heard[0][0],'Thunder');
  assert.equal(before.displayedStatus.ailment,4);assert.equal(view.arenaMap.viewMirror,mirror);
  const from=initial.actors.find(a=>a.onlineId===id).x;
  const second=JSON.parse(JSON.stringify(cleared));second.actors.find(a=>a.onlineId===id).x=from+40;
+ second.sounds=[startCue,{clock:cleared.clock,order:0,move:'Weather Ball',variant:'Rain',event:'release'}];
  post(2,second);
+ assert.equal(heard.length,1,'an overlapping packet and a future event do not play early');
  const interpolated=at((initial.clock+cleared.clock)/2);
  assert.equal(interpolated.ailment,null);assert.equal(interpolated.displayedStatus.ailment,4);
+ assert.equal(heard.length,1);
  assert.equal(interpolated.x,mirror?960-(from+20):from+20);
  assert.equal(at(cleared.clock).displayedStatus.ailment,null);
+ assert.deepEqual(heard[1],['Weather Ball','release',undefined,0,'Rain']);assert.equal(heard.length,2);
  const legacy=JSON.parse(JSON.stringify(initial));legacy.clock=cleared.clock+1;
  for(const entry of legacy.actors){delete entry.ailment;delete entry.puppetUntil;}
  post(3,legacy);assert.equal(at(legacy.clock).displayedStatus.ailment,null);assert.equal(at(legacy.clock).displayedStatus.puppetUntil,0);

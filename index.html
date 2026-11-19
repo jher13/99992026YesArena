@@ -1210,7 +1210,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
  <div class="battle-settings-grid"><button id="battle-sfx" aria-pressed="true">SFX: On</button><button id="battle-music" aria-pressed="true">Music: On</button><button id="basic-attacks" type="button" aria-pressed="true">Normal Attack: On</button><button id="speed" aria-pressed="false">1× speed</button><button id="battle-auto-start" aria-pressed="false" hidden>Auto Start: Off</button><button id="battle-auto-capture" aria-pressed="false" hidden>Auto capture: Off</button><button id="battle-auto-repeat" aria-pressed="false" hidden>Auto repeat: Off</button><button id="auto-reserve" aria-pressed="false" hidden>Auto send-out: Off</button></div>
  <div id="battle-volume-controls"></div>
 </dialog>
-<script src="./assets/variant-sprites.js?v=0.22.69"></script><script src="./assets/arena-maps.js?v=0.22.72"></script><script src="./assets/arena-move-effects.js?v=0.22.80"></script><script src="./assets/arena-move-effects-gym.js?v=0.22.76"></script><script src="./assets/arena-move-effects-field.js?v=0.22.77"></script><script src="./assets/arena-move-effects-signature.js?v=0.22.78"></script><script src="./assets/arena-move-effects-techniques.js?v=0.22.79"></script><script src="./assets/arena-move-effects-attacks.js?v=0.22.80"></script><script src="./assets/arena-move-effects-support.js?v=0.22.81"></script><script src="./assets/arena-status-effects.js?v=0.22.79"></script><script>
+<script src="./assets/variant-sprites.js?v=0.22.69"></script><script src="./assets/arena-maps.js?v=0.22.72"></script><script src="./assets/arena-move-effects.js?v=0.22.80"></script><script src="./assets/arena-move-effects-gym.js?v=0.22.76"></script><script src="./assets/arena-move-effects-field.js?v=0.22.77"></script><script src="./assets/arena-move-effects-signature.js?v=0.22.78"></script><script src="./assets/arena-move-effects-techniques.js?v=0.22.79"></script><script src="./assets/arena-move-effects-attacks.js?v=0.22.80"></script><script src="./assets/arena-move-effects-support.js?v=0.22.81"></script><script src="./assets/arena-status-effects.js?v=0.22.79"></script><script src="./assets/arena-sound-bank.js?v=0.22.82"></script><script src="./assets/arena-sound-score.js?v=0.22.82"></script><script src="./assets/arena-sound.js?v=0.22.82"></script><script>
 const byId = id => document.getElementById(id);
 const profileIndexKey='pokemon-arena-player-index';
 const defaultPlayer={id:'default',name:'Player 1'};
@@ -5590,61 +5590,24 @@ function startBattleMusic() {
 const sfxButton=byId('battle-sfx');
 let skillSoundEnabled=true;
 try {skillSoundEnabled=playerStorage.getItem('pokemon-arena-sfx')!=='off';} catch {}
-const skillSoundProfiles={
- Fire:[110,48,'sawtooth'], Water:[630,270,'sine'], Electric:[720,135,'square'],
- Ice:[900,430,'triangle'], Grass:[490,205,'triangle'], Psychic:[320,760,'sine'],
- Ghost:[380,145,'sine'], Dark:[240,68,'triangle'], Dragon:[165,65,'sawtooth'],
- Fighting:[185,55,'triangle'], Rock:[125,42,'triangle'], Ground:[88,33,'sine'],
- Flying:[550,160,'triangle'], Steel:[840,340,'triangle'], Fairy:[520,980,'sine'],
- Poison:[285,120,'square'], Bug:[580,240,'square']
-};
 function unlockSkillSound() {
- if(!skillSoundEnabled) return;
+ if(!skillSoundEnabled || !sfxVolume)return;
  const Audio=window.AudioContext ?? window.webkitAudioContext;
- if(!Audio) return;
+ if(!Audio)return;
  try {
   musicContext ??=new Audio();
-  if(musicContext.state==='suspended') musicContext.resume().catch(()=>{});
+  if(musicContext.state==='suspended' || musicContext.state==='interrupted')musicContext.resume().catch(()=>{});
  } catch {}
 }
-const moveSoundSignatures=new Map(Object.keys(moveCatalog).map((move,index,all)=>{
- const [type,power]=moveCatalog[move];
- const [high,low,voice]=skillSoundProfiles[type] ?? [340,110,'triangle'];
- const seed=[...move].reduce((value,character)=>(Math.imul(value,31)+character.charCodeAt(0))>>>0,7);
- return [move,{high:high*(0.72+0.56*index/all.length),low:low*(0.7+(seed%47)/70),
-  voice,tail:['sine','triangle','square'][seed%3],accent:1.1+(seed%19)/15,
-  length:0.9+Math.min(power || 0,160)/400+(seed%11)/50}];
-}));
-function playSkillSound(move,event,shape) {
- if(!skillSoundEnabled || !sfxVolume || musicContext?.state!=='running') return;
- const signature=moveSoundSignatures.get(move);
- if(!signature) return;
- const {high,low,voice,tail,accent,length}=signature;
- const duration=(event==='warning'?0.075:event==='impact'?0.095:shape==='beam'?0.28:0.17)*length;
- const start=event==='impact'?low*0.9:event==='warning'?high*0.64:high;
- const end=event==='warning'?high:event==='impact'?Math.max(32,low*0.52):low;
- const volume=(event==='warning'?0.018:event==='impact'?0.065:0.052)*sfxVolume;
- const time=musicContext.currentTime;
- skillSoundVoice(event==='impact'?'triangle':voice,start,end,duration,volume,time);
- if(event!=='warning') {
-  const overtone=event==='impact'?high*0.7:start*accent;
-  skillSoundVoice(tail,overtone,Math.max(24,end*accent),duration*0.64,volume*0.36,time+0.018);
- }
+function skillSoundVariant(move) {
+ if(move==='Weather Ball')return abilityWeather() ?? '';
+ if(move==='Terrain Pulse')return battleTerrain ?? '';
+ return '';
 }
-function skillSoundVoice(voice,start,end,duration,volume,time) {
- const oscillator=musicContext.createOscillator();
- const gain=musicContext.createGain();
- oscillator.type=voice;
- oscillator.frequency.setValueAtTime(start,time);
- oscillator.frequency.exponentialRampToValueAtTime(end,time+duration);
- gain.gain.setValueAtTime(0.0001,time);
- gain.gain.exponentialRampToValueAtTime(volume,time+0.009);
- gain.gain.exponentialRampToValueAtTime(0.0001,time+duration);
- oscillator.connect(gain);
- gain.connect(musicContext.destination);
- oscillator.onended=()=>{oscillator.disconnect();gain.disconnect();};
- oscillator.start(time);
- oscillator.stop(time+duration+0.01);
+function playSkillSound(move,event,shape,delay=0,variant=skillSoundVariant(move)) {
+ if(!skillSoundEnabled || !sfxVolume || musicContext?.state!=='running')return;
+ const rate=phase==='battle'?Math.max(1,speed):1;
+ globalThis.ArenaMoveAudio?.play(musicContext,move,event,sfxVolume,delay/rate,variant);
 }
 function updateSfxButton() {
  sfxButton.textContent='SFX: '+(skillSoundEnabled?'On':'Off');
@@ -5654,7 +5617,8 @@ sfxButton.onclick=()=>{
  skillSoundEnabled=!skillSoundEnabled;
  try {playerStorage.setItem('pokemon-arena-sfx',skillSoundEnabled?'on':'off');} catch {}
  updateSfxButton();
- if(skillSoundEnabled) unlockSkillSound();
+ if(skillSoundEnabled)unlockSkillSound();
+ else globalThis.ArenaMoveAudio?.stop(musicContext);
 };
 updateSfxButton();
 const musicButton=byId('battle-music');
@@ -5670,8 +5634,9 @@ musicButton.onclick=()=>{
  else stopBattleMusic();
 };
 updateMusicButton();
+document.addEventListener('keydown',()=>{if(musicContext?.state!=='running')unlockSkillSound();});
 document.addEventListener('pointerdown',()=>{
- if(phase==='battle') unlockSkillSound();
+ if(musicContext?.state!=='running')unlockSkillSound();
  const audio=musicTrack?.audio;
  if(audio?.paused && !audio.ended) audio.play().catch(()=>{});
  else if(musicTrack && musicContext?.state==='suspended') musicContext.resume().catch(()=>{});
@@ -5844,6 +5809,7 @@ byId('battle-settings-button').onclick=()=>{
  byId('battle-settings').showModal();
 };
 function showScreen(screen) {
+ if(screen!=='battle')globalThis.ArenaMoveAudio?.stop(musicContext);
  byId('raid-boss-hud').hidden=true;
  byId('battle-settings-button').hidden=screen!=='battle';
  if(screen!=='battle' && byId('battle-settings').open)byId('battle-settings').close();
@@ -7275,6 +7241,8 @@ function targetAbility(actor,victim,move=null) {
 // Arena adaptations. All timers use combat seconds and stay on battle actors.
 const convertedAttackTypes={Aerilate:'Flying',Pixilate:'Fairy',Refrigerate:'Ice',Galvanize:'Electric',Dragonize:'Dragon'};
 const variableHitMoves=new Set(['Arm Thrust','Barrage','Bone Rush','Bullet Seed','Comet Punch','Double Slap','Fury Attack','Fury Swipes','Icicle Spear','Pin Missile','Rock Blast','Scale Shot','Spike Cannon','Tail Slap','Water Shuriken']);
+// Keep the spacing of individual contacts in step with their strike animations.
+const quickSoundStrikes=new Set(['Barrage','Bone Rush','Double Slap','Spike Cannon','Water Shuriken','Dragon Darts','Gear Grind','Tachyon Cutter','Twin Beam','Triple Dive','Triple Kick','Surging Strikes','Population Bomb']);
 const separateAccuracyMoves=new Set(['Triple Kick','Triple Axel','Population Bomb']);
 const fixedHitMoves={'Bonemerang':2,'Double Hit':2,'Double Iron Bash':2,'Double Kick':2,'Dragon Darts':2,'Dual Chop':2,'Dual Wingbeat':2,'Gear Grind':2,'Tachyon Cutter':2,'Twin Beam':2,'Twineedle':2,'Triple Axel':3,'Triple Dive':3,'Triple Kick':3,'Surging Strikes':3,'Population Bomb':10};
 const stanceAbilities=new Set(['Forecast','Stance Change','Zen Mode','Schooling']);
@@ -7898,9 +7866,10 @@ function tickStatus(actor,dt) {
   actor.wishAt=0;
   const before=actor.hp;
   healActor(actor,actor.max*battleDamageScale/2);
-  if(actor.hp>before && fieldActors().includes(actor))effects.push({
-   x:actor.x,y:actor.y,tx:actor.x,ty:actor.y,move:'Wish',color:moveColors.Normal,damage:'',multiplier:1,life:.58,status:true,wishResolved:true
-  });
+  if(actor.hp>before && fieldActors().includes(actor)){
+   effects.push({x:actor.x,y:actor.y,tx:actor.x,ty:actor.y,move:'Wish',color:moveColors.Normal,damage:'',multiplier:1,life:.58,status:true,wishResolved:true});
+   playSkillSound('Wish','impact');
+  }
  }
  if(actor.ingrainAt && clock>=actor.ingrainAt){actor.ingrainAt+=1;healActor(actor,actor.max*battleDamageScale/32);}
 
@@ -8107,6 +8076,9 @@ function respondToHit(actor,victim,move,element,physical,dealt,critical=false) {
   }
  }
 }
+const chargeSoundTimes={
+ 'Hyper Beam':[1.3,.75,.30],Explosion:[3.2,1.55,.55],'Self-Destruct':[2.15,1.05,.40],'Misty Explosion':[3.2,1.55,.55]
+};
 const sacrificeActivationChance=0.5;
 const sacrificeProfiles=new Map([
  ['Explosion',{charge:5,radius:2,damage:10}],
@@ -8303,6 +8275,7 @@ function entryDamageFraction(actor,hazards,onTrigger=null) {
   (hazards['Stealth Rock']?fraction('Stealth Rock','Rock'):0);
 }
 function showHazardEffect(actor,move,onEntry) {
+ playSkillSound(move,onEntry?'impact':'release');
  effects.push({x:actor.x,y:actor.y,tx:actor.x,ty:actor.y,move,status:true,hazardEntry:onEntry,
   color:moveColors[moveCatalog[move][0]],damage:'',multiplier:1,life:0.58});
 }
@@ -9245,6 +9218,7 @@ function act(actor, opponents, dt) {
   const target=opponents.find(other=>other.hp>0 && Math.hypot(other.x-actor.x,other.y-actor.y)<=115);
   if(slot>=0 && target && actor.moveTimers[slot]<=0 && !moveRestricted(actor,'Sleep Talk') && actor.moves.some(callableAttack)) {
    beginMoveCooldown(actor,slot);
+   playSkillSound('Sleep Talk','release');
    additionalStatusMoves['Sleep Talk'].apply(actor,target);
    effects.push({x:actor.x,y:actor.y,tx:actor.x,ty:actor.y,move:'Sleep Talk',status:true,
     color:moveColors.Normal,damage:'',multiplier:1,life:0.58});
@@ -9515,7 +9489,7 @@ function act(actor, opponents, dt) {
   x:actor.x,y:actor.y,tx:victim.x,ty:victim.y,damage,color,move,multiplier,life:0.58,...extra
  });
  if(move==='Baton Pass') {
-  if(recallWithMove(actor,true))effect(actor,'',1,{status:true});
+  if(recallWithMove(actor,true)){playSkillSound(move,'release');effect(actor,'',1,{status:true});}
   return;
  }
  if(move==='Belly Drum') {
@@ -9523,6 +9497,7 @@ function act(actor, opponents, dt) {
   if(actor.hp>cost && actor.stages[2]<battleStageCap) {
    actor.hp-=cost;
    actor.stages[2]=battleStageCap;
+   playSkillSound(move,'release');
    effect(actor,'Attack +3',1,{status:true});
   }
   return;
@@ -9532,10 +9507,10 @@ function act(actor, opponents, dt) {
   releaseArenaSkillField(actor,move,actor);
   if(Object.hasOwn(additionalStatusMoves,move)) {
    const outcome=additionalStatusMoves[move].apply(actor,target);
+   const targeted=recipientStatusMoves.has(move);
+   if((targeted || move==='Teleport' || move==='Shed Tail') && !outcome)return;
    playSkillSound(move,'release');
-   if(recipientStatusMoves.has(move)){
-    if(outcome)effect(outcome,'',1,{status:true});
-   }else if((move!=='Teleport' && move!=='Shed Tail') || outcome)effect(actor,'',1,{status:true});
+   effect(targeted?outcome:actor,'',1,{status:true});
    return;
   }
   playSkillSound(move,'release');
@@ -9652,7 +9627,8 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
  });
  if(weatherMoves[move]) setWeather(weatherMoves[move]);
  if(terrainMoves[move]) setTerrain(terrainMoves[move]);
- if(!cast?.flight && !cast?.roaming) playSkillSound(move,'release',cast?.shape);
+ if(!cast?.flight && !cast?.roaming && !cast?.quakeRing && !strike?.index && !recipientStatusMoves.has(move))
+  playSkillSound(move,'release',cast?.shape);
  const line=cast?.line;
  const radius=cast?.roaming?0:cast?.radius ?? rules.radius;
  let pivot=false;
@@ -9667,6 +9643,14 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
  }
  const victims=cast?.flight ? opponents : line || radius ?
   opponents.filter(other=>other.hp>0 && inSkill(other,center,radius,line)) : opponents;
+ let impactPlayed=false;
+ function soundContact(){
+  if(impactPlayed)return;
+  const delay=(strike?.index ?? 0)*(quickSoundStrikes.has(move)?.038:.055);
+  const variant=move==='Weather Ball' && cast?.flight?(cast.visualWeather ?? ''):skillSoundVariant(move);
+  playSkillSound(move,'impact',cast?.shape,delay,variant);
+  impactPlayed=true;
+ }
  for(const victim of victims) {
   if(!status && actor.friendly===victim.friendly && targetAbility(actor,victim)==='Telepathy')continue;
   if(status && victim.friendly!==actor.friendly && victim.craftyShieldUntil>clock)continue;
@@ -9730,7 +9714,7 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
    if(!status){
     const damage=battleDamage(actor,victim,power,multiplier,rules.category!==3,element,move);
     victim.substituteHP=Math.max(0,victim.substituteHP-damage);
-    if(damage>0)consumeArenaFieldCombo(actor,victim,element);
+    if(damage>0){consumeArenaFieldCombo(actor,victim,element);soundContact();}
    }
    effect(victim,victim.substituteHP?'Substitute':'Decoy broke',1,{impactOnly:true});
    continue;
@@ -9766,7 +9750,7 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
    if(move==='Parting Shot' && rules.changes.some(([stat])=>victim.stages[stat]!==beforeDebuff[stat]))pivot=true;
    const outcome=Object.hasOwn(additionalStatusMoves,move)?additionalStatusMoves[move].apply(actor,victim):null;
    if(recipientStatusMoves.has(move)){
-    if(outcome)effect(outcome,'',1,{status:true,impactOnly:Boolean(cast)});
+    if(outcome){playSkillSound(move,'release');effect(outcome,'',1,{status:true,impactOnly:Boolean(cast)});}
     continue;
    }
    if(outcome===false && additionalStatusMoves[move]===itemSwapMove){
@@ -9798,7 +9782,7 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
    if(victim.grudgeUntil>clock && slot>=0)actor.moveTimers[slot]+=12;
   }
   if(dealt>0 && wasAsleep)clearArenaAilment(victim);
-  if(dealt>0) playSkillSound(move,'impact');
+  if(dealt>0)soundContact();
   recordOpponentDamage(actor,victim,dealt);
   respondToHit(actor,victim,move,element,rules.category!==3,dealt,critical);
   useHeldBerry(victim);
@@ -9932,7 +9916,12 @@ function tickSkillCasts(dt) {
     }
    }
   }
+  const previousRemaining=area.remaining;
   area.remaining-=dt;
+  const checkpoints=chargeSoundTimes[area.move];
+  if(checkpoints && area.remaining>0)for(let i=0;i<checkpoints.length;i++){
+   if(previousRemaining>checkpoints[i] && area.remaining<=checkpoints[i])playSkillSound(area.move,'charge'+(i+1),area.shape);
+  }
   if(area.shape==='dash' && area.remaining<=0.16) {
    const progress=clamp(1-area.remaining/0.16,0,1);
    const {line,actor}=area;
@@ -11354,6 +11343,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.82',changes:['All 846 Arena moves now have custom sound effects. Charged moves build up before release, multi-hit moves sound on contact, and online battles play sounds in time with the displayed action.']},
  {version:'0.22.81',changes:['Added animations for the final 129 status and support moves. All 846 Arena moves now have artwork. Ally heals and item gifts show their recipient, and Wish has a second animation when its heal lands.']},
  {version:'0.22.80',changes:['Added animations for the final 117 damaging moves, bringing the total to 717 illustrated skills. Make It Rain showers the target area with coins, Eternabeam charges and fires a braided beam, and Population Bomb sends one mouse per landed strike.']},
  {version:'0.22.79',changes:['Burn, paralysis, poison, freeze, sleep, and confusion now animate on the affected Pokémon until the condition ends. Frozen sprites turn blue beneath a translucent ice shell.','Added 94 skill animations, including Dark Void, Pyro Ball, Aurora Veil, Heal Bell, and every remaining HM, TM, and TR.']},
@@ -11662,7 +11652,11 @@ function audioVolumeControls() {
    if(musicTrack?.audio)musicTrack.audio.volume=0.35*level;
    if(musicTrack?.output)musicTrack.output.gain.value=0.22*level;
   }),
-  volumeSlider('SFX volume','sfx',sfxVolume,level=>{sfxVolume=level;})];
+  volumeSlider('SFX volume','sfx',sfxVolume,level=>{
+   sfxVolume=level;
+   globalThis.ArenaMoveAudio?.setVolume(musicContext,level);
+   if(level>0)unlockSkillSound();else globalThis.ArenaMoveAudio?.stop(musicContext);
+  })];
 }
 byId('toolbar-logout').onclick=openLogin;
 phase='login';
@@ -11673,5 +11667,5 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.70"></script><script src="./multiplayer.js?v=0.22.79"></script>
-<script src="./trade-hub.js?v=0.22.69"></script><script src="./campaign-progression.js?v=0.22.72"></script><script src="./trainer-card.js?v=0.22.73"></script></html>
+<script src="./tactics.js?v=0.22.70"></script><script src="./multiplayer.js?v=0.22.82"></script>
+<script src="./trade-hub.js?v=0.22.69"></script><script src="./campaign-progression.js?v=0.22.82"></script><script src="./trainer-card.js?v=0.22.73"></script></html>

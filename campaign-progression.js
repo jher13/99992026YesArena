@@ -204,7 +204,7 @@
    const lib=await engine();if(run.version && run.version!==lib.campaignEngineVersion)throw Error('The battle server is updating. Retry when the client and server versions match.');
    busy=false;window.ArenaTrainerCard.closeMissions();openMenu();selectedGym=selectedWild=selectedTrainer=null;selectedMasterGym=false;rogueRun=null;raidBattleBackdrop=null;
    activePlayer=activeEnemy=playerSwitch=enemySwitch=null;trainerPanels=null;recallSlot=null;lastDpsRender=-1;setArenaDimensions();
-   const out=lib.simulateOnline(run.match,null,0,null,'host');battle={...run,lib,state:out.state,result:null,accumulator:0,done:false,visualActors:new Map(),soundsPlayed:new Set()};
+   const out=lib.simulateOnline(run.match,null,0,null,'host');battle={...run,lib,state:out.state,result:null,accumulator:0,done:false,visualActors:new Map(),soundTimeline:globalThis.ArenaMoveAudio?.createTimeline()};
    phase='contract-battle';showScreen('battle');byId('battle').classList.remove('is-mega-raid');
    byId('legendary-intro').hidden=byId('next-gym').hidden=true;byId('start').disabled=true;
    byId('choices').replaceChildren(button('Abandon contract',()=>{battle=null;byId('reset').disabled=byId('basic-attacks').disabled=byId('speed').disabled=false;stopBattleMusic();openMenu();open('contracts');}));
@@ -227,10 +227,8 @@
   arenaSkillFields=data.arenaSkillFields??[];entryHazards=data.entryHazards;fieldMoveExpiry=data.fieldMoveExpiry;
   if(!battle.rosterReady){renderBattleRosters();battle.rosterReady=true;}
   updateActivePanels(trainerFields);updateScore();renderBattleDps(clock,damageBuckets);updateBattleRosters();
-  const freshSounds=new Set();for(const sound of data.sounds??[]){
-   const key=[sound.clock,sound.move,sound.event,sound.shape].join(':');
-   if(!battle.soundsPlayed.has(key))playSkillSound(sound.move,sound.event,sound.shape);freshSounds.add(key);
-  }battle.soundsPlayed=freshSounds;
+  battle.soundTimeline?.collect(data.sounds,data.clock);
+  battle.soundTimeline?.advance(data.clock,playSkillSound);
   byId('arena-duration').textContent='Contract · '+Math.floor(clock/60)+'m '+Math.floor(clock%60)+'s · 1×';
  }
  async function finishContract(){

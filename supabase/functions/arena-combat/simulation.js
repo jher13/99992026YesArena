@@ -1,6 +1,11 @@
 // The build script appends this adapter inside the Gym engine's scope.
 let onlineRandomState=0;
 let onlineSounds=[];
+function recordOnlineSkillSound(move,event,shape,delay,variant) {
+ const last=onlineSounds.at(-1);
+ const order=last?.clock===clock?(last.order ?? 0)+1:0;
+ onlineSounds.push({clock,order,move,event,shape,...(delay>0?{delay}:{}),...(variant?{variant}:{})});
+}
 let onlineRecalls={};
 function onlineRandom() {
  onlineRandomState=(Math.imul(1664525,onlineRandomState)+1013904223)>>>0;

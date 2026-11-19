@@ -1,3 +1,10 @@
+# Update to 0.22.82
+
+Extract the changed files over **0.22.81**, keeping the folders intact. Publish the
+web files and deploy the updated Supabase `arena-combat` function so PvP and co-op
+receive charge, release and contact sounds at the right time. The bundled sounds
+also work in the local test page. Rebuilding the sound bank is optional.
+
 # Update to 0.22.81
 
 Extract the changed files over **0.22.80** with their folders intact and push to

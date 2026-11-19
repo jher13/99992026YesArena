@@ -48,8 +48,10 @@ const requestAnimationFrame=()=>{};
 """
 source = "\n".join(lines)
 source = source.replace("Math.random()", "onlineRandom()")
-source = source.replace("function playSkillSound(move,event,shape) {",
-    "function playSkillSound(move,event,shape) {onlineSounds.push({move,event,shape,clock});}\n"
-    "function browserSkillSound(move,event,shape) {")
+# The server records combat cues. Only the browser loads the audio bank and plays it.
+start = source.index("function playSkillSound(")
+body = source.index("{", start)
+end = source.index("function updateSfxButton()", body)
+source = source[:body] + "{recordOnlineSkillSound(move,event,shape,delay,variant);}\n" + source[end:]
 wrapper = (root / "supabase/functions/arena-combat/simulation.js").read_text()
 (root / "supabase/functions/arena-combat/engine.js").write_text(prefix + source + "\n" + wrapper)

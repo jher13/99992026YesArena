@@ -183,6 +183,7 @@ export function captureMove(move,opts={}) {
  if(move==='Steel Beam'){a.hp=a.max;b.type=opts.defenderType ?? 'Fairy';}
  if(reserves){clock=2;a.enteredAt=0;b.enteredAt=0;}
  if(opts.weather)setWeather(opts.weather);
+ if(opts.terrain)setTerrain(opts.terrain);
  a.ability='No Guard';
  a.ai=normalizeBattleAI({mode:'Advanced',gambits:[{target:'Any',condition:'Always',operator:'Equal',value:'True',move}]});
  if(opts.resolve)resolveOffensiveMove(a,move,moveRules(move),b,[b]);
@@ -192,6 +193,7 @@ export function captureMove(move,opts={}) {
   act(a,[b],1/60);clock+=1/60;
  }
  if(opts.dodge){b.x=900;b.y=420;}
+ if(opts.interrupt)a.flinch=2;
  let initialWarning=pendingCasts[0]?.warning,resumedFlight=false;
  for(let i=0;i<420 && pendingCasts.length;i++){
   const c=pendingCasts[0];
@@ -212,10 +214,12 @@ export function captureMove(move,opts={}) {
  }
  const saved=saveOnlineState();
  for(const side of ['host','guest']){
-  const publicEvents=onlineView(saved,side,match.mode).effects;
+  const view=onlineView(saved,side,match.mode);
+  if(JSON.stringify(view.sounds)!==JSON.stringify(saved.sounds))throw Error('Missing sound cues in '+side+' view');
+  const publicEvents=view.effects;
   if(JSON.stringify(publicEvents)!==JSON.stringify(saved.effects))throw Error('Missing move events in '+side+' view');
  }
- return {warnings,events:saved.effects.filter(e=>e.move===move),initialWarning,targetHP:enemies[0].hp,fields:saved.arenaSkillFields ?? [],
+ return {warnings,sounds:saved.sounds,events:saved.effects.filter(e=>e.move===move),initialWarning,targetHP:enemies[0].hp,fields:saved.arenaSkillFields ?? [],
   helped:allies.filter(member=>member.helpingHandUntil>clock).map(member=>[member.x,member.y]),
   recall:saved.fields[0][0].transition,casterMoves:allies[0].moves,resumedFlight,
   userHP:allies[0].hp,decoy:allies[0].substituteHP,seedAt:enemies[0].seedAt,
@@ -237,9 +241,10 @@ export function captureMove(move,opts={}) {
  assert.deepEqual(allMoves.length,catalog.length,'duplicate entry in visible move catalog');
  for(const name of required)assert(allMoves.includes(name),'expected in visible move catalog: '+name);
  const paints=command=>['stroke','fill','fillRect'].includes(command[0]);
- const captures=new Map(),missing=[];
+ const captures=new Map(),missing=[],silent=[];
  for(const move of allMoves){
   const record=captureMove(move);captures.set(move,record);
+  if(!record.sounds.some(s=>s.move===move && s.event==='release'))silent.push(move);
   const {ctx,commands,stack}=surface();
   const packet=JSON.stringify(record);
   let castArtwork=false;
@@ -258,6 +263,45 @@ export function captureMove(move,opts={}) {
  }
  assert.deepEqual(missing,[],'no special artwork on normal casts');
  assert.equal(captures.size,allMoves.length,'count each catalog entry once');
+ assert.deepEqual(silent,[],'catalog moves without a release cue on a successful cast');
+ vm.runInContext(read('assets/arena-sound-score.js'),world);
+ const telegraphs=allMoves.filter(move=>captures.get(move).sounds.some(s=>s.move===move && s.event==='warning'));
+ assert.equal(new Set(telegraphs.map(move=>world.ArenaMoveScores.get(move).warning)).size,telegraphs.length,'each visibly telegraphed skill has a distinct wind-up');
+ const sounds=(record,move)=>record.sounds.filter(s=>s.move===move);
+ const phases=(record,move)=>sounds(record,move).map(s=>s.event);
+ for(const move of ['Hyper Beam','Explosion','Self-Destruct','Misty Explosion']){
+  const cues=sounds(captures.get(move),move);
+  assert.deepEqual(cues.filter(s=>s.event!=='impact').map(s=>s.event),['warning','charge1','charge2','charge3','release'],move);
+  assert(cues.filter(s=>s.event.startsWith('charge')).every(s=>s.clock>cues[0].clock && s.clock<cues.find(s=>s.event==='release').clock));
+  assert.deepEqual(phases(captureMove(move,{interrupt:true}),move),['warning'],move+' interrupted charge');
+ }
+ for(const move of ['Shadow Ball','Energy Ball','Focus Blast']){
+  const miss=captureMove(move,{dodge:true,resumeFlight:true});
+  assert.deepEqual(phases(miss,move),['warning','release'],move+' can fly past the target');
+ }
+ assert(!phases(captureMove('Thunder',{defenderType:'Ground'}),'Thunder').includes('impact'),'type immunity');
+ const surf=captureMove('Surf',{group:true});
+ assert(surf.events.filter(e=>e.damage>0).length>1,'multiple targets hit by the same wave');
+ assert.equal(phases(surf,'Surf').filter(p=>p==='impact').length,1,'one contact sound for one wave');
+ const pop=captures.get('Population Bomb'),hits=pop.events.filter(e=>e.damage>0);
+ const pops=sounds(pop,'Population Bomb').filter(s=>s.event==='impact');
+ assert.equal(pops.length,hits.length);assert.equal(pops.length,10);
+ assert.equal(phases(pop,'Population Bomb').filter(s=>s==='release').length,1);
+ assert.deepEqual(pops.map(s=>s.delay??0),hits.map((_,i)=>i*.038));
+ assert.equal(phases(captures.get('Earthquake'),'Earthquake').filter(s=>s==='release').length,1);
+ for(const move of ['Belly Drum','Baton Pass'])assert.deepEqual(phases(captures.get(move),move),['release']);
+ const wishSound=captureMove('Wish',{finishWish:true,resume:true});
+ assert.deepEqual(phases(wishSound,'Wish'),['release','impact']);
+ assert(!phases(captureMove('Wish',{finishWish:true,blockHeal:true}),'Wish').includes('impact'));
+ assert(phases(captureMove('Heal Pulse',{blockHeal:true}),'Heal Pulse').length===0,'unsuccessful ally heal');
+ for(const [move,opts,key] of [['Weather Ball',{weather:'Rain'},'Rain'],['Terrain Pulse',{terrain:'Electric'},'Electric']]){
+  const cues=sounds(captureMove(move,opts),move);assert(cues.length);assert(cues.every(s=>s.variant===key));
+ }
+ for(const record of captures.values()){
+  const keys=record.sounds.map(s=>s.clock+'/'+s.order);
+  assert.equal(new Set(keys).size,keys.length,'unique simultaneous event identifiers');
+ }
+ console.log(allMoves.length+' combat moves produced release sounds. Charge, dodge, immunity, multi-hit, AoE, delayed healing and online audio checks passed.');
  const raidLoadouts=raidMoves();assert.deepEqual(raidLoadouts.map(set=>set.length).sort((a,b)=>a-b),[8,8,8,16,16,16]);
  for(const raid of raidLoadouts)for(const name of raid)assert(captures.has(name),'untested raid boss move '+name);
  const draw=(method,event,mirror=false)=>{
