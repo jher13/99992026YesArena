@@ -1,3 +1,9 @@
+# Update to 0.22.83
+
+Extract the changed files over **0.22.82** and keep the folder structure. Push to
+`main` to publish the six raid music tracks and the updated player. The included
+combat engine carries the matching release version for regional contracts.
+
 # Update to 0.22.82
 
 Extract the changed files over **0.22.81**, keeping the folders intact. Publish the

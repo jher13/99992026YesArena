@@ -558,13 +558,20 @@
    if(token===generation) await view();
   } catch(error){if(token===generation)show(title,element('p',error.message));}
  }
- function raidBackdropUrl(tier) {
+ function raidAssetUrl(tier,extension) {
   const variant=tier.master?'-master':'';
-  return new URL('./assets/raid-tier-'+tier.tier+variant+'.webp'+(tier.master?'?v=2':''),multiplayerSource).href;
+  const revision=tier.master && extension==='webp'?'?v=2':'';
+  return new URL('./assets/raid-tier-'+tier.tier+variant+'.'+extension+revision,multiplayerSource).href;
  }
+ window.onlineBattleRecording=regionalRecording=>{
+  if(active?.result)return null;
+  const tier=megaRaidTiers[active?.mode];
+  if(!tier)return regionalRecording;
+  return active.started?raidAssetUrl(tier,'mp3'):null;
+ };
  function setRaidRoomBackdrop(root,tier) {
   root.dataset.tier=String(tier?.tier ?? 1);
-  root.style.backgroundImage=tier?('url("'+raidBackdropUrl(tier)+'")'):'';
+  root.style.backgroundImage=tier?('url("'+raidAssetUrl(tier,'webp')+'")'):'';
  }
  function raidRoom(title,visibility,leave,tier,code) {
   phase='raid-lobby';
@@ -1010,7 +1017,7 @@
   const coOp=isCoop(active.mode);
   const tier=megaRaidTiers[active.mode];
   raidBattleBackdrop=tier?new Image():null;
-  if(raidBattleBackdrop)raidBattleBackdrop.src=raidBackdropUrl(tier);
+  if(raidBattleBackdrop)raidBattleBackdrop.src=raidAssetUrl(tier,'webp');
   const raid=coOp?raidRoom(tier?tier.name+' · '+raidTierLabel(tier):title,active.code?'Private room':'Public room',leave,tier,active.code):null;
   if(raid)raid.controls.append(view);
   else show(title,view,button('Leave match',leave));
