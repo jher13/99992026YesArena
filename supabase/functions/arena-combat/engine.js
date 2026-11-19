@@ -10134,6 +10134,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.80',changes:['Added animations for the final 117 damaging moves, bringing the total to 717 illustrated skills. Make It Rain showers the target area with coins, Eternabeam charges and fires a braided beam, and Population Bomb sends one mouse per landed strike.']},
  {version:'0.22.79',changes:['Burn, paralysis, poison, freeze, sleep, and confusion now animate on the affected Pokémon until the condition ends. Frozen sprites turn blue beneath a translucent ice shell.','Added 94 skill animations, including Dark Void, Pyro Ball, Aurora Veil, Heal Bell, and every remaining HM, TM, and TR.']},
  {version:'0.22.78',changes:['Added 106 move animations. Every default player moveset and every damaging HM, TM, and TR now has dedicated artwork.','Roar of Time winds back a clock face, Spacial Rend tears open a rift, and Precipice Blades drive lava-edged spires through the marked ground. Rest, Substitute, and Sleep Talk also have distinct cast effects.']},
  {version:'0.22.77',changes:['147 more skill animations cover every default wild and Trainer moveset and all 68 Master Gym teams, including moves filled in by the loadout system.','Whirlpool coils around its target, Tri Attack combines three elements, and Weather Ball shows the weather at launch. Helping Hand now shows which ally received the boost.']},

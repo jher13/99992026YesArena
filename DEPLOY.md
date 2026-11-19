@@ -1,3 +1,9 @@
+# Update to 0.22.80
+
+Extract the changed files over **0.22.79** with their folders intact and push to
+`main`. This version adds artwork for all remaining damaging moves. The visuals
+use the cast and hit events already sent by 0.22.79 rooms.
+
 # Update to 0.22.79
 
 Extract the changed files over **0.22.78** and keep their folder structure.

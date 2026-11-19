@@ -214,11 +214,23 @@
   }
 
   function charge(ctx,cast) {
-    if (!cast.line || cast.flight || !['Hyper Beam','Solar Beam'].includes(cast.move)) return;
+    if (!cast.line || cast.flight || !['Hyper Beam','Solar Beam','Eternabeam'].includes(cast.move) || !profiles.has(cast.move)) return;
     const {line}=cast, colors=profiles.get(cast.move).colors;
     const p=ease(1-cast.remaining/cast.warning),offset=Math.min(12,line.length*.12);
     ctx.save(); ctx.translate(line.x+line.dx*offset,line.y+line.dy*offset);
     const angle=Math.atan2(line.dy,line.dx); ctx.rotate(angle);
+    if(cast.move==='Eternabeam'){
+      const r=6+9*p;
+      for(const side of [-1,1]){
+        const pts=[];
+        for(let i=0;i<=8;i++){const u=i/8;pts.push([-12+19*u,side*(r*(1-u)+3*Math.sin(u*Math.PI+p*2.3))]);}
+        path(ctx,pts,'#ac76c5',2.2);
+        path(ctx,[[-1,side*r],[4,side*r*.57],[9,side*r*.25]],'#a8f2fa',1.7);
+      }
+      ring(ctx,5,0,r*.42,r,'#ee9fd6',2.1);
+      polygon(ctx,[[1,0],[5,-r*.55],[10,0],[5,r*.55]],'#583968');
+      disc(ctx,5,0,1.6+2.4*p,'#fff0ff');ctx.restore();return;
+    }
     ctx.globalAlpha=.34+.53*p; halo(ctx,0,0,12+22*p,colors[1]); ctx.globalAlpha=1;
     for (let i=0;i<14;i++) {
       const u=(p*(1.9+i%3*.14)+i*.221)%1, a=i*2.4+p*(i%2?.75:-.65);

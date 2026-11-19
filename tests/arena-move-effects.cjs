@@ -36,6 +36,7 @@ vm.runInContext(read('assets/arena-move-effects-gym.js'),world);
 vm.runInContext(read('assets/arena-move-effects-field.js'),world);
 vm.runInContext(read('assets/arena-move-effects-signature.js'),world);
 vm.runInContext(read('assets/arena-move-effects-techniques.js'),world);
+vm.runInContext(read('assets/arena-move-effects-attacks.js'),world);
 const art=world.ArenaMoveEffects;
 const recoveryMoves=['Refresh','Heal Bell','Aromatherapy','Psycho Shift','Purify','Lunar Blessing','Jungle Healing','Take Heart',
  'Wake Up Slap','Smelling Salts','Dire Claw','Baneful Bunker','Burning Bulwark','Mist'];
@@ -72,6 +73,7 @@ export function playerMoveCoverage() {
   for(const move of Object.keys(levelUpMoves[dex[name][0]] ?? {}))learners.add(move);
  }
  return {player:dexNames.map(name=>movesFor(name)),
+  damaging:visible.filter(move=>!moveCatalog[move][4]),
   machines:visible.filter(move=>['HM','TM','TR'].includes(machineKinds[move])),
   ailments:visible.filter(move=>{const rules=moveRules(move);return rules.ailment>=1 && rules.ailment<=6 && (moveCatalog[move][4] || rules.ailmentChance>0);}),
   signatures:visible.filter(move=>rareLearners.has(move) && !ordinaryLearners.has(move) && !moveCatalog[move][4])};
@@ -131,7 +133,7 @@ export function captureMove(move,opts={}) {
  if(move==='Dream Eater'){b.ailment=2;b.ailmentTime=8;}
  if(group)for(const [side,team] of [allies,enemies].entries())for(let slot=1;slot<3;slot++){
   const actor=team[slot],lead=team[0];
-  Object.assign(actor,{x:lead.x+slot*3,y:lead.y+slot*6,hp:3500,max:5000,ability:null,heldItem:null,type:'Normal',singleType:true});
+  Object.assign(actor,{x:lead.x+slot*3,y:lead.y+slot*6,hp:3500,max:5000,ability:null,heldItem:null,type:side?(opts.defenderType ?? 'Normal'):'Normal',singleType:true});
   Object.assign(trainerFields[side][slot],{actor,transition:null});
  }
  a.hp=sacrificeProfiles.has(move)?200:1500;
@@ -147,6 +149,7 @@ export function captureMove(move,opts={}) {
   if(opts.sleeping!==false){a.ailment=2;a.ailmentTime=8;}
   if(opts.calledMove!==false){a.moves.push(opts.calledMove ?? 'Pound');a.moveTimers.push(0);a.moveCooldowns.push(4);}
  }
+ if(move==='Mind Blown'){a.hp=a.max;b.type=opts.defenderType ?? 'Grass';}
  if(move==='Steel Beam'){a.hp=a.max;b.type=opts.defenderType ?? 'Fairy';}
  if(reserves){clock=2;a.enteredAt=0;b.enteredAt=0;}
  if(opts.weather)setWeather(opts.weather);
@@ -187,10 +190,10 @@ export function captureMove(move,opts={}) {
  const {gyms,starters,listed,masters,field}=campaignMoves();
  assert.equal(gyms.length,68);assert.equal(starters.length,27);
  assert.equal(masters.length,68);assert.equal(field.length,1083);
- const {player,machines,signatures,ailments}=playerMoveCoverage();
+ const {player,machines,signatures,ailments,damaging}=playerMoveCoverage();
  assert.equal(player.length,field.length);
  const allMoves=[...new Set([...moves,...listed,...gyms.flat(),...masters.flat(),...field.flat(),
-  ...player.flat(),...machines,...signatures,...ailments,...recoveryMoves,'Rest','Substitute','Endure','Sleep Talk','Leech Seed'])];
+  ...player.flat(),...machines,...signatures,...ailments,...damaging,...recoveryMoves,'Rest','Substitute','Endure','Sleep Talk','Leech Seed'])];
  const paints=command=>['stroke','fill','fillRect'].includes(command[0]);
  const captures=new Map(),missing=[];
  for(const move of allMoves){
@@ -425,6 +428,47 @@ export function captureMove(move,opts={}) {
   assert.equal(record.events.filter(e=>e.impactOnly && (e.damage>0 || e.status)).length,3,name);
   const dodge=captureMove(name,{dodge:true});assert(!dodge.events.some(e=>e.impactOnly),name+' has no hit after a dodge');
  }
+ const population=captures.get('Population Bomb').events.filter(e=>e.damage>0);
+ assert.equal(population.length,10);
+ assert.deepEqual(population.map(e=>e.strikeIndex??0),Array.from({length:10},(_,i)=>i));
+ const lateStrike=population.at(-1);
+ assert(!draw('drawEffect',{...lateStrike,life:.4}).some(paints),'tenth mouse waits its turn');
+ assert(draw('drawEffect',{...lateStrike,life:.16}).some(paints),'tenth mouse is visible before the effect expires');
+ assert(!draw('drawEffect',{...population[0],life:.16}).some(paints),'the first mouse has already left the target');
+ for(const name of ['Population Bomb','Water Shuriken','Surging Strikes','Twin Beam','Tachyon Cutter','Triple Kick','Dragon Darts','Gear Grind']){
+  const hits=captures.get(name).events.filter(e=>e.damage>0);assert(hits.length>=2,name);
+  assert(!draw('drawEffect',{...hits[1],life:.575}).some(paints),name+' second strike started early');
+  assert(draw('drawEffect',{...hits[1],life:.44}).some(paints),name+' second strike missing');
+  assert.equal(captureMove(name,{defenderHP:1}).events.filter(e=>e.damage>0).length,1,name+' stops at a knockout');
+ }
+ for(const name of ['Eternabeam','Glacial Lance','Psyshield Bash','Raging Bull','Jump Kick','Steamroller','Zing Zap']){
+  const record=captures.get(name),event=record.events.find(e=>e.line),lane=record.warnings[0].line;
+  const width=event.shape==='wave'?lane.halfWidth:lane.radius;
+  if(event.shape!=='dash')assert.equal(event.halfWidth,width,name);
+  assert(draw('drawEffect',{...event,life:.38}).some(([op,x,y,w,h])=>op==='rect' && x===0 && y<0 && h===-2*y &&
+   (event.shape==='dash'?h<=2*width:h===2*width) && Math.abs(w-lane.length)<1e-6),name+' artwork fits the collision lane');
+  assert.equal(art.aboveUnits(event),event.shape==='dash',name);
+ }
+ const windup=captures.get('Eternabeam').warnings[0];
+ assert.equal(windup.warning,.5);
+ assert.notDeepEqual(draw('charge',{...windup,remaining:.46}),draw('charge',{...windup,remaining:.10}));
+ assert.deepEqual(draw('charge',{...windup,flight:true}),[]);
+ for(const name of ['Astral Barrage','Make It Rain','Mind Blown','Magnitude','Armor Cannon','Mortal Spin']){
+  const record=captureMove(name,{group:true,resume:true,defenderType:'Grass'}),release=record.events.filter(e=>e.zone);
+  assert.equal(release.length,1,name);assert.equal(release[0].radius,record.warnings[0].radius);
+  assert.equal(record.events.filter(e=>e.impactOnly && e.damage>0).length,3,name+' group impact count');
+  assert(!captureMove(name,{dodge:true}).events.some(e=>e.impactOnly),name+' target escaped the marked area');
+ }
+ for(const name of ['Make It Rain','Astral Barrage']){
+  const fx=captureMove('Sleep Talk',{calledMove:name}).calledEffects;
+  assert.equal(fx.filter(e=>e.zone).length,1);
+  assert.equal(fx.filter(e=>draw('drawEffect',{...e,life:.4}).some(paints)).length,1,name+' single called release');
+ }
+ for(const name of ['Moongeist Beam','Blood Moon','Spirit Shackle','Behemoth Blade']){
+  const hit=captures.get(name).events[0];assert(art.aboveUnits(hit));
+  for(const damage of ['Miss','Ability blocked','Failed'])assert(!draw('drawEffect',{...hit,damage,life:.4}).some(paints),name);
+ }
+ console.log(damaging.length+' damaging moves have tested artwork.');
  console.log(allMoves.length+' distinct moves rendered on actual casts, including all '+player.length+
   ' default player and encounter kits, '+machines.length+' HMs, TMs and TRs, '+signatures.length+
   ' damaging moves learned by level only by legendary or mythical Pokémon, all six raids and all 136 Gym teams.');
