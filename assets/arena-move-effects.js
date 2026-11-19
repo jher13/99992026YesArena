@@ -1032,6 +1032,7 @@
     }else if(anchor==='fan'){
       const s=e.sector;if(!s)return;
       ctx.translate(s.x,s.y);ctx.rotate(Math.atan2(s.dy,s.dx));
+      if(sign<0)ctx.scale(1,-1);
       ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,s.length,-s.halfAngle,s.halfAngle);ctx.closePath();ctx.clip();
       paint(ctx,e,age,colors,s.length);
     }else{
@@ -1044,6 +1045,8 @@
       }else{
         const dx=e.tx-e.x,dy=e.ty-e.y;
         ctx.translate(e.x,e.y);ctx.rotate(Math.atan2(dy,dx));
+        // Mirroring reverses the local perpendicular as well as the heading.
+        if(sign<0)ctx.scale(1,-1);
         paint(ctx,e,age,colors,Math.hypot(dx,dy));
       }
     }
@@ -1101,5 +1104,8 @@
       kind==='sky'||kind==='bolt'||kind==='heal'||kind==='guard'||
       (kind==='slash' && !e.sector)||e.move==='Draco Meteor';
   }
-  globalThis.ArenaMoveEffects={activeCast,charge,drawEffect,aboveUnits};
+  function addPack(install) {
+    install({technique,palettes,turn,ease,clamp,path,polygon,disc,ring,halo,star,crystal,leaf,flame,eye,note});
+  }
+  globalThis.ArenaMoveEffects={activeCast,charge,drawEffect,aboveUnits,addPack};
 })();

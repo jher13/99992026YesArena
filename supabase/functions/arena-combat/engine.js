@@ -6192,6 +6192,7 @@ function reflectHazard(actor,move) {
  reflector.magicBounceReadyAt=clock+8;
  announceAbility(reflector,'Magic Bounce');
  additionalStatusMoves[move].apply(reflector,actor);
+ showHazardEffect(reflector,move,false);
  return true;
 }
 function arenaHitSequence(actor,move,rules,cast) {
@@ -7084,24 +7085,34 @@ function hazardMove(name,description) {
   hazards[name]=Math.min(hazardCaps[name],(hazards[name] ?? 0)+1);
  }};
 }
-function entryDamageFraction(actor,hazards) {
+function entryDamageFraction(actor,hazards,onTrigger=null) {
  if(activeAbility(actor)==='Magic Guard')return 0;
- const fraction=type=>{
+ const fraction=(move,type)=>{
   const matchup=effectiveness(type,actor);
-  return matchup===0?0:matchup<1?0.05:matchup>1?0.15:0.10;
+  if(matchup===0)return 0;
+  onTrigger?.(move);
+  return matchup<1?0.05:matchup>1?0.15:0.10;
  };
- return (isGrounded(actor) && hazards.Spikes?fraction('Ground'):0)+
-  (hazards['Stealth Rock']?fraction('Rock'):0);
+ return (isGrounded(actor) && hazards.Spikes?fraction('Spikes','Ground'):0)+
+  (hazards['Stealth Rock']?fraction('Stealth Rock','Rock'):0);
+}
+function showHazardEffect(actor,move,onEntry) {
+ effects.push({x:actor.x,y:actor.y,tx:actor.x,ty:actor.y,move,status:true,hazardEntry:onEntry,
+  color:moveColors[moveCatalog[move][0]],damage:'',multiplier:1,life:0.58});
 }
 function applyEntryHazards(actor,opponent) {
  const hazards=entryHazards[actor.friendly?0:1];
  const grounded=isGrounded(actor);
  if(grounded && hazards['Toxic Spikes']) {
   if(arenaDefenseTypes(actor).includes('Poison'))delete hazards['Toxic Spikes'];
-  else tryAilment(actor,5,opponent);
+  else if(tryAilment(actor,5,opponent))showHazardEffect(actor,'Toxic Spikes',true);
  }
- if(grounded && hazards['Sticky Web'])applyChanges(actor,[[6,-1]],opponent);
- const fraction=entryDamageFraction(actor,hazards);
+ if(grounded && hazards['Sticky Web']){
+  const speedStage=actor.stages[6];
+  applyChanges(actor,[[6,-1]],opponent);
+  if(actor.stages[6]!==speedStage)showHazardEffect(actor,'Sticky Web',true);
+ }
+ const fraction=entryDamageFraction(actor,hazards,move=>showHazardEffect(actor,move,true));
  if(fraction>0) {
   const damage=Math.min(actor.hp,Math.max(1,Math.round(actor.max*fraction)));
   actor.hp-=damage;
@@ -10091,6 +10102,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.76',changes:['130 more moves have dedicated animations, covering the moves equipped by every standard Gym leader and the default moves of every regional starter.','Entry hazards show up on the Pokémon that triggers them. Bonemerang arcs back to its user, and Brick Break splits bricks on impact.']},
  {version:'0.22.75',changes:['74 more Arena moves have their own animations, including every move equipped by the three Standard and Master Mega raid bosses.','Psystrike closes in with floating stones, Swords Dance raises paired blades, and Giga Drain draws energy back to its user. Look for distinct fang, punch, sound, and support effects.']},
  {version:'0.22.74',changes:['Thunder strikes from the sky and Hyper Beam charges into a gold-white ray.','New move animations include rolling Surf, three Earthquake rings, electric and ghost projectiles, elemental slashes, shields, and healing.']},
  {version:'0.22.73',changes:['Profile tier numbers sit above their milestone markers.','Transform copies up to four equipped moves, including when Imposter triggers it in a Mega raid.']},

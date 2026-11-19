@@ -32,6 +32,7 @@ const renderMath=Object.create(Math);
 renderMath.random=()=>{throw Error('Move artwork used combat RNG');};
 const world=vm.createContext({Math:renderMath});
 vm.runInContext(read('assets/arena-move-effects.js'),world);
+vm.runInContext(read('assets/arena-move-effects-gym.js'),world);
 const art=world.ArenaMoveEffects;
 const engine=read('supabase/functions/arena-combat/engine.js');
 function snapshotFromClient(mode,side,effects,casts) {
@@ -50,9 +51,37 @@ function snapshotFromClient(mode,side,effects,casts) {
 }
 const probe=String.raw`
 export function raidMoves(){return Object.values(megaRaidTiers).map(raid=>raid.moves);}
+export function campaignMoves(){
+ return {gyms:gymTeams.map(g=>g.plan.team.flatMap(slot=>slot[3])),starters:starterNames.map(name=>wildMoves(name))};
+}
+export function triggerHazards(opts={}) {
+ const match={id:'ab347c12-0000-4000-8000-000000000001',mode:'free_fight',
+  format:1,host_pick:['Mew'],guest_pick:['Blissey'],host_entries:{},guest_entries:{}};
+ initializeOnline(match);
+ allies[0].ability=null;
+ for(const [side,actor] of [allies[0],enemies[0]].entries()){
+  actor.entryPending=false;
+  Object.assign(trainerFields[side][0],{actor,transition:null});
+ }
+ Object.assign(enemies[0],{x:610,y:208,type:opts.type??'Normal',singleType:true,hp:1000,max:1000,
+  heldItem:null,ability:opts.ability??null,ailment:null,stages:Array(10).fill(0)});
+ if(opts.reflect) {
+  enemies[0].ability='Magic Bounce';
+  reflectHazard(allies[0],'Spikes');
+ }else{
+  entryHazards[1]={...hazardCaps};
+  if(opts.resume)loadOnlineState(JSON.parse(JSON.stringify(saveOnlineState())));
+  applyEntryHazards(enemies[0],allies[0]);
+ }
+ const saved=saveOnlineState(),defender=enemies[0];
+ return {events:onlineView(saved,'guest',match.mode).effects,hp:defender.hp,speed:defender.stages[6],
+  ailment:defender.ailment,hazards:saved.entryHazards,x:defender.x,y:defender.y};
+}
 export function captureMove(move,opts={}) {
+ const reserves=opts.bench || Object.hasOwn(hazardCaps,move) || move==='Roar' || move==='Parting Shot';
  const match={id:'ab347c12-0000-4000-8000-000000000001',mode:'free_fight',format:opts.group?3:1,
-  host_pick:opts.group?['Mew','Raichu','Umbreon']:['Mew'],guest_pick:opts.group?['Blissey','Snorlax','Wigglytuff']:['Blissey'],host_entries:{},guest_entries:{}};
+  host_pick:opts.group?['Mew','Raichu','Umbreon']:reserves?['Mew','Vaporeon']:['Mew'],
+  guest_pick:opts.group?['Blissey','Snorlax','Wigglytuff']:reserves?['Blissey','Snorlax']:['Blissey'],host_entries:{},guest_entries:{}};
  initializeOnline(match);
  const a=allies[0],b=enemies[0];
  for(const [index,actor] of [a,b].entries()){
@@ -62,6 +91,7 @@ export function captureMove(move,opts={}) {
   Object.assign(trainerFields[index][0],{actor,transition:null});
  }
  b.type=opts.defenderType ?? 'Water';b.ability=opts.defenderAbility ?? null;b.moves=['Pound','Psychic'];b.moveTimers=[0,0];b.moveCooldowns=[3,4];
+ if(move==='Taunt')b.moves[1]='Recover';
  if(move==='Dream Eater'){b.ailment=2;b.ailmentTime=8;}
  if(opts.group)for(const [side,team] of [allies,enemies].entries())for(let slot=1;slot<3;slot++){
   const actor=team[slot],lead=team[0];
@@ -69,6 +99,8 @@ export function captureMove(move,opts={}) {
   Object.assign(trainerFields[side][slot],{actor,transition:null});
  }
  a.hp=sacrificeProfiles.has(move)?200:1500;
+ if(move==='Steel Beam'){a.hp=a.max;b.type=opts.defenderType ?? 'Fairy';}
+ if(reserves){clock=2;a.enteredAt=0;b.enteredAt=0;}
  a.ability='No Guard';
  a.ai=normalizeBattleAI({mode:'Advanced',gambits:[{target:'Any',condition:'Always',operator:'Equal',value:'True',move}]});
  if(opts.resolve)resolveOffensiveMove(a,move,moveRules(move),b,[b]);
@@ -97,10 +129,13 @@ export function captureMove(move,opts={}) {
 }
 `;
 (async()=>{
- const {captureMove,raidMoves}=await import('data:text/javascript;base64,'+Buffer.from(engine+probe).toString('base64'));
+ const {captureMove,raidMoves,campaignMoves,triggerHazards}=await import('data:text/javascript;base64,'+Buffer.from(engine+probe).toString('base64'));
+ const {gyms,starters}=campaignMoves();
+ assert.equal(gyms.length,68);assert.equal(starters.length,27);
+ const allMoves=[...new Set([...moves,...gyms.flat(),...starters.flat()])];
  const paints=command=>['stroke','fill','fillRect'].includes(command[0]);
  const captures=new Map(),missing=[];
- for(const move of moves){
+ for(const move of allMoves){
   const record=captureMove(move);captures.set(move,record);
   const {ctx,commands,stack}=surface();
   const packet=JSON.stringify(record);
@@ -119,7 +154,7 @@ export function captureMove(move,opts={}) {
   assert.equal(JSON.stringify(record),packet,'mutated combat event for '+move);
  }
  assert.deepEqual(missing,[],'no special artwork on normal casts');
- assert.equal(captures.size,moves.length,'count each catalog entry once');
+ assert.equal(captures.size,allMoves.length,'count each catalog entry once');
  const raidLoadouts=raidMoves();assert.deepEqual(raidLoadouts.map(set=>set.length).sort((a,b)=>a-b),[8,8,8,16,16,16]);
  for(const raid of raidLoadouts)for(const name of raid)assert(captures.has(name),'untested raid boss move '+name);
  const draw=(method,event,mirror=false)=>{
@@ -164,17 +199,20 @@ export function captureMove(move,opts={}) {
  assert.deepEqual(quake.events.map(e=>[e.innerRadius,e.radius]),[[0,full/3],[full/3,2*full/3],[2*full/3,full]]);
  assert.equal(quake.targetHP,3500,'quake drew in empty space without hurting a distant target');
  const {ctx}=surface();
- assert.equal(art.drawEffect(ctx,{move:'Water Gun'}),false);
+ assert.equal(art.drawEffect(ctx,{move:'Splash'}),false);
  assert.equal(art.drawEffect(ctx,{move:'Quick Attack',dashSprite:{}}),false);
  assert.equal(art.activeCast(ctx,charge),false,'winding up keeps the standard danger indicator');
  assert.equal(art.aboveUnits(thunder),true);assert.equal(art.aboveUnits(wave),false);
  assert.equal(art.aboveUnits(captures.get('X Scissor').events[0]),true,'contact slashes must be visible over the target sprite');
  assert.equal(art.aboveUnits(captures.get('Dragon Ascent').events.find(e=>e.line)),true,'a large raid sprite must not cover its dash trail');
  assert.equal(art.aboveUnits({move:'Dragon Ascent',shape:'dash',dashSprite:{}}),false,'mobility afterimages keep their original layer');
- for(const name of ['Moonblast','Hydro Cannon','Swift','Boomburst','Fly','Bounce','Blast Burn']){
+ for(const name of ['Moonblast','Hydro Cannon','Swift','Boomburst','Fly','Bounce','Blast Burn','Discharge','Eruption','Rock Blast']){
   const group=captureMove(name,{group:true,resume:true}),areas=group.events.filter(e=>e.zone);
   assert.equal(areas.length,1,name+' should release once with three targets');
-  assert.equal(group.events.filter(e=>e.impactOnly && Number.isFinite(e.damage) && e.damage>0).length,3,name+' target impacts');
+  const hits=group.events.filter(e=>e.impactOnly && Number.isFinite(e.damage) && e.damage>0);
+  assert.equal(new Set(hits.map(e=>e.tx+','+e.ty)).size,3,name+' target impacts');
+  if(name==='Rock Blast')assert(hits.length>=6 && hits.length<=15,'multi-hit rocks share one area animation');
+  else assert.equal(hits.length,3,name+' single hit per target');
   const cast=group.warnings[0],release=areas[0];
   assert.deepEqual([release.tx,release.ty,release.radius],[cast.center.x,cast.center.y,cast.radius],name+' ground anchor');
   const artOps=draw('drawEffect',{...release,life:.39});
@@ -203,5 +241,34 @@ export function captureMove(move,opts={}) {
   assert.equal(view.effects[0].tx,x(pulse.tx));assert.equal(view.effects[1].sector.dx,mirrored?-roar.sector.dx:roar.sector.dx);
   for(const e of view.effects)assert(draw('drawEffect',{...e,life:.4},mirrored).some(paints),e.move);
  }
- console.log(moves.length+' move animations passed on authoritative casts across all six Mega raids, including dodges, team buffs, immunities, mirrored views and resumed area attacks.');
+ const entrant=triggerHazards(),traps=entrant.events.filter(e=>e.hazardEntry);
+ assert.deepEqual(triggerHazards({resume:true}),entrant,'entry hazards survive reconnect');
+ assert.deepEqual(traps.map(e=>e.move).sort(),['Spikes','Stealth Rock','Sticky Web','Toxic Spikes']);
+ assert.deepEqual([entrant.hp,entrant.speed,entrant.ailment],[800,-1,5]);
+ const mirroredTraps=snapshotFromClient('free_fight','guest',traps,[]).effects;
+ for(const e of mirroredTraps){
+  assert.deepEqual([e.x,e.tx,e.y,e.ty],[960-entrant.x,960-entrant.x,entrant.y,entrant.y]);
+  assert.equal(e.damage,'');assert(e.hazardEntry && art.aboveUnits(e));
+  assert(draw('drawEffect',{...e,life:.39},true).some(paints),e.move+' on entry');
+ }
+ const airborne=triggerHazards({type:'Flying'}),guarded=triggerHazards({ability:'Magic Guard'}),poison=triggerHazards({type:'Poison'});
+ assert.deepEqual(airborne.events.filter(e=>e.hazardEntry).map(e=>e.move),['Stealth Rock']);
+ assert.equal(airborne.hp,850);assert.equal(guarded.hp,1000);
+ assert.deepEqual(guarded.events.filter(e=>e.hazardEntry).map(e=>e.move).sort(),['Sticky Web','Toxic Spikes']);
+ assert(!poison.events.some(e=>e.move==='Toxic Spikes'));assert(!poison.hazards[1]['Toxic Spikes']);
+ const bounce=triggerHazards({reflect:true}),reflected=bounce.events.find(e=>e.move==='Spikes');
+ assert.equal(bounce.hazards[0].Spikes,1);assert.equal(reflected.hazardEntry,false);
+ assert.deepEqual([reflected.tx,reflected.ty],[bounce.x,bounce.y]);
+ const bone=captures.get('Bonemerang').events.find(e=>Number.isFinite(e.damage));
+ const boneX=age=>draw('drawEffect',{...bone,life:.58-age}).filter(op=>op[0]==='translate').at(-1)[1];
+ assert(boneX(.22)>boneX(.04)+10 && boneX(.22)>boneX(.47)+10,'Bonemerang travels out and back');
+ const tackle=captures.get('Tackle').events.find(e=>e.line);
+ assert(art.aboveUnits(tackle));assert.equal(art.drawEffect(ctx,{...tackle,dashSprite:{}}),false);
+ const scratch=captures.get('Scratch').events.find(e=>e.sector);
+ const directional=snapshotFromClient('free_fight','guest',[bone,tackle,scratch],[]).effects;
+ for(const event of directional){
+  assert(draw('drawEffect',{...event,life:.37},true).some(([op,x,y])=>op==='scale'&&x===1&&y===-1),
+   event.move+' keeps the same arc in the mirrored view');
+ }
+ console.log(allMoves.length+' move animations passed on authoritative casts across all six Mega raids, all 68 standard Gym loadouts and all 27 default starter kits.');
 })().catch(error=>{console.error(String(error.stack).replace(/data:text\/javascript;base64,[^:)]*/g,'engine.js').slice(0,1400));process.exitCode=1;});

@@ -1,3 +1,9 @@
+# Update to 0.22.76
+
+Extract the changed files over **0.22.75** with their folders intact. Push to
+`main` to publish the client artwork and deploy the updated `arena-combat`
+function. The function sends entry-hazard visuals to PvP and Co-op clients.
+
 # Update to 0.22.75
 
 Extract the changed files over **0.22.74**, keeping the folder structure, and push to
