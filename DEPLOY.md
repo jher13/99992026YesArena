@@ -1,3 +1,10 @@
+# Update to 0.22.73
+
+Extract this patch over **0.22.72**, preserving the folder structure. Push the
+files to `main` so the existing workflow deploys the updated `arena-combat`
+function. That deployment applies the four-move Transform limit in Co-op and
+resumed raids. This release requires no database migration.
+
 # Update to 0.22.72
 
 Extract this patch over **0.22.71** and preserve the folder structure. The

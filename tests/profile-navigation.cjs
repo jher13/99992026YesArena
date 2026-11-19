@@ -74,6 +74,10 @@ async function navigationChecks(A, net) {
  wildProgress.trainerCard={};wildProgress.campaign={};wildProgress.owned={Pikachu:{level:44,xp:0}};wildProgress.favorites=['Pikachu'];
  const dlg=()=>byId('trainer-card-dialog'),gallery=()=>dlg().querySelectorAll('.tc-badge');
  await byId('toolbar-profile').onclick();
+ const steps=dlg().querySelector('.tc-ranks').children;
+ A.deepEqual(steps.map(step=>step.querySelector('b').textContent),['1','2','3','4','5','6','7']);
+ A.deepEqual(steps.map(step=>step.querySelector('strong').textContent),['Rookie','Trainer','Ace','Veteran','Elite','Champion','Master']);
+ for(const step of steps)A.equal(step.querySelector('.tc-rank-marker').getAttribute('aria-hidden'),'true');
  A.deepEqual(dlg().querySelector('#tc-frame').children.map(o=>o.value),['']);
  const badgeIds=gymTeams.map(g=>g.id);
  clearedGyms=[...badgeIds];for(const id of badgeIds.slice(0,8))masterGymClears.add(id);

@@ -659,7 +659,47 @@ async function verifyMasterRaids(){
   assert.equal(state.arenaMap.meteors.length,0);
  }
 }
-Promise.all([verifyPendingRecovery(),verifyLoanerGear(),verifyOpenArenaChase(),verifyMasterRaids(),verifyRaidRetry()]).then(()=>{
+async function verifyRaidTransform(){
+ const {simulateOnline,onlineView}=await import('../supabase/functions/arena-combat/engine.js');
+ const entries=ability=>({
+  'pokemon-arena-profiles':JSON.stringify({132:{ivs:Array(6).fill(31),evs:Array(6).fill(0),pid:0,abilityOverride:ability}}),
+  'pokemon-arena-moves':JSON.stringify({Ditto:['Transform']}),
+  'pokemon-arena-wild-progress':JSON.stringify({owned:{Ditto:{level:100}}})
+ });
+ for(const raid of ['coop_mega','coop_mega_2','coop_mega_3'])for(const master of [false,true]){
+  const mode=raid+(master?'_master':''),match={id:'d1770000-0000-4000-8000-000000000001',mode,format:1,host:'a',
+   raid_seats:[{uid:'a',pokemon:'Ditto',entries:entries('Imposter')},{uid:'b',pokemon:'Ditto',entries:entries('Limber')}]};
+  let {state}=simulateOnline(match,null,0,null,'host');
+  const bossMoves=[...state.enemies[0].moves],expected=bossMoves.slice(0,4);
+  assert.equal(bossMoves.length,master?16:8,mode);
+  for(let step=0;step<40 && state.allies.some(actor=>!actor.battleTransform);step++){
+   ({state}=simulateOnline(match,JSON.parse(JSON.stringify(state)),15,null,'host'));
+  }
+  for(const actor of state.allies){
+   assert.equal(actor.originalName,'Ditto',mode+' '+actor.side);assert.deepEqual(actor.moves,expected);
+   assert.deepEqual(actor.moveCooldowns,state.enemies[0].moveCooldowns.slice(0,4));assert.equal(actor.moveTimers.length,4);
+   const view=onlineView(state,actor.side,mode);
+   assert.deepEqual(view.actors.find(a=>a.onlineId===actor.onlineId).moves,expected);
+   assert.deepEqual(view.actors.find(a=>a.side==='boss').moves,bossMoves);
+  }
+  // A room created by the previous version may already have copied and queued extra slots.
+  const legacy=JSON.parse(JSON.stringify(state)),ditto=legacy.allies[1],boss=legacy.enemies[0];
+  ditto.moves=[...bossMoves];ditto.moveCooldowns=[...boss.moveCooldowns];
+  ditto.moveTimers=bossMoves.map((_,i)=>i+.25);ditto.moveCooldownStarts=bossMoves.map((_,i)=>100+i);
+  const cast=(actor,slot)=>({actor:actor.onlineId,move:actor.moves[slot],cooldownSlot:slot});
+  legacy.casts=[cast(ditto,2),cast(ditto,5),cast(boss,5)];
+  const publicState=onlineView(legacy,ditto.side,mode);
+  assert.deepEqual(publicState.actors.find(a=>a.onlineId===ditto.onlineId).moves,expected);
+  assert.equal(legacy.allies[1].moves.length,bossMoves.length,'reading a snapshot must not modify it');
+  const resumed=simulateOnline(match,JSON.parse(JSON.stringify(legacy)),0,null,'host').state;
+  assert.deepEqual(resumed.allies[1].moves,expected);assert.deepEqual(resumed.allies[1].battleTransform.moves,['Transform']);
+  assert.deepEqual(resumed.allies[1].moveTimers,[.25,1.25,2.25,3.25]);assert.deepEqual(resumed.allies[1].moveCooldownStarts,[100,101,102,103]);
+  assert.deepEqual(resumed.enemies[0].moves,bossMoves);
+  for(const packet of [publicState,resumed])assert.deepEqual(packet.casts,[legacy.casts[0],legacy.casts[2]]);
+ }
+ console.log('Transform and Imposter each copied four moves across all six Mega raids, including resumed rooms.');
+}
+Promise.all([verifyPendingRecovery(),verifyLoanerGear(),verifyOpenArenaChase(),verifyMasterRaids(),verifyRaidTransform(),verifyRaidRetry()]).then(()=>{
  console.log('Manual Capture, full-bench fusion, pending-save recovery, and server loaner gear checks passed.');
  for(const file of ['ability-adaptations.cjs','remaining-abilities.cjs','update-and-trade-client.cjs','arena-evolutions.cjs','arena-tactics.cjs','arena-maps.cjs','regional-progression-client.cjs','regional-contracts.cjs','roster-expansion.cjs'])
   require('node:child_process').execFileSync(process.execPath,[path.join(__dirname,file)],{stdio:'inherit'});

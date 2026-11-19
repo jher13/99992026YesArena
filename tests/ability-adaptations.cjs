@@ -11,7 +11,7 @@ const sections=[
  ['const abilityEffects=','function hiddenAbilityFor('],
  ['// Arena adaptations.','function abilityWeather()'],
  ['function entryAbility(','const hardStatusRecoverySeconds='],
- ['function transformDitto(','function actBattleFields('],
+ ['function canTransformInto(','const ballDuration ='],
  ['function battleDamage(','function respondToHit('],
  ['function resolveOffensiveMove(','function tickVortex('],
  ['function addMoveExhaustion(','function tickExhaustion('],
@@ -159,11 +159,27 @@ export function runAbilityChecks(assert) {
  });
  check('Imposter copies non-HP stats, retains HP and level, round-trips and reverts',()=>{
   const a=fighter('Ditto','Imposter'),b=fighter('Pikachu','Rock Head',false);field(a,b);a.hp=700;a.level=42;b.stats[1]=333;b.max=b.stats[0]=9999;
-  const before=JSON.stringify(a.profile);transformDitto(a,b);assert.equal(a.name,'Pikachu');assert.equal(a.originalName,'Ditto');
+  const before=JSON.stringify(a.profile);a.entryPending=true;a.charge=b.charge=10;a.normalAttacksEnabled=b.normalAttacksEnabled=false;
+  actBattleFields(combatSides(),0);assert.equal(a.name,'Pikachu');assert.equal(a.originalName,'Ditto');
   assert.equal(a.hp,700);assert.equal(a.max,1000);assert.equal(a.stats[0],1000);assert.equal(a.stats[1],333);assert.equal(a.level,42);
-  assert.equal(a.ability,'Rock Head');assert.equal(JSON.stringify(a.profile),before);
+  assert.equal(a.ability,'Rock Head');assert.equal(JSON.stringify(a.profile),before);assert.deepEqual(a.moves,['Tackle']);
   const restored=JSON.parse(JSON.stringify(a));restoreBattleTransform(restored);assert.equal(restored.name,'Ditto');assert.equal(restored.ability,'Imposter');assert.equal(restored.hp,700);assert.equal(restored.shiny,null);
-  const d=fighter('Ditto','Pressure');transformDitto(d,b);assert.equal(d.name,'Ditto');
+ });
+ check('Transform uses the same move slots and restores its original loadout on recall',()=>{
+  const foe=fighter('Pikachu','Static',false,['Thunderbolt','Quick Attack','Thunder Wave']);
+  for(const [name,ability] of [['Ditto','Limber'],['Mew','Synchronize'],['Ditto','Imposter']]){
+   const user=fighter(name,ability,true,['Transform']),bench=fighter('Eevee');field(user,foe);
+   user.abilitySuppressed=ability==='Imposter';user.entryPending=true;user.charge=foe.charge=10;
+   user.normalAttacksEnabled=foe.normalAttacksEnabled=false;actBattleFields(combatSides(),0);
+   assert.equal(user.name,name,'without an active Imposter, entry does not transform');
+   assert.equal(additionalStatusMoves.Transform.score(user,foe),70);additionalStatusMoves.Transform.apply(user,foe);
+   assert.equal(user.name,foe.name);assert.deepEqual(user.moves,foe.moves);assert.notEqual(user.moves,foe.moves);
+   assert.deepEqual(user.moveCooldowns,foe.moveCooldowns);assert.notEqual(user.moveCooldowns,foe.moveCooldowns);
+   assert.deepEqual(user.moveTimers,[0,0,0]);assert.equal(additionalStatusMoves.Transform.score(user,foe),0);
+   const other=fighter('Mew','Synchronize');additionalStatusMoves.Transform.apply(other,user);assert.equal(other.name,'Mew','copies cannot be chained');
+   const recall=startSwitch(user,bench);stepSwitch(recall,1,1);
+   assert.equal(user.name,name);assert.equal(user.ability,ability);assert.deepEqual(user.moves,['Transform']);
+  }
  });
  check('Skill Link reaches five hits and breaks through Disguise on later hits',()=>{
   const a=fighter('Mewtwo','Skill Link'),b=fighter('Pikachu',null,false);field(a,b);hit(a,b,'Bullet Seed');

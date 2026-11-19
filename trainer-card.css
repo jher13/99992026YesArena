@@ -34,10 +34,14 @@ select.move-options,select.move-options option,#rogue-status,#arena-conditions{f
 .tc-body progress::-webkit-progress-bar{background:#394c43;border-radius:99px}.tc-body progress::-webkit-progress-value{background:var(--tc-accent);border-radius:99px}.tc-body progress::-moz-progress-bar{background:var(--tc-accent)}
 .tc-edit,.tc-ranks,.tc-panel{border-radius:11px;border:1px solid var(--tc-line);background:var(--tc-panel);padding:12px 14px}.tc-edit{background:#1b2928}.tc-edit summary{cursor:pointer;font-weight:700}.tc-controls{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:12px}.tc-controls label{display:grid;gap:4px;color:#d8e2d4;font-size:12px}.tc-controls .tc-share{display:flex;align-items:center;gap:6px}
 .tc-ranks{list-style:none;padding:13px 6px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));margin:0;text-align:center}
-.tc-ranks li{display:grid;position:relative;justify-items:center;gap:2px;min-width:0;color:#9eafa6}
-.tc-ranks li:before{content:'';position:absolute;left:-50%;right:50%;top:12px;height:3px;background:#354b45}.tc-ranks li:first-child:before{display:none}.tc-ranks li.achieved:before{background:var(--tc-accent)}
-.tc-ranks b{position:relative;display:grid;place-items:center;width:26px;height:26px;background:#40534d;color:#d0d9cd;clip-path:polygon(25% 0,75% 0,100% 25%,100% 75%,75% 100%,25% 100%,0 75%,0 25%)}
-.tc-ranks .achieved b{color:#272b22;background:var(--tc-accent)}.tc-ranks [aria-current] strong{color:var(--tc-accent)}.tc-ranks strong{font-size:12px}.tc-ranks small{font-size:10px}
+.tc-ranks li{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto 12px auto auto;justify-items:center;align-items:center;gap:3px;min-width:0;color:#b8c9bd}
+.tc-ranks li::before{content:'';grid-area:2/1;justify-self:start;width:100%;height:3px;transform:translateX(-50%);background:#354b45;pointer-events:none}
+.tc-ranks li:first-child::before{display:none}
+.tc-rank-marker{grid-area:2/1;z-index:1;width:12px;height:12px;background:#586f65;clip-path:polygon(25% 0,75% 0,100% 25%,100% 75%,75% 100%,25% 100%,0 75%,0 25%)}
+.tc-ranks li.achieved::before,.tc-ranks .achieved .tc-rank-marker{background:var(--tc-accent)}
+.tc-ranks b{grid-area:1/1;font:700 15px/1.15 system-ui,sans-serif;color:#d0d9cd}
+.tc-ranks .achieved b,.tc-ranks [aria-current] strong{color:var(--tc-accent)}
+.tc-ranks strong{grid-area:3/1;font-size:12px}.tc-ranks small{grid-area:4/1;font-size:10px}
 .tc-panel h3{font:700 15px/1.3 Inter,system-ui,sans-serif;letter-spacing:.035em;color:var(--tc-accent);margin-bottom:10px}
 .tc-favorites,.tc-summary,.tc-raids,.tc-regions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
 #trainer-card-dialog .tc-mon{--mon-color:#8aa5a4;position:relative;display:grid;align-content:center;justify-items:center;gap:5px;min-height:132px;border:1px solid color-mix(in srgb,var(--mon-color) 65%,#354641);background:linear-gradient(130deg,color-mix(in srgb,var(--mon-color) 27%,#17292a),#15292b 74%);color:#f9fae6;padding:8px 10px;border-radius:9px;min-width:0}

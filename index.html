@@ -937,7 +937,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 @media(max-width:460px){.arena-evolution-route{grid-template-columns:1fr}.arena-evolution-route button{grid-column:1;grid-row:auto;justify-self:start}}
 
 </style>
-<link rel="stylesheet" href="./trainer-card.css?v=0.22.72">
+<link rel="stylesheet" href="./trainer-card.css?v=0.22.73">
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
 <div class="account-card">
@@ -1416,7 +1416,8 @@ const levelUpMoves={"1":{"Growl":1,"Tackle":1,"Vine Whip":3,"Growth":6,"Leech Se
 function legalMoves(name) {
  return pokemonLearnsets[dex[name][0]] ?? [];
 }
-function legalLoadout(name,preferred=[],limit=4) {
+const standardMoveSlots=4;
+function legalLoadout(name,preferred=[],limit=standardMoveSlots) {
  const legal=legalMoves(name).filter(isVisibleArenaMove);
  const attacks=legal.filter(move=>moveCatalog[move][1]>0);
  const selected=[...new Set([...preferred.filter(move=>legal.includes(move)),...attacks,...legal])].slice(0,limit);
@@ -3773,7 +3774,7 @@ Object.assign(arenaAbilityDescriptions,{
  Refrigerate:'Converts Normal attacks and damaging Normal skills to Ice, with 20% bonus damage. Struggle is excluded.',
  Galvanize:'Converts Normal attacks and damaging Normal skills to Electric, with 20% bonus damage. Struggle is excluded.',
  Trace:'On entry, copies the nearest opponent’s supported ability for this battle and announces it overhead. Does not copy Trace or Imposter.',
- Imposter:'On entry, copies an opponent’s form, typing, moves, ability and non-HP combat stats. Keeps its own HP and level. Reverts on recall. Cannot chain copies.',
+ Imposter:'On entry, automatically uses Transform on the nearest opponent. Copies its form, typing, ability, non-HP stats and first four equipped moves at most. Keeps its own HP and level and reverts on recall.',
  'Skill Link':'Supported variable multi-hit skills always strike 5 times. Fixed multi-hit skills retain their full hit count.',
  'Parental Bond':'Single-target damaging skills add a second hit at 25% damage. Secondary effects trigger only on the first hit. Excludes normal attacks, area attacks, multi-hit skills and pivots.',
  Truant:'After 6 active battle seconds, loafs for 1.5 seconds without attacking or casting. Can still move, dash and defend.',
@@ -6213,8 +6214,11 @@ function combatSides() {
   [[playerSwitch?null:activePlayer],[enemySwitch?null:activeEnemy]];
  return sides.map(side=>side.filter(actor=>actor?.hp>0));
 }
-function transformDitto(actor,target,explicit=false) {
- if((!explicit && activeAbility(actor)!=='Imposter') || actor.battleTransform || !target || target.hp<=0 || actor===target)return;
+function canTransformInto(actor,target) {
+ return actor.hp>0 && target?.hp>0 && actor!==target && !actor.battleTransform && !target.battleTransform;
+}
+function applyBattleTransform(actor,target,source='Transform') {
+ if(!canTransformInto(actor,target))return;
  const keys=['name','type','singleType','copiedSecondary','addedType','ability','pace','cooldown','stats','moves',
   'moveCooldowns','moveTimers','moveCooldownStarts','max','shiny','bladeUntil','abilityElapsed'];
  actor.battleTransform=Object.fromEntries(keys.map(key=>[key,Array.isArray(actor[key])?[...actor[key]]:actor[key] ?? null]));
@@ -6227,11 +6231,12 @@ function transformDitto(actor,target,explicit=false) {
  if(['Imposter','Trace'].includes(actor.ability))actor.ability=null;
  actor.pace=target.pace;actor.cooldown=target.cooldown;
  actor.stats=[actor.max,...target.stats.slice(1)];
- actor.moves=[...target.moves];actor.moveCooldowns=[...target.moveCooldowns];
+ actor.moves=target.moves.slice(0,standardMoveSlots);
+ actor.moveCooldowns=target.moveCooldowns.slice(0,actor.moves.length);
  actor.moveTimers=actor.moves.map(()=>0);actor.moveCooldownStarts=[];
  actor.shiny=target.shiny ?? target.profile?.shiny ?? false;
  actor.bladeUntil=0;actor.abilityElapsed=0;
- announceAbility(actor,(explicit?'Transform':'Imposter')+' · '+target.name);
+ announceAbility(actor,source+' · '+target.name);
  updateAbilityStance(actor);
 }
 function actBattleFields(sides,dt) {
@@ -6242,9 +6247,10 @@ function actBattleFields(sides,dt) {
   if(opponent)applyEntryHazards(actor,opponent);
  }
  for(const [side,team] of sides.entries())for(const actor of team) {
+  if(!actor.entryPending || activeAbility(actor)!=='Imposter')continue;
   const firstOpponent=sides[1-side].filter(foe=>foe.hp>0).reduce((nearest,foe)=>
    !nearest || Math.hypot(foe.x-actor.x,foe.y-actor.y)<Math.hypot(nearest.x-actor.x,nearest.y-actor.y)?foe:nearest,null);
-  if(actor.entryPending)transformDitto(actor,firstOpponent);
+  additionalStatusMoves.Transform.apply(actor,firstOpponent,'Imposter');
  }
  if(fieldMoveActive('Trick Room')) {
   const actors=sides.flat().sort((a,b)=>a.stats[3]*stageFactor(a,6)-b.stats[3]*stageFactor(b,6));
@@ -8408,9 +8414,9 @@ const additionalStatusMoves={
  Sketch:copyMoveSlot('Sketch','Copies the target’s last eligible damaging move into this slot for this battle.'),
  'Me First':repeatAttackMove('Calls the target’s last eligible damaging move while its action is on cooldown.',
   (_,target)=>target.charge>0?target.lastUsedMove:null),
- Transform:{description:'Copies the target’s form, stats, ability and moves until the battle ends. The user keeps its level.',
-  score:(actor,target)=>!actor.originalName && actor.name!==target.name?70:0,
-  apply:(actor,target)=>transformDitto(actor,target,true)},
+ Transform:{description:'Copies the target’s form, typing, ability, non-HP stats and up to its first four equipped moves. The user keeps its HP and level and reverts on recall. A transformed target cannot be copied.',
+  score:(actor,target)=>canTransformInto(actor,target) && actor.name!==target.name?70:0,
+  apply:applyBattleTransform},
 
  Substitute:{description:'Spends one-quarter of max HP to create a decoy that absorbs damage and enemy status moves.',
   score:actor=>!actor.substituteHP && actor.hp>actor.max*.55?45:0,
@@ -11259,6 +11265,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.73',changes:['Profile tier numbers sit above their milestone markers.','Transform copies up to four equipped moves, including when Imposter triggers it in a Mega raid.']},
  {version:'0.22.72',changes:['The Kalos Laurel sits in front of the trainer card. Your featured Pokémon and its terrain effect share one center.','Claim all earned Standard and Master regional rewards together in Profile → Missions.']},
  {version:'0.22.71',changes:['Find regional rewards, hunts and contracts in Profile → Missions. Campaign opens the same page.','Achievements displays your badge sprites and Master marks. Choose your campaign cosmetics under Edit trainer card.','Trading Hub and Online now have separate menu tabs. Browse signed-in trainers and open their profiles.']},
  {version:'0.22.70',changes:['Filter your PC and raid picker by either Pokémon element.','Pixel symbols identify ATK, S.ATK, status, and fixed damage across move lists and combat.','Player profiles now show badge rank, three featured Pokémon, collection records, Mega raid clears, and progress for all nine Pokédex regions.']},
@@ -11570,4 +11577,4 @@ byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPas
 byId('events-back').onclick=openMenu;
 </script>
 <script src="./tactics.js?v=0.22.70"></script><script src="./multiplayer.js?v=0.22.71"></script>
-<script src="./trade-hub.js?v=0.22.69"></script><script src="./campaign-progression.js?v=0.22.72"></script><script src="./trainer-card.js?v=0.22.72"></script></html>
+<script src="./trade-hub.js?v=0.22.69"></script><script src="./campaign-progression.js?v=0.22.72"></script><script src="./trainer-card.js?v=0.22.73"></script></html>

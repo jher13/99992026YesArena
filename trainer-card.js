@@ -141,7 +141,8 @@
   ranks.forEach(([name,goal],i)=>{
    const step=node('li',null,i<=rank.index?'achieved':'');
    if(i===rank.index)step.setAttribute('aria-current','step');
-   step.append(node('b',String(i+1)),node('strong',name),node('small',goal+' badges'));strip.append(step);
+   const marker=node('span',null,'tc-rank-marker');marker.setAttribute('aria-hidden','true');
+   step.append(node('b',String(i+1)),marker,node('strong',name),node('small',goal+' badges'));strip.append(step);
   });
   return strip;
  }

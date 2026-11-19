@@ -117,7 +117,19 @@ function saveOnlineState() {
   arenaMap,arenaSkillFields,arenaFieldSequence,damageBuckets,entryHazards,fieldMoveExpiry,recalls:onlineRecalls,random:onlineRandomState,sounds:onlineSounds,
  };
 }
+// Older checkpoints can hold a full raid moveset on a transformed player.
+function limitLegacyTransformSlots(state) {
+ const oversized=new Set([...state.allies,...state.enemies]
+  .filter(actor=>actor.battleTransform && actor.moves.length>standardMoveSlots).map(actor=>actor.onlineId));
+ if(!oversized.size)return state;
+ const trim=actor=>oversized.has(actor.onlineId)?{...actor,
+  moves:actor.moves.slice(0,standardMoveSlots),moveCooldowns:actor.moveCooldowns.slice(0,standardMoveSlots),
+  moveTimers:actor.moveTimers.slice(0,standardMoveSlots),moveCooldownStarts:(actor.moveCooldownStarts??[]).slice(0,standardMoveSlots)}:actor;
+ return {...state,allies:state.allies.map(trim),enemies:state.enemies.map(trim),
+  casts:state.casts.filter(cast=>!oversized.has(cast.actor) || !(cast.cooldownSlot>=standardMoveSlots))};
+}
 function loadOnlineState(state) {
+ state=limitLegacyTransformSlots(state);
  ({allies,enemies,effects,clock,lastDamageClock,battleWeather,weatherTime,battleTerrain,terrainTime}=state);
  arenaMap=state.arenaMap?{...state.arenaMap,rocks:[]}:null;
  arenaSkillFields=state.arenaSkillFields ?? [];arenaFieldSequence=state.arenaFieldSequence ?? 0;
@@ -259,6 +271,7 @@ function compactOnlineDamage(buckets) {
  return [aggregate];
 }
 export function onlineView(state,side,mode) {
+ state=limitLegacyTransformSlots(state);
  const allowed=actor=>actor.side===side || actor.revealed;
  const visible=[...state.allies,...state.enemies].filter(allowed).map(actor=>{
   const {name,type,singleType,copiedSecondary,addedType,side,onlineId,hp,max,level,ability,abilitySuppressed,heldItem,moves,moveCooldowns,moveTimers,x,y,
