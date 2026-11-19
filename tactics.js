@@ -1186,6 +1186,7 @@
    }
   },250);
  }
+ function signatureKind(stats){return utilitySignature(stats.moveEffect)?'status':stats.moveSpecial?'special':'atk';}
  function signatureDescription(stats){
   const skill=element('p',null,'tactics-signature-description');
   const utility=utilitySignature(stats.moveEffect);
@@ -1244,7 +1245,7 @@
    numbers.append(cell);
   }
   details.append(art,title,meter(stats.hp,stats.max,'HP','is-hp'),meter(stats.mana,60,'Mana','is-mana'),
-   element('p',(stats.move ?? 'No signature move')+' · '+stats.roleLabel+' · Range '+stats.range),items,numbers);
+   skillTitle('p',stats.move ?? 'No signature move','',' · '+stats.roleLabel+' · Range '+stats.range,stats.move?signatureKind(stats):null),items,numbers);
   if(stats.move)numbers.before(signatureDescription(stats),element('p',stats.roleRule,'tactics-role-description'));
   return details;
  }
@@ -2575,7 +2576,7 @@
     if(casting){
      const effects=unit.moveEffects.map(key=>effectLabels[key]).filter(Boolean).join(' · ');
      const label=cast.move+(effects?' — '+effects:'');
-     if(bubble.textContent!==label)bubble.textContent=label;
+     if(bubble.dataset.castLabel!==label){bubble.dataset.castLabel=label;bubble.replaceChildren(skillTitle('span',cast.move,'',effects?' — '+effects:'',signatureKind(unit)));}
     }
     const condition=[activeShield>0?'Shield':null,unit.truantAsleep?'Asleep':null,...[
      ['burnUntil','Burn'],['woundUntil','Wound'],['sunderUntil','DEF ↓'],['shredUntil','S.DEF ↓'],

@@ -931,6 +931,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 @media(max-width:460px){.arena-evolution-route{grid-template-columns:1fr}.arena-evolution-route button{grid-column:1;grid-row:auto;justify-self:start}}
 
 </style>
+<link rel="stylesheet" href="../trainer-card.css?v=0.22.70">
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
 <div class="account-card">
@@ -1168,6 +1169,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 <details class="pc-filters">
 <summary>Filters &amp; sorting</summary>
 <div class="pc-filter-grid">
+<label>Element<select id="pc-element"><option value="">Any element</option></select></label>
 <label>Nature<select id="pc-nature"><option value="">Any nature</option></select></label>
 <label>Personality<select id="pc-personality"><option value="">Any personality</option></select></label>
 <label>IV / EV stat<select id="pc-stat"><option value="">All stats combined</option></select></label>
@@ -1664,6 +1666,45 @@ function element(tag, text, className) {
  if(className) node.className=className;
  return node;
 }
+const damageMarks={
+ atk:{glyph:'⚔',short:'ATK',label:'Physical damage using ATK'},
+ special:{glyph:'✦',short:'S.ATK',label:'Special damage using S.ATK'},
+ status:{glyph:'✚',short:'Status',label:'Status or support effect'},
+ fixed:{glyph:'◆',short:'Fixed',label:'Fixed or level-based damage'}
+};
+function fixedMoveDamage(move,level) {
+ return move==='Seismic Toss' || move==='Night Shade'?level:move==='Dragon Rage'?40:move==='Sonic Boom'?20:null;
+}
+function moveDamageKind(move) {
+ if(!Object.hasOwn(moveCatalog,move))return null;
+ if(moveCatalog[move][4])return 'status';
+ if(fixedMoveDamage(move,1)!==null)return 'fixed';
+ return moveData[move]?.[1]===3?'special':'atk';
+}
+function damageMark(kind) {
+ const info=damageMarks[kind],icon=element('span',info.glyph,'damage-mark mark-'+kind);
+ icon.title=info.label;icon.setAttribute('role','img');icon.setAttribute('aria-label',info.label);
+ return icon;
+}
+function skillTitle(tag,move,prefix='',suffix='',kind=moveDamageKind(move)) {
+ const label=element(tag);
+ if(prefix)label.append(prefix);
+ if(kind)label.append(damageMark(kind));
+ label.append(move+suffix);
+ return label;
+}
+function skillOptionText(move,suffix='',prefix='') {
+ const info=damageMarks[moveDamageKind(move)];
+ return info?prefix+info.glyph+' '+move+suffix+' · '+info.short:prefix+move+suffix;
+}
+function moveLegend() {
+ const list=element('div',null,'move-legend');
+ list.setAttribute('aria-label','Damage stat symbols');
+ for(const [kind,info] of Object.entries(damageMarks)) {
+  const key=element('span');key.title=info.label;key.append(damageMark(kind),info.short);list.append(key);
+ }
+ return list;
+}
 function dexNumber(name) {
  return '#'+String(nationalDexId(name)).padStart(4,'0');
 }
@@ -1864,12 +1905,13 @@ function renderRoster() {
   return name?enableBoxDrag(tile,name):tile;
  }));
 }
-const pcFilterIds=['pc-nature','pc-personality','pc-stat','pc-min-iv','pc-min-ev','pc-sort','pc-order','pc-favorites'];
+const pcFilterIds=['pc-element','pc-nature','pc-personality','pc-stat','pc-min-iv','pc-min-ev','pc-sort','pc-order','pc-favorites'];
 function appendFilterOption(id,label,value=label) {
  const option=element('option',label);
  option.value=value;
  byId(id).append(option);
 }
+for(const type of Object.keys(typeChart).sort())appendFilterOption('pc-element',type);
 for(const nature of [...natureNames].sort()) appendFilterOption('pc-nature',nature);
 for(const trait of [...new Set(personalityTraits.flat())].sort()) appendFilterOption('pc-personality',trait);
 statLabels.forEach((label,index)=>appendFilterOption('pc-stat',label,String(index)));
@@ -1894,6 +1936,7 @@ byId('pc-reset').onclick=()=>{
 };
 function pcCandidates(storage,query,generation,control=byId) {
  const numeric=query.replace(/^#/,'');
+ const elementFilter=control('pc-element').value;
  const natureFilter=control('pc-nature').value;
  const personalityFilter=control('pc-personality').value;
  const selectedStat=control('pc-stat').value;
@@ -1905,6 +1948,7 @@ function pcCandidates(storage,query,generation,control=byId) {
  const readStat=values=>selectedStat==='' ? values.reduce((sum,value)=>sum+value,0) : values[Number(selectedStat)];
  const matches=[];
  for(const name of storage) {
+  if(elementFilter && dex[name][1]!==elementFilter && dex[name][2]!==elementFilter)continue;
   const favorite=wildProgress.favorites.includes(name);
   if(favoritesOnly && !favorite)continue;
   if(generation && generationOf(name)!==generation) continue;
@@ -2130,8 +2174,8 @@ function battleAIControls(name) {
  section.append(modeLabel);
  const basic=element('div');
  section.append(basic);
- const setting=(label,values,current,apply)=>{
-  const group=element('label',label+' ');
+ const setting=(label,values,current,apply,isMove=false)=>{
+  const group=isMove?skillTitle('label',label):element('label',label+' ');
   const select=element('select');
   values.forEach((value,i)=>{
    const option=element('option',value);
@@ -2148,7 +2192,7 @@ function battleAIControls(name) {
  setting('Style',styles,styles.indexOf(ai.style),i=>{ai.style=styles[i];});
  const positions=Object.keys(battlePositions);
  setting('Preferred position',positions,positions.indexOf(ai.position),i=>{ai.position=positions[i];});
- movesFor(name).forEach((move,i)=>setting(move,['Low','Normal','High'],ai.priorities[i],value=>{ai.priorities[i]=value;}));
+ movesFor(name).forEach((move,i)=>setting(move,['Low','Normal','High'],ai.priorities[i],value=>{ai.priorities[i]=value;},true));
  refresh();
  return section;
 }
@@ -2156,7 +2200,9 @@ function gambitSelect(label,values,current,change) {
  const select=element('select');
  select.setAttribute('aria-label',label);
  for(const value of values) {
-  const option=element('option',gambitLabels[value] ?? (value || 'Select an action'));
+  const isMove=label.endsWith(' Action') && Object.hasOwn(moveCatalog,value);
+  if(isMove)select.classList.add('move-options');
+  const option=element('option',isMove?skillOptionText(value):gambitLabels[value] ?? (value || 'Select an action'));
   option.value=value;
   select.append(option);
  }
@@ -2205,7 +2251,7 @@ function openGambits(name,ai,onClose) {
    field('Value',gambitValues(condition,rule.value),'value');
    const unavailable=rule.move && !gambitActions.includes(rule.move) && !equipped.includes(rule.move);
    field('Action',['',...gambitActions,...equipped,...(unavailable?[rule.move]:[])],'move',()=>render(index,'move'));
-   if(unavailable)row.append(element('p',rule.move+' is no longer equipped. This rule is skipped.','gambit-unavailable'));
+   if(unavailable)row.append(skillTitle('p',rule.move,'',' is no longer equipped. This rule is skipped.'));
    const actions=element('div',null,'gambit-actions');
    const reorder=(offset,action)=>{
     const to=index+offset;
@@ -2410,7 +2456,7 @@ badges,element('p',height/10+' m · '+weight/10+' kg'),
  if(copy){
   const training=element('fieldset',null,'training-items');
   training.append(element('legend','EV training'),battleEVToggle(profile,true));
-  body.append(training);
+  body.append(training,element('h4','Moves','move-heading'),moveLegend(),renderSkillSlots(name,copy));
   panel.replaceChildren(title,body);
   drawStats(chart,chartValues);
   return;
@@ -2421,7 +2467,7 @@ badges,element('p',height/10+' m · '+weight/10+' kg'),
   body.append(equipment,vitaminControls(name,'evs',trainingSelection),vitaminControls(name,'ivs',trainingSelection),experienceCandyControls(name),battleAIControls(name));
  }
  body.append(element('h4','Moves','move-heading'));
- body.append(renderSkillSlots(name),renderLearnableSkills(name));
+ body.append(moveLegend(),renderSkillSlots(name),renderLearnableSkills(name));
  const actions=element('div',null,'detail-actions');
  const existing=team.indexOf(name);
  actions.append(element('span',existing>=0?'Battle team · Slot '+(existing+1):team[activeSlot]?'Replace '+team[activeSlot]:'Empty team slot'));
@@ -2813,6 +2859,8 @@ function pvpLoanerFor(name,roster,choices){
 const wildProgress={battlePlan:'Balanced',battleCarry:'',favorites:[],pvpLoaners:{},autoCaptureRare:true,autoCaptureRareBall:6,autoCaptureRareFallback:-1,autoCaptureBall:0,autoCaptureFallback:'standard',reservePremiumBalls:true,battlePass:{xp:0,claimed:[]},capsules:0,vitamins:{},copies:{},ai:{},owned:{},registered:[],coins:0,megaRaidRewards:[],items:{},held:{},skills:{},balls:[12,1,3,1,1,0,1,0,0],wins:0,autoCapture:false,autoRepeat:false,autoReserve:false,speed:1};
 try {
  const saved=JSON.parse(playerStorage.getItem(progressKey));
+ if(saved?.trainerCard && typeof saved.trainerCard==='object' && !Array.isArray(saved.trainerCard))wildProgress.trainerCard=saved.trainerCard;
+ if(saved?.trainerRecords && typeof saved.trainerRecords==='object' && !Array.isArray(saved.trainerRecords))wildProgress.trainerRecords=saved.trainerRecords;
  if(saved?.campaign && typeof saved.campaign==='object' && !Array.isArray(saved.campaign))wildProgress.campaign=saved.campaign;
  wildProgress.battlePlan=normalizeTeamPlan(saved?.battlePlan);
  wildProgress.battleCarry=isAvailablePokemon(saved?.battleCarry)?saved.battleCarry:'';
@@ -3290,11 +3338,11 @@ function collectionPixelArt(rows,color,shade='#68798d',offset=Math.floor((12-row
  }));
  return canvas;
 }
-function inventoryTile(name,count,detail,action,extra) {
+function inventoryTile(name,count,detail,action,extra,move) {
  const card=element('div',null,'bag-item');
  const art=element('div',null,'bag-art');
  art.append(bagItemIcon(name),element('small','×'+count,'bag-count'));
- card.append(art,element('strong',experienceCandyName(name)));
+ card.append(art,move?skillTitle('strong',move,skillItem(move).kind+' · '):element('strong',experienceCandyName(name)));
  if(detail)card.append(typeof detail==='string'?element('small',detail):detail);
  if(extra)card.append(element('small',extra));
  if(action)card.append(action);
@@ -3333,7 +3381,7 @@ function renderItemBag(message='') {
   ['Ability Capsule',wildProgress.capsules],...Object.entries(wildProgress.vitamins).filter(([name])=>!Object.hasOwn(experienceCandies,name))
  ].filter(([,count])=>count>0));
  group('Skill items',Object.entries(wildProgress.skills).filter(([,count])=>count>0)
-  .map(([move,count])=>[skillItem(move).name,count]));
+  .map(([move,count])=>[skillItem(move).name,count,null,null,null,move]));
 }
 function openItemBag() {
  phase='item-bag';
@@ -3354,7 +3402,7 @@ function buySkill(move) {
  wildProgress.coins-=item.price;
  wildProgress.skills[move]=count+1;
  saveWildProgress();
- renderSkillShop('Bought '+item.name+'.');
+ renderSkillShop(skillTitle('span',move,'Bought '+item.kind+' · ','.'));
  return true;
 }
 function teachSkill(name,slot,move) {
@@ -3370,7 +3418,7 @@ function teachSkill(name,slot,move) {
 }
 function renderSkillShop(message='') {
  byId('skill-wallet').textContent=wildProgress.coins.toLocaleString()+' coins';
- byId('skill-status').textContent=message;
+ byId('skill-status').replaceChildren(message);
  const kind=byId('skill-kind').value;
  const query=byId('skill-search').value.trim().toLowerCase();
  const matches=visibleArenaMoves().filter(move=>(!kind || skillItem(move).kind===kind) &&
@@ -3393,7 +3441,7 @@ function renderSkillShop(message='') {
   const type=moveCatalog[move][0];
   const badge=element('span',type,'home-type-badge');
   badge.style.setProperty('--type-color',moveColors[type] ?? '#b7c7dd');
-  grid.append(inventoryTile(item.name,count,badge,buy,moveRules(move).cooldown.toFixed(1)+'s cooldown · Single use'));
+  grid.append(inventoryTile(item.name,count,badge,buy,moveRules(move).cooldown.toFixed(1)+'s cooldown · Single use',move));
  }
 }
 let skillsetPage=0;
@@ -3518,7 +3566,7 @@ function renderSkillsetDetail(move) {
  const item=skillItem(move);
  const stats=element('dl',null,'skillset-stats');
  const values=[
-  ['Type',type],['Category',category ?? 'Varies'],['Listed power',String(power ?? '—')],
+  ['Type',type],['Category',category ?? 'Varies'],['Arena scaling',damageMarks[moveDamageKind(move)].short],['Listed power',String(power ?? '—')],
   ['Listed accuracy',accuracy===null?'—':accuracy+'%'],
   ['Arena cooldown',rules.cooldown.toFixed(1)+' s'],['Priority',String(moveCatalog[move][3])],
   ['Arena range',rules.scope==='ally'?'Support':arenaMoveGeometry(move,rules).range+' px'],['Area radius',!skillShape(move) || skillShape(move)==='landing' ? (arenaMoveGeometry(move,rules).radius || '—') : '—'],
@@ -3529,8 +3577,8 @@ function renderSkillsetDetail(move) {
   cell.append(element('dt',label),element('dd',value));
   stats.append(cell);
  }
- panel.append(element('h3',move),element('p',skillDescription(move),'skillset-description'),stats,
-  element('p',item.name+' · Single use · '+(wildProgress.skills[move] ?? 0)+' owned','skillset-meta'));
+ panel.append(skillTitle('h3',move),element('p',skillDescription(move),'skillset-description'),stats,
+  element('p',item.kind+' · Single use · '+(wildProgress.skills[move] ?? 0)+' owned','skillset-meta'));
 }
 function renderSkillset() {
  const query=byId('skillset-search').value.trim().toLowerCase();
@@ -3552,7 +3600,8 @@ function renderSkillset() {
  byId('skillset-next').disabled=skillsetPage===pages-1;
  const list=byId('skillset-list');
  list.replaceChildren(...page.map((move,index)=>{
-  const entry=element('button',move,'skillset-entry');
+  const entry=element('button',null,'skillset-entry');
+  entry.append(skillTitle('span',move));
   const [,type,category]=moveReferences[move];
   const meta=element('small');
   const badge=element('span',type,'home-type-badge');
@@ -3787,7 +3836,7 @@ function renderLearnableSkills(name) {
    const levelInfo=levels[move]===undefined?'':levels[move]<=level?'Level '+levels[move]+' · unlocked':'Unlocks at Lv. '+levels[move];
    const detail=element('small',[levelInfo,status].filter(Boolean).join(' · '));
    const title=element('div');
-   title.append(element('strong',move),' ',badge);
+   title.append(skillTitle('strong',move),' ',badge);
    row.append(title,detail);
    return row;
   }));
@@ -3798,25 +3847,25 @@ function renderLearnableSkills(name) {
  renderList();
  return section;
 }
-function renderSkillSlots(name) {
+function renderSkillSlots(name,copy=null) {
  const grid=element('div',null,'move-grid');
- const moves=movesFor(name);
- const available=legalMoves(name).filter(move=>isVisibleArenaMove(move) && wildProgress.skills[move]>0 && !moves.includes(move));
- const levelSkills=Object.entries(levelUpMoves[dex[name][0]] ?? {}).filter(([move,level])=>
+ const moves=copy?legalLoadout(name,copy.moves?.length?copy.moves:movePools[name]??[]):movesFor(name);
+ const available=copy?[]:legalMoves(name).filter(move=>isVisibleArenaMove(move) && wildProgress.skills[move]>0 && !moves.includes(move));
+ const levelSkills=copy?[]:Object.entries(levelUpMoves[dex[name][0]] ?? {}).filter(([move,level])=>
   level<=(ownedPokemon(name)?.level ?? 0) && isVisibleArenaMove(move) && !moves.includes(move))
   .sort((a,b)=>a[1]-b[1] || a[0].localeCompare(b[0]));
  const slots=moves.length<4 && (available.length || levelSkills.length)?[...moves,null]:moves;
  slots.forEach((move,slot)=>{
   const card=element('div',null,'skill-teach');
-  card.append(element('strong',(slot+1)+'. '+(move ?? 'Empty move slot')));
+  card.append(move?skillTitle('strong',move,(slot+1)+'. '):element('strong',(slot+1)+'. Empty move slot'));
   if(move)card.append(element('small',moveCatalog[move][0]+' · '+moveRules(move).cooldown.toFixed(1)+'s cooldown'));
   if(levelSkills.length) {
-   const select=element('select');
+   const select=element('select',null,'move-options');
    select.setAttribute('aria-label','Level-up move for slot '+(slot+1));
    const blank=element('option','Choose unlocked level-up move');
    blank.value='';select.append(blank);
    for(const [skill,level] of levelSkills) {
-    const option=element('option',skill+' · Lv. '+level);
+    const option=element('option',skillOptionText(skill,' · Lv. '+level));
     option.value=skill;select.append(option);
    }
    const equip=element('button','Equip free');
@@ -3832,14 +3881,14 @@ function renderSkillSlots(name) {
    card.append(select,equip);
   }
   if(available.length) {
-   const select=element('select');
+   const select=element('select',null,'move-options');
    select.setAttribute('aria-label','Skill item for move slot '+(slot+1));
    const blank=element('option','Select skill item');
    blank.value='';
    select.append(blank);
    for(const optionMove of available) {
     const item=skillItem(optionMove);
-    const option=element('option',item.name+' ×'+wildProgress.skills[optionMove]);
+    const option=element('option',skillOptionText(optionMove,' ×'+wildProgress.skills[optionMove],item.kind+' · '));
     option.value=optionMove;
     select.append(option);
    }
@@ -3850,13 +3899,13 @@ function renderSkillSlots(name) {
     if(!teachSkill(name,slot,select.value)) return;
     const learned=select.value;
     renderDetail();
-    byId('pokemon-detail').append(element('p',name+' learned '+learned+'.','skill-lesson-status'));
+    byId('pokemon-detail').append(skillTitle('p',learned,name+' learned ','.'));
    };
    card.append(select,teach);
   }
   grid.append(card);
  });
- if(!available.length) grid.append(element('small','Buy skill items in the Skill Shop to replace moves.'));
+ if(!copy && !available.length) grid.append(element('small','Buy skill items in the Skill Shop to replace moves.'));
  return grid;
 }
 const levelEvolutions={};
@@ -5623,15 +5672,16 @@ function drawRogueChoices(pool,count) {
  const available=[...pool];
  return Array.from({length:Math.min(count,available.length)},()=>available.splice(Math.floor(Math.random()*available.length),1)[0]);
 }
-function rogueChoiceScreen(status,choices) {
+function rogueChoiceScreen(status,choices,knownMoves=[]) {
  phase='roguelit';
  showScreen('roguelit');
- byId('rogue-status').textContent=status;
- byId('rogue-choices').replaceChildren(...choices.map(({label,detail,portrait,choose,disabled=false})=>{
+ const heading=byId('rogue-status');heading.textContent=status;
+ knownMoves.forEach((move,i)=>heading.append(i?', ':' · ',skillTitle('span',move)));
+ byId('rogue-choices').replaceChildren(...choices.map(({label,detail,portrait,move,choose,disabled=false})=>{
   const card=element('button',null,'gym-card');
   card.disabled=disabled;
   if(portrait) card.append(pokemonPortrait(portrait));
-  card.append(element('strong',label));
+  card.append(move?skillTitle('strong',move):element('strong',label));
   if(detail) card.append(element('small',detail));
   card.onclick=()=>{
    if(card.disabled) return;
@@ -5718,16 +5768,15 @@ function draftRogueMove() {
  }
  const offensive=pool.filter(move=>!moveCatalog[move][4]);
  const first=drawRogueChoices(!member.moves.length && offensive.length?offensive:pool,4);
- rogueChoiceScreen(member.name+' · Choose move '+(member.moves.length+1)+' of 4'+
-  (member.moves.length?' · '+member.moves.join(', '):''),first.map(move=>({
-  label:move,detail:moveCatalog[move][0]+' · '+(moveCatalog[move][4]?'Status':moveCatalog[move][1]+' power')+
+ rogueChoiceScreen(member.name+' · Choose move '+(member.moves.length+1)+' of 4',first.map(move=>({
+  move,detail:moveCatalog[move][0]+' · '+(moveCatalog[move][4]?'Status':moveCatalog[move][1]+' power')+
    ' · '+moveRules(move).cooldown+'s cooldown',
   choose:()=>{
    member.moves.push(move);
    if(member.moves.length===4) startRogueRound();
    else draftRogueMove();
   }
- })));
+ })),member.moves);
 }
 function startRogueRound() {
  const run=rogueRun;
@@ -6404,7 +6453,7 @@ function updateActivePanels(onlineFields) {
     const row=element('div',null,'cooldown-row');
     const caption=element('div',null,'cooldown-caption');
     const timer=element('span');
-    caption.append(element('strong',move),timer);
+    caption.append(skillTitle('strong',move),timer);
     const bar=element('progress',null,'cooldown-track');
     bar.max=1;
     bar.style.setProperty('--move-color',moveColors[moveCatalog[move][0]] ?? '#bce88c');
@@ -7059,7 +7108,7 @@ function button(label,action,description) {
 let normalAttacksEnabled=true;
 function updateNormalAttackToggle(enabled,change) {
  const button=byId('basic-attacks');
- button.textContent='Normal Attack: '+(enabled?'On':'Off');
+ button.replaceChildren(damageMark('atk'),'Normal Attack: '+(enabled?'On':'Off'));
  button.setAttribute('aria-pressed',String(enabled));
  button.onclick=()=>change(!enabled);
 }
@@ -7918,7 +7967,7 @@ function battleDamage(actor,victim,power,multiplier,physical,element,move,critic
  if(multiplier===0) return 0;
  const masterBonus=actor.friendly!==victim.friendly?
   masterGymDamageMultiplier(actor)*(isRaidBerserk(actor)?2:1)*(isRaidBerserk(victim)?3:1):1;
- const fixedDamage=move==='Seismic Toss' || move==='Night Shade'?actor.level:move==='Dragon Rage'?40:move==='Sonic Boom'?20:null;
+ const fixedDamage=fixedMoveDamage(move,actor.level);
  if(fixedDamage!==null)return scaledBattleDamage(fixedDamage*masterBonus*abilityDamageMultiplier(actor,physical,element,move,victim)*arenaFieldDamageMultiplier(actor,victim,element));
  const superEffective=multiplier>1;
  const ability=activeAbility(actor);
@@ -10055,6 +10104,7 @@ function advance(dt,realDt=dt) {
  if(!playerReserve || !enemyReserve || timedOut) {
   const result=timedOut && requiresClear?-1:timedOut?compareTeamHP(allies,enemies):Number(Boolean(playerReserve))-Number(Boolean(enemyReserve));
   phase=result>0?'win':result<0?'loss':'draw';
+  if(!rogueRun && (selectedWild || selectedTrainer || selectedGym))window.ArenaTrainerCard?.recordBattle(enemies,Boolean(selectedTrainer && result>0),clock,Boolean(timedOut));
   recordArenaEvolutionBattle(result>0);
   const passNote=rogueRun || selectedWild || selectedTrainer || selectedGym
    ?recordBattlePass({battles:1,wins:result>0?1:0,trainerWins:selectedTrainer && result>0?1:0}):'';
@@ -10445,7 +10495,7 @@ function paintArenaWeather() {
   ' · '+arenaMap.type+' zones: +20% move damage and matching Pokémon speed':' · Open arena'):'';
  const screenLabels=phase==='online-battle'?[]:[true,false].flatMap(friendly=>[...screenMoves].flatMap(move=>{
   const time=screenTime({friendly},move);
-  return time>0?[(friendly?'Your ':'Enemy ')+move+' '+Math.ceil(time)+'s']:[];
+  return time>0?[(friendly?'Your ':'Enemy ')+damageMarks.status.glyph+' '+move+' '+Math.ceil(time)+'s']:[];
  }));
  const pressureLabel=phase==='battle' && selectedMasterGym && masterPressure>0 ?
   (masterPressure===1?'Master pressure: healing halved':'Master pressure: healing blocked, +35% attack damage'):'';
@@ -10688,7 +10738,8 @@ function drawMoveBubbles(actors) {
  ctx.textBaseline = 'middle';
  for (const actor of actors) {
   if (!actor.moveLabel || actor.labelTime <= 0 || actor.hp <= 0) continue;
-  const width = ctx.measureText(actor.moveLabel).width+22;
+  const mark=damageMarks[moveDamageKind(actor.moveLabel)];
+  const width = ctx.measureText(actor.moveLabel).width+22+(mark?18:0);
   const x = clamp(actor.x-width/2,12,948-width);
   const sprite = battleArt(actor.name);
   const visualHeight = sprite.height*battleSpriteScale;
@@ -10712,8 +10763,12 @@ function drawMoveBubbles(actors) {
   ctx.fill();
   ctx.fillStyle='#101827';
   ctx.strokeStyle='#ffffffb8';ctx.lineWidth=2;ctx.lineJoin='round';
-  ctx.strokeText(actor.moveLabel,x+width/2,y+14);
-  ctx.fillText(actor.moveLabel,x+width/2,y+14);
+  if(mark){
+   ctx.save();ctx.font='16px ArenaMarks, sans-serif';ctx.fillText(mark.glyph,x+16,y+14);ctx.restore();
+  }
+  const labelX=x+width/2+(mark?9:0);
+  ctx.strokeText(actor.moveLabel,labelX,y+14);
+  ctx.fillText(actor.moveLabel,labelX,y+14);
  }
  ctx.restore();
 }
@@ -11157,10 +11212,7 @@ function openHomeDialog(title,...content) {
  void checkGameVersion();
 }
 
-byId('toolbar-profile').onclick=()=>openHomeDialog('Player profile',
- element('p',starterSave?.ign ?? currentPlayer.name),
- element('p','Player level '+trainerProfileLevel()),
- element('p',wildProgress.wins+' wild wins · '+progressText()));
+byId('toolbar-profile').onclick=()=>window.ArenaTrainerCard.open();
 byId('home-coop').onclick=()=>openHomeDialog('Co-op',element('p','Available when online play is added.'));
 byId('home-pvp').onclick=()=>openHomeDialog('PvP',element('p','Available when online play is added.'));
 byId('home-friendlist').onclick=()=>openHomeDialog('Friendlist',element('p','Available when online play is added.'));
@@ -11200,6 +11252,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.70',changes:['Filter your PC and raid picker by either Pokémon element.','Pixel symbols identify ATK, S.ATK, status, and fixed damage across move lists and combat.','Player profiles now show badge rank, three featured Pokémon, collection records, Mega raid clears, and progress for all nine Pokédex regions.']},
  {version:'0.22.69',changes:['Completed the National Dex through Pecharunt and added 58 regional forms with separate PC identities, stats, abilities and learnsets.','Bundled available PMDCollab animations and offline fallback sprites; added the missing evolution paths and regional training choices.','Updated encounters, family hunts, Trading Hub National Dex search and backend catalogs for the expanded roster.']},
  {version:'0.22.68',changes:['Added regional Master unlocks and one-time standard and Master reward bundles.','Added battle presets, daily regional bounties, family hunts, training reward upgrades and weekly elite contracts with server verification.','Added Champion and regional Master titles, the Kalos Laurel frame, and Master Arena pennants. Existing badge progress unlocks these automatically.']},
  {version:'0.22.67',changes:['Redesigned all 18 Arena biomes as textured pixel environments, including grassland plains with shrub zones, wetlands, snowfields, volcanic terrain, ruins and industrial floors.','Natural terrain patches now share their exact boundaries with the combat engine and online spectators.','Cached scenery preserves open movement, attack indicators, and existing raid artwork.']},
@@ -11379,7 +11432,7 @@ function automaticBattleLoopActive() {
 }
 function canCheckGameVersion() {
  return typeof location!=='undefined' && !automaticBattleLoopActive() && !window.isArenaMarketBusy?.() && !document.querySelector('.trade-hub-dialog[open]') && !document.querySelector('.campaign-dialog[open]') && !window.ArenaCampaign?.isBusy?.() && !window.isPvpVersionContext?.() && !window.hasActiveTacticsRun?.() &&
-  !['setup','battle','contract-battle'].includes(phase) && !document.querySelector('.trainer-reward-dialog[open]') && !document.querySelector('.evolution-dialog[open]') &&
+  !['setup','battle','contract-battle'].includes(phase) && !document.querySelector('#trainer-card-dialog[open]') && !document.querySelector('.trainer-reward-dialog[open]') && !document.querySelector('.evolution-dialog[open]') &&
   (phase!=='online-battle' || window.isCompletedRaid?.());
 }
 function isNewerGameVersion(candidate,current) {
@@ -11507,5 +11560,5 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="../tactics.js?v=0.22.59"></script><script src="../multiplayer.js?v=0.22.67"></script>
-<script src="../trade-hub.js?v=0.22.69"></script><script src="../campaign-progression.js?v=0.22.69"></script></html>
+<script src="../tactics.js?v=0.22.70"></script><script src="../multiplayer.js?v=0.22.70"></script>
+<script src="../trade-hub.js?v=0.22.69"></script><script src="../campaign-progression.js?v=0.22.69"></script><script src="../trainer-card.js?v=0.22.70"></script></html>

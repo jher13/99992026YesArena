@@ -1263,7 +1263,7 @@
     if(friend.accepted) {
      const status=element('small');
      status.append(element('span',null,'friend-presence'+(friend.online?' is-online':'')),friend.online?'Online':'Offline');
-     card.append(status);
+     card.append(status,button('View profile',()=>window.ArenaTrainerCard.open(friend.name)));
     } else if(friend.incoming) {
      const accept=element('button','Accept');
      accept.onclick=()=>request(friend.name,accept);

@@ -1,3 +1,11 @@
+# Update to 0.22.70
+
+Apply this changed-files ZIP over **0.22.69**, preserving its folder structure.
+The PC and personal trainer card work offline. To enable friend profiles and
+online records, push the included migration and workflow to `main`.
+The workflow runs `npm run test:profile` and applies
+`supabase/migrations/20261118040000_trainer_cards.sql`.
+
 # Update to 0.22.69
 
 Apply this changed-files patch over **0.22.68**. Keep the complete `assets`
