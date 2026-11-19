@@ -1210,7 +1210,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
  <div class="battle-settings-grid"><button id="battle-sfx" aria-pressed="true">SFX: On</button><button id="battle-music" aria-pressed="true">Music: On</button><button id="basic-attacks" type="button" aria-pressed="true">Normal Attack: On</button><button id="speed" aria-pressed="false">1× speed</button><button id="battle-auto-start" aria-pressed="false" hidden>Auto Start: Off</button><button id="battle-auto-capture" aria-pressed="false" hidden>Auto capture: Off</button><button id="battle-auto-repeat" aria-pressed="false" hidden>Auto repeat: Off</button><button id="auto-reserve" aria-pressed="false" hidden>Auto send-out: Off</button></div>
  <div id="battle-volume-controls"></div>
 </dialog>
-<script src="./assets/variant-sprites.js?v=0.22.69"></script><script src="./assets/arena-maps.js?v=0.22.72"></script><script src="./assets/arena-move-effects.js?v=0.22.78"></script><script src="./assets/arena-move-effects-gym.js?v=0.22.76"></script><script src="./assets/arena-move-effects-field.js?v=0.22.77"></script><script src="./assets/arena-move-effects-signature.js?v=0.22.78"></script><script>
+<script src="./assets/variant-sprites.js?v=0.22.69"></script><script src="./assets/arena-maps.js?v=0.22.72"></script><script src="./assets/arena-move-effects.js?v=0.22.78"></script><script src="./assets/arena-move-effects-gym.js?v=0.22.76"></script><script src="./assets/arena-move-effects-field.js?v=0.22.77"></script><script src="./assets/arena-move-effects-signature.js?v=0.22.78"></script><script src="./assets/arena-move-effects-techniques.js?v=0.22.79"></script><script src="./assets/arena-status-effects.js?v=0.22.79"></script><script>
 const byId = id => document.getElementById(id);
 const profileIndexKey='pokemon-arena-player-index';
 const defaultPlayer={id:'default',name:'Player 1'};
@@ -8478,6 +8478,7 @@ const additionalStatusMoves={
      Math.hypot(third.x-other.x,third.y-other.y)>=bodyRadius(member)+bodyRadius(third));
    if(clear(actor,ally) && clear(ally,actor)) {
     [actor.x,ally.x]=[ally.x,actor.x];[actor.y,ally.y]=[ally.y,actor.y];
+    return ally;
    }
   }},
  'After You':{description:'Makes another active teammate ready to act by clearing its action delay.',
@@ -9512,7 +9513,7 @@ function act(actor, opponents, dt) {
   if(Object.hasOwn(additionalStatusMoves,move)) {
    const outcome=additionalStatusMoves[move].apply(actor,target);
    playSkillSound(move,'release');
-   if(move==='Helping Hand'){
+   if(move==='Helping Hand' || move==='Ally Switch'){
     if(outcome)effect(outcome,'',1,{status:true});
    }else if(move!=='Teleport' || outcome)effect(actor,'',1,{status:true});
    return;
@@ -9748,7 +9749,8 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
     effect(victim,forceSwitch(victim,defender)?'Forced switch':'Failed',1,{status:true,impactOnly:Boolean(cast)});
     continue;
    }
-   effect(victim,rules.changes.length || rules.ailment ? 'Debuff' : '',1,{status:true,impactOnly:Boolean(cast)});
+   const recipient=move==='Curse' && !arenaDefenseTypes(actor).includes('Ghost')?actor:victim;
+   effect(recipient,rules.changes.length || rules.ailment ? 'Debuff' : '',1,{status:true,impactOnly:Boolean(cast)});
    continue;
   }
   const criticalStage=(moveExtras[move]?.[0] ?? 0)+(actor.stages[9] ?? 0)+(attacker==='Super Luck'?1:0);
@@ -10346,7 +10348,11 @@ function motionPose(actor) {
  if(actor.hit>0) return ['hit',Math.min(7,Math.floor((1-actor.hit/actor.hitSpan)*8))];
  return ['idle',Math.floor(visualTime*7+dex[actor.name][0])%8];
 }
-function drawUnit(actor) {
+function drawBattleFrame(frozen,image,sx,sy,sw,sh,dx,dy,dw,dh) {
+ if(frozen)globalThis.ArenaStatusEffects.frozenFrame(ctx,image,sx,sy,sw,sh,dx,dy,dw,dh);
+ else ctx.drawImage(image,sx,sy,sw,sh,dx,dy,dw,dh);
+}
+function drawUnit(actor,showStatus=false) {
  if (actor.hp <= 0) return;
  if(actor.illusionName)actor={...actor,name:actor.illusionName};
  const {x,y,name,type} = actor;
@@ -10358,6 +10364,14 @@ function drawUnit(actor) {
  const height=art.height*scale;
  const radius = Math.max(10,Math.min(52,width*0.37));
  const ground = y+20;
+ const online=phase==='online-battle',time=online?onlineVisualClock:clock;
+ const state=online?(actor.displayedStatus ?? actor):actor;
+ const puppeted=state.puppetUntil>time;
+ const statusArt=showStatus && (state.ailment || puppeted) && globalThis.ArenaStatusEffects;
+ const frozen=Boolean(statusArt && state.ailment===3);
+ const loopTime=time+(dex[name]?.[0] ?? 0)*.137;
+ const mirrored=Boolean(arenaMap?.viewMirror);
+ let box=null;
  const healthY = Math.max(8,ground-height-12);
  ctx.beginPath();
  ctx.ellipse(x,ground,radius,Math.min(10,radius*0.24),0,0,2*Math.PI);
@@ -10381,47 +10395,58 @@ function drawUnit(actor) {
   const authoredReady=Boolean(authoredImage?.naturalWidth);
   const shift=authoredReady ? 0 : windup+lunge;
   const reaction=authoredReady ? 0 : recoil;
-  ctx.translate(Math.round(x+actor.attackX*shift+actor.hitX*reaction),
-   Math.round(ground-3+actor.attackY*shift+actor.hitY*reaction));
+  const originX=Math.round(x+actor.attackX*shift+actor.hitX*reaction);
+  const originY=Math.round(ground-3+actor.attackY*shift+actor.hitY*reaction),form=actor.abilityForm;
+  const formX=form==='Blade' ? .82 : form==='Shield' ? 1.12 : 1;
+  const formY=form==='Blade' ? 1.18 : form==='Shield' ? .94 : 1;
+  if(statusArt){
+   const w=authoredReady?authored.width*scale:sprite.width*battleSpriteScale;
+   const h=authoredReady?authored.height*scale:sprite.height*battleSpriteScale;
+   const cx=authoredReady?originX+(authored.x*scale+w/2)*formX:originX;
+   const cy=originY+(authoredReady?authored.y*scale+h/2:-h/2)*formY;
+   box=statusArt.bounds(cx,cy,w*formX,h*formY,state.ailment,puppeted);
+   statusArt.draw(ctx,box,loopTime,false,mirrored);
+  }
+  ctx.translate(originX,originY);
   if(!authoredReady) ctx.scale(-actor.facing,1);
   ctx.imageSmoothingEnabled=false;
-  const form=actor.abilityForm;
-  if(form==='Sunny')ctx.filter='sepia(1) saturate(2.5) hue-rotate(335deg)';
-  else if(form==='Rainy')ctx.filter='sepia(1) saturate(2) hue-rotate(155deg)';
-  else if(form==='Snowy' || form==='Zen')ctx.filter='sepia(0.7) saturate(1.8) hue-rotate(165deg)';
-  if(form==='Blade')ctx.scale(0.82,1.18);
-  if(form==='Shield')ctx.scale(1.12,0.94);
+  if(!frozen && form==='Sunny')ctx.filter='sepia(1) saturate(2.5) hue-rotate(335deg)';
+  else if(!frozen && form==='Rainy')ctx.filter='sepia(1) saturate(2) hue-rotate(155deg)';
+  else if(!frozen && (form==='Snowy' || form==='Zen'))ctx.filter='sepia(0.7) saturate(1.8) hue-rotate(165deg)';
+  if(formX!==1)ctx.scale(formX,formY);
   if(form==='School' && sprite.image.naturalWidth) {
    ctx.save();ctx.globalAlpha=0.72;
    for(let i=0;i<8;i++) {
     const angle=i*Math.PI/4,dx=Math.cos(angle)*23,dy=Math.sin(angle)*13-8;
-    ctx.drawImage(sprite.image,sprite.sx,sprite.sy,sprite.width,sprite.height,
+    drawBattleFrame(frozen,sprite.image,sprite.sx,sprite.sy,sprite.width,sprite.height,
      dx-sprite.width*scale*0.24,dy-sprite.height*scale*0.5,sprite.width*scale*0.48,sprite.height*scale*0.48);
    }
    ctx.restore();
   }
   if(authoredImage?.naturalWidth) {
-   ctx.drawImage(authoredImage,authored.sx,authored.sy,authored.width,authored.height,
+   drawBattleFrame(frozen,authoredImage,authored.sx,authored.sy,authored.width,authored.height,
     authored.x*scale,authored.y*scale,authored.width*scale,authored.height*scale);
   } else {
    const sheet=buildMotionSheet(sprite,isFlying(actor));
    const fallbackScale=battleSpriteScale;
    const row=motionRows.indexOf(motion);
    if(row>=0 && Number.isInteger(frame) && frame>=0 && frame<framesPerMotion) {
-    ctx.drawImage(sheet.image,frame*sheet.cellWidth,row*sheet.cellHeight,
+    drawBattleFrame(frozen,sheet.image,frame*sheet.cellWidth,row*sheet.cellHeight,
      sheet.cellWidth,sheet.cellHeight,(-Math.round(sprite.width/2)-sheet.padding)*fallbackScale,
      (-sprite.height-sheet.padding)*fallbackScale,sheet.cellWidth*fallbackScale,sheet.cellHeight*fallbackScale);
    } else {
-    ctx.drawImage(sprite.image,sprite.sx,sprite.sy,sprite.width,sprite.height,
+    drawBattleFrame(frozen,sprite.image,sprite.sx,sprite.sy,sprite.width,sprite.height,
      -Math.round(sprite.width*fallbackScale/2),-sprite.height*fallbackScale,
      sprite.width*fallbackScale,sprite.height*fallbackScale);
    }
   }
   ctx.restore();
  } else {
-  ctx.fillStyle = moveColors[type] ?? '#dcebc9';
+  if(statusArt){box=statusArt.bounds(x,y,20,20,state.ailment,puppeted);statusArt.draw(ctx,box,loopTime,false,mirrored);}
+  ctx.fillStyle = frozen?'#69b9ef':moveColors[type] ?? '#dcebc9';
   ctx.fillRect(x-10,y-10,20,20);
  }
+ if(box)statusArt.draw(ctx,box,loopTime,true,mirrored);
  ctx.textAlign = 'center';
  if(!actor.raidForm?.startsWith('Mega ')) {
   ctx.fillStyle = '#081813';
@@ -10514,7 +10539,7 @@ function renderBattleDps(time,buckets,mirror=false) {
   panel.rows.scrollTop=offset;
  }
 }
-let onlineMatchDuration=0,onlineRaidCountdown=false;
+let onlineMatchDuration=0,onlineRaidCountdown=false,onlineVisualClock=0;
 const raidTimeLimit=30*60;
 function paintArenaWeather() {
  const elapsed=phase==='online-battle'?onlineMatchDuration:phase==='setup'?0:clock ?? 0;
@@ -10610,7 +10635,7 @@ function paint() {
   else drawMove(effect);
  }
  paintArenaWeather();
- for(const actor of visible.sort((a,b)=>a.y-b.y)){drawUnit(actor);drawAbilityState(actor);}
+ for(const actor of visible.sort((a,b)=>a.y-b.y)){drawUnit(actor,battling);drawAbilityState(actor);}
  if(playerSwitch) drawSwitch(playerSwitch);
  if(enemySwitch) drawSwitch(enemySwitch);
  for(const slot of trainerFields?.flat() ?? []) if(slot.transition) drawSwitch(slot.transition);
@@ -11301,6 +11326,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.79',changes:['Burn, paralysis, poison, freeze, sleep, and confusion now animate on the affected Pokémon until the condition ends. Frozen sprites turn blue beneath a translucent ice shell.','Added 94 skill animations, including Dark Void, Pyro Ball, Aurora Veil, Heal Bell, and every remaining HM, TM, and TR.']},
  {version:'0.22.78',changes:['Added 106 move animations. Every default player moveset and every damaging HM, TM, and TR now has dedicated artwork.','Roar of Time winds back a clock face, Spacial Rend tears open a rift, and Precipice Blades drive lava-edged spires through the marked ground. Rest, Substitute, and Sleep Talk also have distinct cast effects.']},
  {version:'0.22.77',changes:['147 more skill animations cover every default wild and Trainer moveset and all 68 Master Gym teams, including moves filled in by the loadout system.','Whirlpool coils around its target, Tri Attack combines three elements, and Weather Ball shows the weather at launch. Helping Hand now shows which ally received the boost.']},
  {version:'0.22.76',changes:['130 more moves have dedicated animations, covering the moves equipped by every standard Gym leader and the default moves of every regional starter.','Entry hazards show up on the Pokémon that triggers them. Bonemerang arcs back to its user, and Brick Break splits bricks on impact.']},
@@ -11617,5 +11643,5 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.70"></script><script src="./multiplayer.js?v=0.22.71"></script>
+<script src="./tactics.js?v=0.22.70"></script><script src="./multiplayer.js?v=0.22.79"></script>
 <script src="./trade-hub.js?v=0.22.69"></script><script src="./campaign-progression.js?v=0.22.72"></script><script src="./trainer-card.js?v=0.22.73"></script></html>

@@ -1,3 +1,10 @@
+# Update to 0.22.79
+
+Extract the changed files over **0.22.78** and keep their folder structure.
+Push to `main` to publish the new move artwork and status animations. Local
+battles and online replays use the existing battle condition data. Deploy the
+updated `arena-combat` function for the Ally Switch and Curse cast locations.
+
 # Update to 0.22.78
 
 Extract the changed files over **0.22.77** with their folders intact. Push to

@@ -239,7 +239,7 @@
    setArenaDimensions(mega?megaRaidArenaSize:undefined);
    byId('battle').classList.toggle('is-mega-raid',mega);
    effects=[];pendingCasts=[];playerSwitch=enemySwitch=null;
-   battleWeather=battleTerrain=null;arenaMap=null;arenaSkillFields=[];weatherTime=0;onlineMatchDuration=0;
+   battleWeather=battleTerrain=null;arenaMap=null;arenaSkillFields=[];weatherTime=0;onlineMatchDuration=0;onlineVisualClock=0;
    showScreen('battle');
    for(const id of ['start','auto-reserve','battle-auto-repeat','battle-auto-start','battle-auto-capture','next-gym'])byId(id).hidden=true;
    for(const id of ['player-active','enemy-active','player-roster','enemy-roster','choices'])byId(id).replaceChildren();
@@ -314,7 +314,8 @@
     attackX:dx(entry.attackX),hitX:dx(entry.hitX),
    });
    const samples=actor.motionSamples ??= [];
-   const sample={time:data.clock,x:actor.x,y:actor.y,ticks:actor.motionTicks};
+   const sample={time:data.clock,x:actor.x,y:actor.y,ticks:actor.motionTicks,
+    ailment:entry.ailment ?? null,puppetUntil:entry.puppetUntil ?? 0};
    if(samples.length && samples.at(-1).time===sample.time)samples[samples.length-1]=sample;
    else samples.push(sample);
    if(samples.length>64)samples.shift();
@@ -450,11 +451,13 @@
    const rate=clamp(1+(target-playbackClock)*1.5,0.65,1.35);
    playbackClock=active?.result?latest:Math.min(latest,playbackClock+dt*rate);
   }
+  onlineVisualClock=playbackClock ?? 0;
   for(const actor of arenaActors.values()) {
    const samples=actor.motionSamples;
    while(samples.length>2 && samples[1].time<=playbackClock)samples.shift();
    const from=samples[0];
    const to=samples[1] ?? from;
+   actor.displayedStatus=onlineVisualClock>=to.time?to:from;
    const blend=to.time>from.time?clamp((playbackClock-from.time)/(to.time-from.time),0,1):1;
    const position=Math.hypot(to.x-from.x,to.y-from.y)>90 && blend<1?0:blend;
    actor.x=from.x+(to.x-from.x)*position;
