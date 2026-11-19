@@ -118,3 +118,56 @@ const older=audio.createTimeline();
 older.collect([shared,shared],7);older.advance(7,emit);older.collect([shared,shared],7.1);older.advance(7.1,emit);
 assert.equal(output.length,5,'old snapshots preserve simultaneous releases and do not double-play');
 console.log(seen.size+' distinct audible releases ('+names.length+' catalog moves plus Normal Attack and Struggle), '+Object.keys(bank.clips).length+' instruments. Volume, priority, cache, speed and snapshot audio checks passed.');
+
+// A room and its Master variant share a boss name. Select music from the active match's tier.
+const multiplayer=read('multiplayer.js');
+function section(source,start,end){
+ const first=source.indexOf(start),last=source.indexOf(end,first);
+ assert(first>=0 && last>first,start);return source.slice(first,last);
+}
+function checkRaidMusic(markup,pageUrl,assetDir){
+ const media=[],controls=new Map(),gestures=new Map(),settings=new Map();
+ const element=()=>({children:[],setAttribute(){},append(...items){this.children.push(...items);}});
+ const byId=id=>{if(!controls.has(id))controls.set(id,element());return controls.get(id);};
+ class Recording{
+  constructor(src){this.src=new URL(src,pageUrl).href;this.paused=true;this.plays=0;media.push(this);}
+  play(){this.plays++;this.paused=false;return Promise.resolve();}
+  pause(){this.paused=true;}
+ }
+ const game=vm.createContext({URL,window:{Audio:Recording},element,byId,
+  multiplayerSource:new URL(markup.match(/<script src="([^"]*\/multiplayer\.js[^"]*)"/)[1],pageUrl).href,
+  document:{addEventListener:(event,handler)=>gestures.set(event,handler)},
+  playerStorage:{getItem:k=>settings.get(k)??null,setItem:(k,v)=>settings.set(k,v)},
+  phase:'online-battle',selectedGym:null,selectedTrainer:null,selectedWild:null,rogueRun:null,active:null});
+ vm.runInContext([
+  section(markup,'const regionBattleThemes=','let rogueRun=null;'),
+  section(markup,'const megaRaidTiers=','function masterRaidPhase('),
+  section(markup,'function audioVolumeControls()',"byId('toolbar-logout').onclick"),
+  section(multiplayer,' function raidAssetUrl(',' function setRaidRoomBackdrop(')
+ ].join('\n'),game);
+ const toggle=byId('battle-music').onclick;
+ for(const [index,base] of ['coop_mega','coop_mega_2','coop_mega_3'].entries())for(const master of [false,true]){
+  const mode=base+(master?'_master':''),file='raid-tier-'+(index+1)+(master?'-master':'')+'.mp3';
+  const url=new URL(assetDir+file,pageUrl).href;
+  assert(fs.existsSync(path.join(__dirname,'..','assets',file)));
+  game.active={mode,started:false};const before=media.length;
+  game.startBattleMusic();assert.equal(media.length,before,'pre-fight music: '+mode);
+  game.active.started=true;game.startBattleMusic();
+  const track=media.at(-1);assert.equal(track.src,url);assert.equal(track.loop,true);
+  game.startBattleMusic();assert.equal(media.length,before+1,'ongoing encounter keeps its track');
+  const slider=game.audioVolumeControls()[0].children[1];slider.value=40;slider.oninput();
+  assert.equal(track.volume,.35*.4);
+  for(const gesture of ['keydown','pointerdown']){track.pause();gestures.get(gesture)();assert.equal(track.paused,false);}
+  toggle();assert.equal(track.paused,true);toggle();assert.equal(media.at(-1).src,url);assert.equal(media.at(-1).volume,.35*.4);
+  game.active.result=master?'coop_loss':'coop_win';game.stopBattleMusic();
+  game.startBattleMusic();assert.equal(media.length,before+2,'a completed raid stays silent');
+ }
+ game.phase='battle';game.selectedTrainer={region:'Johto'};game.startBattleMusic();
+ const trainer=JSON.parse(markup.match(/^const recordedBattleMusic=(.*);$/m)[1])['Johto:trainer'];
+ assert.equal(media.at(-1).src,new URL(trainer,pageUrl).href,'solo battle after leaving a raid');
+ game.stopBattleMusic();game.phase='online-battle';game.active={mode:'free_fight',started:true};game.startBattleMusic();
+ assert.equal(media.at(-1).src,new URL(trainer,pageUrl).href,'PvP retains its regional music');
+}
+checkRaidMusic(html,'https://arena.test/PokeArena/index.html','./assets/');
+checkRaidMusic(local,'file:///PokeArena/local-test/PokeArena_Local_Test.html','../assets/');
+console.log('Six co-op boss themes passed hosted and local selection, looping, mute, volume and playback retry checks.');

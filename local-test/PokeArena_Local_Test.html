@@ -5542,7 +5542,10 @@ function startBattleMusic() {
  if(!battleMusicEnabled || musicTrack) return;
  const region=selectedWild?.region ?? selectedTrainer?.region ?? selectedGym?.region ?? rogueRun?.region ?? 'Kanto';
  const kind=selectedWild?'wild':selectedGym?'gym':'trainer';
- const recording=recordedBattleMusic[region+':'+kind];
+ const regionalRecording=recordedBattleMusic[region+':'+kind];
+ const recording=phase==='online-battle' && window.onlineBattleRecording
+  ? window.onlineBattleRecording(regionalRecording) : regionalRecording;
+ if(recording===null)return;
  if(recording) {
   const audio=new window.Audio(recording);
   audio.loop=true;
@@ -5634,13 +5637,14 @@ musicButton.onclick=()=>{
  else stopBattleMusic();
 };
 updateMusicButton();
-document.addEventListener('keydown',()=>{if(musicContext?.state!=='running')unlockSkillSound();});
-document.addEventListener('pointerdown',()=>{
+function resumeBattleAudio() {
  if(musicContext?.state!=='running')unlockSkillSound();
  const audio=musicTrack?.audio;
- if(audio?.paused && !audio.ended) audio.play().catch(()=>{});
- else if(musicTrack && musicContext?.state==='suspended') musicContext.resume().catch(()=>{});
-});
+ if(audio?.paused && !audio.ended)audio.play().catch(()=>{});
+ else if(musicTrack && musicContext?.state==='suspended')musicContext.resume().catch(()=>{});
+}
+document.addEventListener('keydown',resumeBattleAudio);
+document.addEventListener('pointerdown',resumeBattleAudio);
 let rogueRun=null;
 function drawRogueChoices(pool,count) {
  const available=[...pool];
@@ -11343,6 +11347,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.83',changes:['Mega Charizard X, Mega Gengar and Mega Rayquaza each have a dedicated co-op battle theme. Their shiny Master Tier fights play three separate themes.']},
  {version:'0.22.82',changes:['All 846 Arena moves now have custom sound effects. Charged moves build up before release, multi-hit moves sound on contact, and online battles play sounds in time with the displayed action.']},
  {version:'0.22.81',changes:['Added animations for the final 129 status and support moves. All 846 Arena moves now have artwork. Ally heals and item gifts show their recipient, and Wish has a second animation when its heal lands.']},
  {version:'0.22.80',changes:['Added animations for the final 117 damaging moves, bringing the total to 717 illustrated skills. Make It Rain showers the target area with coins, Eternabeam charges and fires a braided beam, and Population Bomb sends one mouse per landed strike.']},
@@ -11667,5 +11672,5 @@ requestAnimationFrame(frame);
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="../tactics.js?v=0.22.70"></script><script src="../multiplayer.js?v=0.22.82"></script>
+<script src="../tactics.js?v=0.22.70"></script><script src="../multiplayer.js?v=0.22.83"></script>
 <script src="../trade-hub.js?v=0.22.69"></script><script src="../campaign-progression.js?v=0.22.82"></script><script src="../trainer-card.js?v=0.22.73"></script></html>
