@@ -33,6 +33,7 @@ renderMath.random=()=>{throw Error('Move artwork used combat RNG');};
 const world=vm.createContext({Math:renderMath});
 vm.runInContext(read('assets/arena-move-effects.js'),world);
 vm.runInContext(read('assets/arena-move-effects-gym.js'),world);
+vm.runInContext(read('assets/arena-move-effects-field.js'),world);
 const art=world.ArenaMoveEffects;
 const engine=read('supabase/functions/arena-combat/engine.js');
 function snapshotFromClient(mode,side,effects,casts) {
@@ -52,7 +53,13 @@ function snapshotFromClient(mode,side,effects,casts) {
 const probe=String.raw`
 export function raidMoves(){return Object.values(megaRaidTiers).map(raid=>raid.moves);}
 export function campaignMoves(){
- return {gyms:gymTeams.map(g=>g.plan.team.flatMap(slot=>slot[3])),starters:starterNames.map(name=>wildMoves(name))};
+ const gyms=gymTeams.map(g=>g.roster.flatMap((name,i)=>gymMoves(name,g,i)));
+ const masters=gymTeams.map(g=>{
+  const opponent=masterGymOpponent(g);
+  return opponent.roster.flatMap((name,i)=>masterGymKit(name,opponent,i).moves);
+ });
+ return {gyms,masters,listed:gymTeams.flatMap(g=>g.plan.team.flatMap(slot=>slot[3])),
+  starters:starterNames.map(name=>wildMoves(name)),field:dexNames.map(name=>wildMoves(name))};
 }
 export function triggerHazards(opts={}) {
  const match={id:'ab347c12-0000-4000-8000-000000000001',mode:'free_fight',
@@ -78,10 +85,11 @@ export function triggerHazards(opts={}) {
   ailment:defender.ailment,hazards:saved.entryHazards,x:defender.x,y:defender.y};
 }
 export function captureMove(move,opts={}) {
- const reserves=opts.bench || Object.hasOwn(hazardCaps,move) || move==='Roar' || move==='Parting Shot';
- const match={id:'ab347c12-0000-4000-8000-000000000001',mode:'free_fight',format:opts.group?3:1,
-  host_pick:opts.group?['Mew','Raichu','Umbreon']:reserves?['Mew','Vaporeon']:['Mew'],
-  guest_pick:opts.group?['Blissey','Snorlax','Wigglytuff']:reserves?['Blissey','Snorlax']:['Blissey'],host_entries:{},guest_entries:{}};
+ const reserves=opts.bench ?? (Object.hasOwn(hazardCaps,move) || ['Roar','Parting Shot','Baton Pass','Teleport'].includes(move));
+ const group=opts.group ?? move==='Helping Hand';
+ const match={id:'ab347c12-0000-4000-8000-000000000001',mode:'free_fight',format:group?3:1,
+  host_pick:group?['Mew','Raichu','Umbreon']:reserves?['Mew','Vaporeon']:['Mew'],
+  guest_pick:group?['Blissey','Snorlax','Wigglytuff']:reserves?['Blissey','Snorlax']:['Blissey'],host_entries:{},guest_entries:{}};
  initializeOnline(match);
  const a=allies[0],b=enemies[0];
  for(const [index,actor] of [a,b].entries()){
@@ -91,9 +99,12 @@ export function captureMove(move,opts={}) {
   Object.assign(trainerFields[index][0],{actor,transition:null});
  }
  b.type=opts.defenderType ?? 'Water';b.ability=opts.defenderAbility ?? null;b.moves=['Pound','Psychic'];b.moveTimers=[0,0];b.moveCooldowns=[3,4];
+ if(opts.defenderHP!==undefined)b.hp=opts.defenderHP;
  if(move==='Taunt')b.moves[1]='Recover';
+ if(move==='Sketch')b.lastUsedMove='Pound';
+ if(move==='Baton Pass')a.stages[2]=2;
  if(move==='Dream Eater'){b.ailment=2;b.ailmentTime=8;}
- if(opts.group)for(const [side,team] of [allies,enemies].entries())for(let slot=1;slot<3;slot++){
+ if(group)for(const [side,team] of [allies,enemies].entries())for(let slot=1;slot<3;slot++){
   const actor=team[slot],lead=team[0];
   Object.assign(actor,{x:lead.x+slot*3,y:lead.y+slot*6,hp:3500,max:5000,ability:null,heldItem:null,type:'Normal',singleType:true});
   Object.assign(trainerFields[side][slot],{actor,transition:null});
@@ -101,6 +112,7 @@ export function captureMove(move,opts={}) {
  a.hp=sacrificeProfiles.has(move)?200:1500;
  if(move==='Steel Beam'){a.hp=a.max;b.type=opts.defenderType ?? 'Fairy';}
  if(reserves){clock=2;a.enteredAt=0;b.enteredAt=0;}
+ if(opts.weather)setWeather(opts.weather);
  a.ability='No Guard';
  a.ai=normalizeBattleAI({mode:'Advanced',gambits:[{target:'Any',condition:'Always',operator:'Equal',value:'True',move}]});
  if(opts.resolve)resolveOffensiveMove(a,move,moveRules(move),b,[b]);
@@ -110,14 +122,15 @@ export function captureMove(move,opts={}) {
   act(a,[b],1/60);clock+=1/60;
  }
  if(opts.dodge){b.x=900;b.y=420;}
- let initialWarning=pendingCasts[0]?.warning;
+ let initialWarning=pendingCasts[0]?.warning,resumedFlight=false;
  for(let i=0;i<420 && pendingCasts.length;i++){
   const c=pendingCasts[0];
   if(i===0 || (c.flight||c.roaming) && !warnings.some(w=>w.flight||w.roaming))warnings.push(snapshot(c));
   clock+=1/60;tickSkillCasts(1/60);
-  if(opts.resume && i===16){
+  if(opts.resume && i===16 || opts.resumeFlight && c.flight && !resumedFlight){
    const saved=JSON.parse(JSON.stringify(saveOnlineState()));
    loadOnlineState(saved);
+   if(c.flight)resumedFlight=true;
   }
  }
  const saved=saveOnlineState();
@@ -125,14 +138,17 @@ export function captureMove(move,opts={}) {
   const publicEvents=onlineView(saved,side,match.mode).effects;
   if(JSON.stringify(publicEvents)!==JSON.stringify(saved.effects))throw Error('Missing move events in '+side+' view');
  }
- return {warnings,events:saved.effects.filter(e=>e.move===move),initialWarning,targetHP:enemies[0].hp,fields:saved.arenaSkillFields ?? []};
+ return {warnings,events:saved.effects.filter(e=>e.move===move),initialWarning,targetHP:enemies[0].hp,fields:saved.arenaSkillFields ?? [],
+  helped:allies.filter(member=>member.helpingHandUntil>clock).map(member=>[member.x,member.y]),
+  recall:saved.fields[0][0].transition,casterMoves:allies[0].moves,resumedFlight};
 }
 `;
 (async()=>{
  const {captureMove,raidMoves,campaignMoves,triggerHazards}=await import('data:text/javascript;base64,'+Buffer.from(engine+probe).toString('base64'));
- const {gyms,starters}=campaignMoves();
+ const {gyms,starters,listed,masters,field}=campaignMoves();
  assert.equal(gyms.length,68);assert.equal(starters.length,27);
- const allMoves=[...new Set([...moves,...gyms.flat(),...starters.flat()])];
+ assert.equal(masters.length,68);assert.equal(field.length,1083);
+ const allMoves=[...new Set([...moves,...listed,...gyms.flat(),...masters.flat(),...field.flat()])];
  const paints=command=>['stroke','fill','fillRect'].includes(command[0]);
  const captures=new Map(),missing=[];
  for(const move of allMoves){
@@ -199,7 +215,7 @@ export function captureMove(move,opts={}) {
  assert.deepEqual(quake.events.map(e=>[e.innerRadius,e.radius]),[[0,full/3],[full/3,2*full/3],[2*full/3,full]]);
  assert.equal(quake.targetHP,3500,'quake drew in empty space without hurting a distant target');
  const {ctx}=surface();
- assert.equal(art.drawEffect(ctx,{move:'Splash'}),false);
+ assert.equal(art.drawEffect(ctx,{move:'Celebrate'}),false);
  assert.equal(art.drawEffect(ctx,{move:'Quick Attack',dashSprite:{}}),false);
  assert.equal(art.activeCast(ctx,charge),false,'winding up keeps the standard danger indicator');
  assert.equal(art.aboveUnits(thunder),true);assert.equal(art.aboveUnits(wave),false);
@@ -270,5 +286,43 @@ export function captureMove(move,opts={}) {
   assert(draw('drawEffect',{...event,life:.37},true).some(([op,x,y])=>op==='scale'&&x===1&&y===-1),
    event.move+' keeps the same arc in the mirrored view');
  }
- console.log(allMoves.length+' move animations passed on authoritative casts across all six Mega raids, all 68 standard Gym loadouts and all 27 default starter kits.');
+ const helping=captures.get('Helping Hand'),boost=helping.events[0];
+ assert.deepEqual(helping.helped,[[boost.tx,boost.ty]]);
+ assert.notDeepEqual([boost.x,boost.y],[boost.tx,boost.ty]);
+ assert.deepEqual(captureMove('Helping Hand',{group:false}).events,[]);
+ assert.equal(captures.get('Baton Pass').recall.passStages[2],2);
+ for(const move of ['Teleport','Baton Pass']){
+  assert(captures.get(move).recall.incoming,move+' really sends a reserve');
+  assert.deepEqual(captureMove(move,{bench:false}).events,[],move+' has no departure without a reserve');
+ }
+ assert.deepEqual(captures.get('Sketch').casterMoves,['Pound']);
+ const weatherMarks=new Set();
+ for(const weather of [null,'Rain','Sun','Snow','Sand']){
+  const shot=captureMove('Weather Ball',{weather,resumeFlight:true});
+  assert(shot.resumedFlight);
+  const flight=shot.warnings.find(c=>c.flight);
+  assert.equal(flight.visualWeather,weather);
+  weatherMarks.add(JSON.stringify(draw('activeCast',{...flight,travel:22})));
+  assert(shot.events.some(e=>e.impactOnly && e.damage>0));
+ }
+ assert.equal(weatherMarks.size,5,'Weather Ball has distinct weather emblems');
+ const suppressed=captureMove('Weather Ball',{weather:'Rain',defenderAbility:'Cloud Nine'});
+ assert.equal(suppressed.warnings.find(c=>c.flight).visualWeather,null);
+ const oldBall={...suppressed.warnings.find(c=>c.flight),travel:18};delete oldBall.visualWeather;
+ assert(draw('activeCast',oldBall).some(paints),'old snapshots display the neutral Weather Ball');
+ for(const move of ['Pin Missile','Icicle Spear','Bullet Seed','Double Kick','Fury Swipes']){
+  const hits=captures.get(move).events.filter(e=>e.damage>0);
+  assert(hits.length>=2,move);
+  assert.deepEqual(hits.map(e=>e.strikeIndex??0),hits.map((_,i)=>i));
+  assert(!draw('drawEffect',{...hits[1],life:.575}).some(paints),move+' second hit started early');
+  assert(draw('drawEffect',{...hits[1],life:.44}).some(paints),move+' second strike is visible');
+  const knockout=captureMove(move,{defenderHP:1});
+  assert.equal(knockout.events.filter(e=>e.damage>0).length,1,move+' stops at knockout');
+ }
+ const current=captures.get('Charge Beam').events.find(e=>e.line);
+ assert(draw('drawEffect',{...current,life:.4}).some(([op,x,y,w,h])=>op==='rect'&&y===-current.halfWidth&&h===2*current.halfWidth));
+ const grid=captureMove('Electroweb',{group:true,resume:true});
+ assert.equal(grid.events.filter(e=>e.zone).length,1);
+ assert.equal(grid.events.filter(e=>e.impactOnly && e.damage>0).length,3);
+ console.log(allMoves.length+' moves rendered on actual casts across all six Mega raids, 68 standard and 68 Master Gym teams, and '+field.length+' default wild and Trainer kits.');
 })().catch(error=>{console.error(String(error.stack).replace(/data:text\/javascript;base64,[^:)]*/g,'engine.js').slice(0,1400));process.exitCode=1;});

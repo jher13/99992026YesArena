@@ -1,3 +1,10 @@
+# Update to 0.22.77
+
+Extract the changed files over **0.22.76** with their folders intact. Push to
+`main` to publish the artwork and deploy the updated `arena-combat` function.
+The server now sends the Helping Hand recipient, successful Baton Pass casts,
+and the weather at Weather Ball launch.
+
 # Update to 0.22.76
 
 Extract the changed files over **0.22.75** with their folders intact. Push to

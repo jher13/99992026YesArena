@@ -33,6 +33,7 @@
   register('orb','aura','Aura Sphere','Focus Blast');
   register('orb','grass','Energy Ball');
   register('orb','sludge','Sludge Bomb');
+  register('orb','silver','Weather Ball');
   register('beam','fire','Hyper Beam');
   register('beam','sun','Solar Beam');
   register('beam','ice','Ice Beam');
@@ -268,8 +269,36 @@
     ctx.globalAlpha=fade; halo(ctx,0,0,10+r*.6,colors[1]);
   }
 
-  function orb(ctx,line,travel,colors,move) {
+  const orbWeatherPalettes={Rain:palettes.water,Sun:palettes.fire,Sand:palettes.mud,Snow:palettes.ice};
+  function weatherEmblem(ctx,r,phase,colors,weather) {
+    if(weather==='Sun'){
+      disc(ctx,0,0,r*.38,colors[2]);
+      for(let i=0;i<7;i++){
+        const a=i*turn/7+phase*.25,dx=Math.cos(a),dy=Math.sin(a);
+        path(ctx,[[r*.52*dx,r*.52*dy],[r*.83*dx,r*.83*dy]],colors[2],1.5);
+      }
+    }else if(weather==='Snow'){
+      for(let i=0;i<6;i++){
+        const a=i*turn/6+phase*.14,dx=Math.cos(a)*r*.73,dy=Math.sin(a)*r*.73;
+        path(ctx,[[0,0],[dx,dy]],colors[2],1.4);
+        path(ctx,[[dx*.74-dy*.23,dy*.74+dx*.23],[dx*.55,dy*.55],[dx*.74+dy*.23,dy*.74-dx*.23]],colors[2],1);
+      }
+    }else if(weather==='Sand'){
+      for(let i=-1;i<=1;i++){
+        const y=i*r*.35,shift=Math.sin(phase+i)*r*.12;
+        path(ctx,[[-r*.65,y],[shift,y-r*.12],[r*.58,y+r*.07]],colors[2],1.6);
+      }
+    }else{
+      for(const [x,y,size] of [[-.36,-.12,.25],[0,-.25,.36],[.37,-.10,.24]])disc(ctx,x*r,y*r,size*r,colors[2]);
+      if(weather==='Rain')for(let i=-1;i<=1;i++){
+        const y=r*(.22+.18*Math.sin(phase+i));path(ctx,[[i*r*.33,y],[i*r*.33-r*.12,y+r*.28]],colors[2],1.5);
+      }
+      else ring(ctx,0,r*.30,r*.54,r*.13,colors[2],1.2);
+    }
+  }
+  function orb(ctx,line,travel,colors,move,weather,mirrored) {
     const r=line.radius, angle=Math.atan2(line.dy,line.dx), time=travel/34;
+    if(move==='Weather Ball')colors=orbWeatherPalettes[weather]??colors;
     ctx.save(); ctx.translate(line.x+line.dx*travel,line.y+line.dy*travel);ctx.rotate(angle);
     for(let i=4;i>0;i--) {
       const offset=Math.min(travel,i*r*.75);
@@ -278,6 +307,11 @@
     }
     ctx.globalAlpha=.73;halo(ctx,0,0,r*1.65,colors[1]);ctx.globalAlpha=1;
     disc(ctx,0,0,r,colors[0]);disc(ctx,0,0,r*.69,colors[1]);
+    if(move==='Weather Ball'){
+      ctx.rotate(-angle);if(mirrored)ctx.scale(-1,1);
+      weatherEmblem(ctx,r,time,colors,weather);
+      ctx.restore();return;
+    }
     ctx.rotate(time);
     if(move==='Electro Ball') {
       path(ctx,[[-r*.72,-r*.28],[-1,-r*.16],[-3,r*.3],[r*.64,0]],colors[2],2);
@@ -318,7 +352,7 @@
     const style=profiles.get(cast.move);
     if (!style) return false;
     if (cast.flight && cast.line && style.kind==='orb') {
-      orb(ctx,cast.line,cast.travel,style.colors,cast.move); return true;
+      orb(ctx,cast.line,cast.travel,style.colors,cast.move,cast.visualWeather,mirrored); return true;
     }
     if (cast.roaming && style.kind==='vortex') {
       vortex(ctx,cast,style.colors,mirrored?-1:1); return true;

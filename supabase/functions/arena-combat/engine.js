@@ -7385,7 +7385,7 @@ const additionalStatusMoves={
   score:actor=>activeTeammates(actor).some(member=>member!==actor && !(member.helpingHandUntil>clock) &&
    member.moves.some(move=>!moveCatalog[move][4]))?44:0,
   apply:actor=>{const ally=activeTeammates(actor).find(member=>member!==actor && !(member.helpingHandUntil>clock) &&
-   member.moves.some(move=>!moveCatalog[move][4]));if(ally)ally.helpingHandUntil=clock+5;}},
+   member.moves.some(move=>!moveCatalog[move][4]));if(ally)ally.helpingHandUntil=clock+5;return ally;}},
 
  Encore:{description:'For 5 seconds, the target can only use its last move.',
   score:(_,target)=>lastUsedSlot(target)>=0 && !(target.encoreUntil>clock)?45:0,
@@ -7467,7 +7467,7 @@ const additionalStatusMoves={
    const health=actor.hp/actor.max;
    return health<.35 || danger || gain>1.4 ? Math.max(0,35+(1-health)*20+gain*10+(danger?20:0)):0;
   },
-  apply:actor=>{recallWithMove(actor);}},
+  apply:actor=>recallWithMove(actor)},
  'Chilly Reception':{description:'Starts snow and switches the user to a healthy reserve suited to the matchup.',
   score:actor=>forcedSwitchOptions(actor,null,true).length && (battleWeather!=='Snow' || actor.hp<actor.max*.35)?48:0,
   apply:actor=>{setWeather('Snow');recallWithMove(actor);}},
@@ -8300,7 +8300,7 @@ function act(actor, opponents, dt) {
   x:actor.x,y:actor.y,tx:victim.x,ty:victim.y,damage,color,move,multiplier,life:0.58,...extra
  });
  if(move==='Baton Pass') {
-  recallWithMove(actor,true);
+  if(recallWithMove(actor,true))effect(actor,'',1,{status:true});
   return;
  }
  if(move==='Belly Drum') {
@@ -8316,9 +8316,11 @@ function act(actor, opponents, dt) {
   if(Object.hasOwn(hazardCaps,move) && reflectHazard(actor,move))return;
   releaseArenaSkillField(actor,move,actor);
   if(Object.hasOwn(additionalStatusMoves,move)) {
-   additionalStatusMoves[move].apply(actor,target);
+   const outcome=additionalStatusMoves[move].apply(actor,target);
    playSkillSound(move,'release');
-   effect(actor,'',1,{status:true});
+   if(move==='Helping Hand'){
+    if(outcome)effect(outcome,'',1,{status:true});
+   }else if(move!=='Teleport' || outcome)effect(actor,'',1,{status:true});
    return;
   }
   playSkillSound(move,'release');
@@ -8589,7 +8591,9 @@ function resolveOffensiveMove(actor,move,rules,center,opponents,cast=null,reflec
    (['Magic Guard','Rock Head'].includes(attacker)?0:Math.round(dealt*recoil))));
   if(dealt>0 && pivotMoves.has(move))pivot=true;
   if(dealt>0 && forcedSwitchMoves.has(move))forceSwitch(victim,defender);
-  effect(victim,dealt,multiplier,{impactOnly:Boolean(cast),backHit});
+  const impact={impactOnly:Boolean(cast),backHit};
+  if(!cast && strike?.index>0)impact.strikeIndex=strike.index;
+  effect(victim,dealt,multiplier,impact);
   if(actor.hp<=0 && !cast?.roaming) break;
  }
  if(pivot && !recallMoveWait(actor,move))recallWithMove(actor);
@@ -8724,6 +8728,7 @@ function tickSkillCasts(dt) {
   if(area.shape==='projectile') {
    playSkillSound(area.move,'release',area.shape);
    area.flight=true;
+   if(area.move==='Weather Ball')area.visualWeather=abilityWeather();
    area.travel=0;
    return true;
   }
@@ -10102,6 +10107,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.77',changes:['147 more skill animations cover every default wild and Trainer moveset and all 68 Master Gym teams, including moves filled in by the loadout system.','Whirlpool coils around its target, Tri Attack combines three elements, and Weather Ball shows the weather at launch. Helping Hand now shows which ally received the boost.']},
  {version:'0.22.76',changes:['130 more moves have dedicated animations, covering the moves equipped by every standard Gym leader and the default moves of every regional starter.','Entry hazards show up on the Pokémon that triggers them. Bonemerang arcs back to its user, and Brick Break splits bricks on impact.']},
  {version:'0.22.75',changes:['74 more Arena moves have their own animations, including every move equipped by the three Standard and Master Mega raid bosses.','Psystrike closes in with floating stones, Swords Dance raises paired blades, and Giga Drain draws energy back to its user. Look for distinct fang, punch, sound, and support effects.']},
  {version:'0.22.74',changes:['Thunder strikes from the sky and Hyper Beam charges into a gold-white ray.','New move animations include rolling Surf, three Earthquake rings, electric and ghost projectiles, elemental slashes, shields, and healing.']},
