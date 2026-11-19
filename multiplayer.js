@@ -510,7 +510,8 @@
  });
  async function rpc(action,args={}) {
   const client=await cloudClient();
-  const {data,error}=await client.rpc('arena_online',{action,args});
+  const request=client.rpc('arena_online',{action,args});
+  const {data,error}=await (action==='notifications'?timedPresenceRequest(request):request);
   if(error) throw error;
   return data;
  }
@@ -1348,8 +1349,12 @@
   playerStorage.setItem(notificationReadKey,JSON.stringify(seen));
   setToolbarUnread('toolbar-notices',keys.length-seen.length);
  }
+ const notificationPulses=new Set();
  async function readNotifications(){
-  const data=await rpc('notifications');
+  if(cloudAccount && leavingAccount===cloudAccount)throw Error('Signing out.');
+  const pulse=rpc('notifications');notificationPulses.add(pulse);
+  let data;
+  try{data=await pulse;}finally{notificationPulses.delete(pulse);}
   let hub={notices:[],pending:0};
   if(window.arenaMarketNotifications)try{hub=await window.arenaMarketNotifications();}catch{}
   return {...data,trades:hub.notices,tradePending:hub.pending};
@@ -1370,47 +1375,90 @@
  }
  byId('toolbar-notices').onclick=()=>open('Notifications',notifications);
  setInterval(async()=>{
-  if(phase!=='home' || !cloudAccount)return;
+  if(phase!=='home' || !cloudAccount || cloudAccount===leavingAccount)return;
   try {
    const data=await readNotifications();
    updateNotificationUnread(data);
   } catch {}
  },5000);
- let hubChannel=null,hubJoining=false;
- const hubButton=byId('home-hub');
- async function joinHubPresence(){
-  if(hubChannel || hubJoining || !cloudAccount)return;
-  hubJoining=true;
-  try{
-   const client=await cloudClient();
-   const {data,error}=await client.auth.getUser();
-   if(error || !data.user)return;
-   const channel=client.channel('arena-trading-hub',{config:{presence:{key:data.user.id}}});
-   hubChannel=channel;
-   channel.on('presence',{event:'sync'},()=>{
-    hubButton.textContent='Hub - Online: '+Object.keys(channel.presenceState()).length;
-   }).subscribe(async status=>{
-    if(status==='SUBSCRIBED')await channel.track({online:true});
-    else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)){
-     hubButton.textContent='Hub - Online: unavailable';
-     hubChannel=null;void client.removeChannel(channel);
-    }
-   });
-  }catch{hubButton.textContent='Hub - Online: unavailable';}
-  finally{hubJoining=false;}
+ const onlineCount=byId('home-online-count');
+ let directory=null,presenceRequest=null,leavingAccount=null,nextPulse=0;
+ const directoryVisible=()=>Boolean(directory?.root.isConnected && dialog.open);
+ function timedPresenceRequest(request){
+  return typeof request.abortSignal==='function' && typeof globalThis.AbortSignal?.timeout==='function'
+   ?request.abortSignal(AbortSignal.timeout(8000)):request;
  }
- hubButton.onclick=async()=>{
-  if(!cloudAccount){show('Trading Hub',element('p','Sign in to enter the online Hub.'));return;}
-  await joinHubPresence();
-  await open('Trading Hub',()=>window.openTradingHub());
+ async function directoryRpc(operation,client){
+  client??=await cloudClient();
+  const request=client.rpc('arena_online_directory',{operation,display_name:operation==='leave'?null:starterSave?.ign??null});
+  const {data,error}=await timedPresenceRequest(request);if(error)throw error;return data;
+ }
+ function updateOnlineList(rows){
+  const view=directory,key=JSON.stringify(rows);
+  view.status.textContent=rows.length+' '+(rows.length===1?'trainer':'trainers')+' online';
+  if(view.key===key)return;view.key=key;
+  const focused=view.list.contains(document.activeElement)?document.activeElement.dataset.trainer:null;
+  const buttons=new Map();
+  view.list.replaceChildren(...rows.map(row=>{
+   const item=element('li',null,'online-player'),name=element('strong',row.name+(row.self?' (you)':''));
+   const link=button('View profile',()=>window.ArenaTrainerCard.open(row.self?null:row.name));
+   link.setAttribute('aria-label','View '+row.name+'’s profile');link.dataset.trainer=row.name;buttons.set(row.name,link);
+   item.append(name,link);return item;
+  }));
+  if(focused)buttons.get(focused)?.focus();
+ }
+ function refreshPresence(){
+  const account=cloudAccount,withNames=directoryVisible();
+  if(!account || leavingAccount===account){
+   onlineCount.hidden=true;
+   if(!account&&withNames){directory.status.textContent='Sign in to see online trainers.';directory.list.replaceChildren();directory.key=null;}
+   return Promise.resolve();
+  }
+  if(presenceRequest){
+   const pending=presenceRequest;
+   if(pending.account===account && (!withNames || pending.withNames))return pending.work;
+   return pending.work.then(()=>{if(cloudAccount===account && (!withNames || directoryVisible()))return refreshPresence();});
+  }
+  nextPulse=Date.now()+25000;
+  const job={account,withNames},live=()=>cloudAccount===account && leavingAccount!==account;
+  job.work=directoryRpc(withNames?'list':'count').then(data=>{
+   if(!live())return;
+   onlineCount.textContent=String(data.count);onlineCount.hidden=false;
+   if(withNames && directoryVisible())updateOnlineList(data.players);
+  }).catch(()=>{
+   if(!live())return;
+   onlineCount.hidden=true;
+   if(directoryVisible()){directory.key=null;directory.list.replaceChildren();directory.status.textContent='Online players could not be loaded. Try refreshing.';}
+  }).finally(()=>{if(presenceRequest===job)presenceRequest=null;});
+  presenceRequest=job;return job.work;
+ }
+ async function showDirectory(){
+  const root=element('section',null,'online-directory'),header=element('div',null,'online-directory-header');
+  const status=element('p','Loading online players…'),list=element('ul',null,'online-directory-list');
+  status.setAttribute('role','status');list.setAttribute('aria-label','Online trainers');
+  header.append(status,button('Refresh',refreshPresence));root.append(header,list);
+  directory={root,status,list,key:null};show('Online',root);await refreshPresence();
+ }
+ window.refreshArenaPresence=refreshPresence;
+ window.resumeArenaPresence=()=>{leavingAccount=null;return refreshPresence();};
+ window.leaveArenaPresence=async client=>{
+  const account=cloudAccount;if(!account)return;leavingAccount=account;onlineCount.hidden=true;
+  // The legacy notifications RPC refreshes the same timestamp. Let earlier writes finish before leaving.
+  await Promise.allSettled([...notificationPulses,presenceRequest?.work]);
+  if(cloudAccount===account)try{await directoryRpc('leave',client);}catch{}
  };
- void joinHubPresence();
- setInterval(()=>{
-  if(!cloudAccount && hubChannel){
-   void hubChannel.unsubscribe();hubChannel=null;
-   hubButton.textContent='Hub - Online: …';
-  }else void joinHubPresence();
- },15000);
+ byId('home-hub').onclick=()=>{
+  if(!cloudAccount){show('Trading Hub',element('p','Sign in to enter the Trading Hub.'));return;}
+  return open('Trading Hub',()=>window.openTradingHub());
+ };
+ byId('home-online').onclick=()=>{
+  if(!cloudAccount){show('Online',element('p','Sign in to see online trainers and their profiles.'));return;}
+  return open('Online',showDirectory);
+ };
+ window.addEventListener('online',refreshPresence);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refreshPresence();});
+ setInterval(()=>{if(directoryVisible() || Date.now()>=nextPulse)void refreshPresence();},10000);
+ void refreshPresence();
  byId('home-coop').onclick=()=>open('Co-op',()=>lobby(true));
  byId('home-pvp').onclick=()=>open('PvP',()=>lobby(false));
  byId('home-friendlist').onclick=()=>open('Friendlist',friends);

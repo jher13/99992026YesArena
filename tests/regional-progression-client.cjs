@@ -30,6 +30,14 @@ const ctx=vm.createContext({console,Math,Date,Set,Map,JSON,crypto,structuredClon
 vm.runInContext(html.slice(html.indexOf('function gymRegionCleared('),html.indexOf('const masterOpponentExclusions=')),ctx);
 ctx.loadContractEngine=()=>import('../supabase/functions/arena-combat/engine.js');
 vm.runInContext(read('campaign-progression.js').replace(/async function engine\(\)\{return import\([^;]+;\}/, 'async function engine(){return await globalThis.loadContractEngine();}'),ctx);const c=ctx.window.ArenaCampaign;
+const missions=new Node('section'),routes=[];
+ctx.window.ArenaTrainerCard={
+ openMissions(section,notice){
+  routes.push({section,notice});missions.replaceChildren();ctx.document.body.replaceChildren(missions);
+  return c.mountMissions(missions,section,notice);
+ },
+ closeMissions(){c.unmountMissions();ctx.document.body.replaceChildren();}
+};
 const complete=n=>{ctx.clearedGyms.splice(0,ctx.clearedGyms.length,...allBadges.slice(0,n));};
 const buttons=()=>ctx.document.body.all().filter(node=>node.tagName==='button');
 const button=label=>{const found=buttons().find(node=>node.textContent===label);assert(found,'missing button '+label);return found;};
@@ -43,7 +51,9 @@ const button=label=>{const found=buttons().find(node=>node.textContent===label);
  settings.held={Charizard:'Leftovers'};assert.throws(()=>c.loadPreset(0),/No available/);assert.deepEqual(settings.held,{Charizard:'Leftovers'});checks++;
  ctx.phase='contract-battle';assert.throws(()=>c.savePreset(0,'Bad time'),/Finish/);ctx.phase='home';assert.throws(()=>c.savePreset(4,'Locked'),/locked/);checks++;
  settings.campaign.presets[0].moves.Pikachu=['Invalid Move'];assert.throws(()=>c.loadPreset(0),/unavailable/);settings.campaign.presets[0].moves.Pikachu=['Tackle'];checks++;
- await c.open('regions');assert.equal(button('Claim standard reward').disabled,false);await button('Claim standard reward').onclick();assert.equal(settings.coins,2000);assert.equal(settings.vitamins['Rare Candy'],1);
+ const campaign=new Node('section');c.entrance(campaign);assert.equal(campaign.children[0].textContent,'Regional missions');await campaign.children[0].onclick();
+ assert.equal(routes.at(-1).section,'regions');assert.equal(button('Regional rewards').attributes['aria-pressed'],'true');assert(!buttons().some(b=>b.textContent==='Cosmetics'));
+ assert.equal(button('Claim standard reward').disabled,false);await button('Claim standard reward').onclick();assert.equal(settings.coins,2000);assert.equal(settings.vitamins['Rare Candy'],1);
  const again=buttons().find(node=>node.textContent==='Standard reward claimed');assert(again.disabled);checks++;
  c.family('Pikachu');assert.equal(c.family('Pikachu'),c.family('Raichu'));checks++;
  complete(24);await c.open('hunts');const familyButtons=buttons().filter(node=>node.textContent.includes(' family · Lv.'));assert.equal(familyButtons.length,9);await familyButtons[0].onclick();assert.equal(settings.campaign.hunt.remaining,20);assert(buttons().filter(node=>node.textContent.includes(' family · Lv.')).every(node=>node.disabled));checks++;
@@ -74,6 +84,7 @@ const button=label=>{const found=buttons().find(node=>node.textContent===label);
  c.advanceBattle(1/30);const firstActor=currentActor;c.advanceBattle(1/30);assert.equal(currentActor,firstActor,'UI keeps actor identities across frames');checks++;
  for(let i=0;i<10000 && ctx.phase==='contract-battle';i++)c.advanceBattle(1/30);
  assert.equal(ctx.phase,'home');assert(settings.coins>beforeCoins,'real contract pays its bundle');assert(!nodes.get('reset').disabled);assert.equal(rosterBuilds,1,'roster cards are built once for the current actors');assert(scoreUpdates>10);assert(soundPlays>0,'live contract plays skill sounds');checks++;
- await button('Challenge').onclick();assert.equal(ctx.phase,'contract-battle');await nodes.get('choices').children.find(node=>node.textContent==='Abandon contract').onclick();assert.equal(ctx.phase,'home');assert(!nodes.get('basic-attacks').disabled);checks++;
+ assert.equal(routes.at(-1).section,'contracts');assert.match(routes.at(-1).notice,/rewards received/);assert.equal(button('Contracts').attributes['aria-pressed'],'true');
+ await button('Challenge').onclick();assert.equal(ctx.phase,'contract-battle');await nodes.get('choices').children.find(node=>node.textContent==='Abandon contract').onclick();assert.equal(ctx.phase,'home');assert(!nodes.get('basic-attacks').disabled);assert.equal(routes.at(-1).section,'contracts');checks++;
  console.log(JSON.stringify({campaignClientChecks:checks,presetAtomicity:true,regionalUnlocks:true,huntLimits:true,cosmetics:true}));
 })().catch(error=>{console.error(error);process.exitCode=1;});

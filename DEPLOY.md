@@ -1,3 +1,14 @@
+# Update to 0.22.71
+
+Extract the changed files over **0.22.70**, preserving their paths. Profile holds
+regional missions, the badge gallery and trainer-card cosmetics. The existing
+Kalos Laurel and badge images are reused.
+
+Push the patch to `main` to run the existing Supabase deployment workflow.
+The Online directory and its profile visibility settings require
+`supabase/migrations/20261119010000_online_directory.sql`. The version manifest
+and browser asset references are updated together for the automatic updater.
+
 # Update to 0.22.70
 
 Apply this changed-files ZIP over **0.22.69**, preserving its folder structure.

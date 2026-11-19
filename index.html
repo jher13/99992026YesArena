@@ -2,7 +2,7 @@
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pokemon Arena</title>
 <style>
-.campaign-dialog{width:min(900px,96vw);max-height:90dvh;overflow:auto;background:#f4faef;color:#253d36;border:1px solid #799981;border-radius:12px;padding:20px}.campaign-dialog::backdrop{background:#081a17aa}.campaign-heading,.campaign-tabs{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.campaign-dialog button,.campaign-presets button{background:#244438;color:#fff}.campaign-tabs button{flex:1;padding:8px}.campaign-tabs button[aria-selected=true]{background:#406b52;border-color:#789a68}.campaign-content{padding-top:12px}.campaign-content label{display:flex;justify-content:space-between;gap:12px;margin:12px 0}.campaign-region-card{border:1px solid #a9c6b5;border-radius:8px;padding:12px}.campaign-region-card small{display:block;margin:8px 0}.campaign-region-card button{margin:6px 8px 0 0}.campaign-message{padding:10px;border-left:3px solid #587e59;background:#dcebdc}.campaign-presets{border:1px solid #a9c6b5;padding:10px;border-radius:6px;margin:14px 0}.campaign-preset-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:10px 0}.campaign-preset-row input{flex:1;min-width:120px}.campaign-preset-row small{flex-basis:100%}.campaign-player-title{text-align:center;font-weight:bold;color:#466b4c!important;margin:6px 0}#home.has-kalos-laurel #feature-sprite::before{content:"";position:absolute;inset:-8%;background:url("./assets/campaign-laurel.svg?v=0.22.68") center/100% 100% no-repeat;z-index:2;pointer-events:none}#home.has-kalos-laurel #feature-sprite{border-color:#b8a75e}.campaign-dialog :is(h2,h3,p,small,label){color:inherit}
+.campaign-content{padding-top:12px}.campaign-content label{display:flex;justify-content:space-between;gap:12px;margin:12px 0}.campaign-region-card{border:1px solid #a9c6b5;border-radius:8px;padding:12px}.campaign-region-card small{display:block;margin:8px 0}.campaign-region-card button{margin:6px 8px 0 0}.campaign-message{padding:10px;border-left:3px solid #587e59;background:#dcebdc}.campaign-presets button{background:#244438;color:#fff}.campaign-presets{border:1px solid #a9c6b5;padding:10px;border-radius:6px;margin:14px 0}.campaign-preset-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:10px 0}.campaign-preset-row input{flex:1;min-width:120px}.campaign-preset-row small{flex-basis:100%}.campaign-player-title{text-align:center;font-weight:bold;color:#466b4c!important;margin:6px 0}:root{--arena-kalos-laurel:url("./assets/campaign-laurel.svg?v=0.22.68")}#home.has-kalos-laurel #feature-sprite::before,.tc-frame-laurel::before{content:"";position:absolute;inset:-8%;pointer-events:none;background:var(--arena-kalos-laurel) center/100% 100% no-repeat;z-index:2}#home.has-kalos-laurel #feature-sprite{border-color:#b8a75e}
 
 .arena-team-plan{margin:14px 0;padding:10px;border:1px solid #a9c6b5;border-radius:7px}.arena-team-plan label{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 0}.arena-team-plan select{max-width:65%}.arena-team-plan p{font-size:12px;line-height:1.5;margin:8px 0 0}.pvp-loaners .arena-team-plan label{display:flex}
 
@@ -562,9 +562,9 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 #home-dialog .pvp-join-room input{flex:1;min-width:0;width:12ch}
 #home-dialog .pvp-join-room button{white-space:nowrap}
 :is(#menu,.raid-pc-dialog) .held-item-field{color:#354f44}
-#gym-collection .gym-badge-sprite{width:48px;height:48px;background:url('./assets/gym-badges.png') var(--badge-x) var(--badge-y)/480px 336px no-repeat;image-rendering:pixelated}
-#gym-collection .master-badge-mark{position:absolute;right:4px;bottom:4px;padding:.1rem .35rem;border:1px solid #5d430a;border-radius:4px;background:#ffdc75;color:#2f2106;font-weight:900}
-#gym-collection .gym-badge-sprite.is-uncollected{filter:grayscale(1);opacity:.62}
+.gym-badge-icon{position:relative;display:inline-grid;place-items:center;width:48px;height:48px;flex:none}.gym-badge-sprite{display:block;width:48px;height:48px;background:url('./assets/gym-badges.png') var(--badge-x) var(--badge-y)/480px 336px no-repeat;image-rendering:pixelated}
+.gym-badge-icon .master-badge-mark{position:absolute;right:-2px;bottom:0;line-height:1.1;padding:.1rem .35rem;border:1px solid #5d430a;border-radius:4px;background:#ffdc75;color:#2f2106;font-weight:900}
+.gym-badge-sprite.is-uncollected{filter:grayscale(1);opacity:.62}
 
 
 #tactics{max-width:1400px}
@@ -622,9 +622,15 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 .ability-capsule-dialog .ability-result-previous{color:#a0282d}
 .ability-capsule-dialog .ability-result-new{color:#17633f}
 .ability-capsule-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:.7rem}
-#home #home-hub{margin-bottom:12px;background:#142d23;color:#fff;border-color:#466453}
-#home #home-hub:hover{background:#244438}
-#home #home-hub:focus-visible{outline:2px solid #34684b;outline-offset:3px}
+#home .home-social-tabs{display:inline-flex;justify-content:center;align-items:stretch;gap:5px;margin:0 auto 12px;max-width:100%}
+#home .home-social-tabs button{background:#142d23;color:#fff;border-color:#466453;white-space:nowrap;padding:7px 11px}
+#home .home-social-tabs button:hover{background:#244438}
+#home .home-social-tabs button:focus-visible{outline:2px solid #34684b;outline-offset:3px}
+#home-online-count:not([hidden]){display:inline-block;margin-left:5px;border-radius:8px;padding:0 5px;background:#c5ebcc;color:#153d28;font-size:.8em;font-variant-numeric:tabular-nums}
+#home-dialog:has(.online-directory){width:min(450px,94vw)}
+.online-directory{text-align:left}.online-directory-header,.online-player{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.online-directory-header p{margin:4px 0}.online-directory-list{list-style:none;padding:0;max-height:52dvh;overflow-y:auto;margin:8px 0 0}
+.online-player{padding:8px 2px;border-top:1px solid #bdcec0}.online-player strong{overflow-wrap:anywhere}.online-player button{flex:none}
 .battle-charge-row{display:flex;gap:8px;margin:.2rem 0}
 .battle-charge-counter{display:inline-flex;align-items:center;gap:2px}
 .battle-charge-pip{width:9px;height:9px;display:inline-block;background:#80defb;clip-path:polygon(44% 0,89% 0,67% 33%,100% 33%,33% 100%,44% 56%,11% 56%)}
@@ -931,7 +937,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 @media(max-width:460px){.arena-evolution-route{grid-template-columns:1fr}.arena-evolution-route button{grid-column:1;grid-row:auto;justify-self:start}}
 
 </style>
-<link rel="stylesheet" href="./trainer-card.css?v=0.22.70">
+<link rel="stylesheet" href="./trainer-card.css?v=0.22.71">
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
 <div class="account-card">
@@ -1010,7 +1016,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 <button id="home-skills" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Skill Shop</strong><small>TM, TR, and HM moves</small></span></button>
 <button id="home-events" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span><strong>Events</strong></span></button>
 </nav>
-<div class="home-feature"><button id="home-hub" type="button">Hub - Online: …</button><div class="feature-orb" id="feature-sprite"></div><h2 id="feature-name"></h2><p id="feature-type"></p><button id="home-play" class="home-play"><span class="menu-pixel" aria-hidden="true"></span>Pokebattle<small class="home-mode-detail">Catch wild Pokémon</small></button>
+<div class="home-feature"><nav class="home-social-tabs" aria-label="Trainer community"><button id="home-hub" type="button">Trading Hub</button><button id="home-online" type="button">Online<span id="home-online-count" hidden></span></button></nav><div class="feature-orb" id="feature-sprite"></div><h2 id="feature-name"></h2><p id="feature-type"></p><button id="home-play" class="home-play"><span class="menu-pixel" aria-hidden="true"></span>Pokebattle<small class="home-mode-detail">Catch wild Pokémon</small></button>
 <div class="home-multiplayer" aria-label="Multiplayer modes">
 <button id="home-coop" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span class="home-mode-copy"><strong>Co-op</strong><small class="home-mode-detail">Clear raids with other players</small></span></button>
 <button id="home-pvp" class="home-link"><span class="menu-pixel" aria-hidden="true"></span><span class="home-mode-copy"><strong>PvP</strong><small class="home-mode-detail">Battle other players</small></span></button>
@@ -5963,6 +5969,14 @@ function continueCampaign(){
  const next=gymTeams[clearedGyms.length];
  if(next)openBattle(next,null,null,null,false);
 }
+function gymBadgeIcon(index,earned,master) {
+ const icon=element('span',null,'gym-badge-icon'),sprite=element('span',null,'gym-badge-sprite'+(earned?'':' is-uncollected'));
+ sprite.style.setProperty('--badge-x',-(index%10)*48+'px');
+ sprite.style.setProperty('--badge-y',-Math.floor(index/10)*48+'px');
+ icon.setAttribute('role','img');icon.setAttribute('aria-label',gymTeams[index].badge+(master?' · Master clear':earned?'':' · Uncollected'));icon.append(sprite);
+ if(master)icon.append(element('span','M','master-badge-mark'));
+ return icon;
+}
 function renderCampaign(collection) {
  const list=byId(collection?'badge-grid':'gym-grid');
  byId(collection?'collection-progress':'gym-progress').textContent=progressText()+
@@ -5996,17 +6010,7 @@ function renderCampaign(collection) {
    if(collection) {
     const card=element('div',null,'bag-item');
     const medal=element('div',null,'bag-art');
-    const sprite=element('span',null,'gym-badge-sprite'+(earned?'':' is-uncollected'));
-    sprite.setAttribute('aria-hidden','true');
-    sprite.style.setProperty('--badge-x',-(index%10)*48+'px');
-    sprite.style.setProperty('--badge-y',-Math.floor(index/10)*48+'px');
-    medal.append(sprite);
-    if(masterGymClears.has(gym.id)){
-     const mark=element('span','M','master-badge-mark');
-     mark.title='Master clear';
-     mark.setAttribute('aria-label','Master clear');
-     medal.append(mark);
-    }
+    medal.append(gymBadgeIcon(index,earned,masterGymClears.has(gym.id)));
     card.append(medal,element('strong',gym.badge),element('small',gym.name),
      element('small',earned?'Collected':'Uncollected'));
     if(!earned){
@@ -11188,6 +11192,7 @@ function openStarterSetup() {
    return;
   }
   starterSave=save;
+  window.refreshArenaPresence?.();
   team.push(chosen);
   wildProgress.owned[chosen]={level:1,xp:0};
   registerPokemon(chosen);
@@ -11252,6 +11257,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.71',changes:['Find regional rewards, hunts and contracts in Profile → Missions. Campaign opens the same page.','Achievements displays your badge sprites and Master marks. Choose your campaign cosmetics under Edit trainer card.','Trading Hub and Online now have separate menu tabs. Browse signed-in trainers and open their profiles.']},
  {version:'0.22.70',changes:['Filter your PC and raid picker by either Pokémon element.','Pixel symbols identify ATK, S.ATK, status, and fixed damage across move lists and combat.','Player profiles now show badge rank, three featured Pokémon, collection records, Mega raid clears, and progress for all nine Pokédex regions.']},
  {version:'0.22.69',changes:['Completed the National Dex through Pecharunt and added 58 regional forms with separate PC identities, stats, abilities and learnsets.','Bundled available PMDCollab animations and offline fallback sprites; added the missing evolution paths and regional training choices.','Updated encounters, family hunts, Trading Hub National Dex search and backend catalogs for the expanded roster.']},
  {version:'0.22.68',changes:['Added regional Master unlocks and one-time standard and Master reward bundles.','Added battle presets, daily regional bounties, family hunts, training reward upgrades and weekly elite contracts with server verification.','Added Champion and regional Master titles, the Kalos Laurel frame, and Master Arena pennants. Existing badge progress unlocks these automatically.']},
@@ -11431,7 +11437,7 @@ function automaticBattleLoopActive() {
   (typeof repeatTimer!=='undefined' && repeatTimer!==null && repeatTimer!==undefined));
 }
 function canCheckGameVersion() {
- return typeof location!=='undefined' && !automaticBattleLoopActive() && !window.isArenaMarketBusy?.() && !document.querySelector('.trade-hub-dialog[open]') && !document.querySelector('.campaign-dialog[open]') && !window.ArenaCampaign?.isBusy?.() && !window.isPvpVersionContext?.() && !window.hasActiveTacticsRun?.() &&
+ return typeof location!=='undefined' && !automaticBattleLoopActive() && !window.isArenaMarketBusy?.() && !document.querySelector('.trade-hub-dialog[open]') && !window.ArenaCampaign?.isBusy?.() && !window.isPvpVersionContext?.() && !window.hasActiveTacticsRun?.() &&
   !['setup','battle','contract-battle'].includes(phase) && !document.querySelector('#trainer-card-dialog[open]') && !document.querySelector('.trainer-reward-dialog[open]') && !document.querySelector('.evolution-dialog[open]') &&
   (phase!=='online-battle' || window.isCompletedRaid?.());
 }
@@ -11556,9 +11562,9 @@ phase='login';
 showScreen('login');
 byId('login').hidden=true;
 requestAnimationFrame(frame);
-</script><p id="pass-battle-notice" role="status" hidden></p><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.22.69"></script><script>
+</script><p id="pass-battle-notice" role="status" hidden></p><p id="arena-sync-error" role="alert" hidden></p><script src="./cloud.js?v=0.22.71"></script><script>
 byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPassReward=null;renderBattlePass();};
 byId('events-back').onclick=openMenu;
 </script>
-<script src="./tactics.js?v=0.22.70"></script><script src="./multiplayer.js?v=0.22.70"></script>
-<script src="./trade-hub.js?v=0.22.69"></script><script src="./campaign-progression.js?v=0.22.69"></script><script src="./trainer-card.js?v=0.22.70"></script></html>
+<script src="./tactics.js?v=0.22.70"></script><script src="./multiplayer.js?v=0.22.71"></script>
+<script src="./trade-hub.js?v=0.22.69"></script><script src="./campaign-progression.js?v=0.22.71"></script><script src="./trainer-card.js?v=0.22.71"></script></html>

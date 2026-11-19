@@ -349,6 +349,7 @@ async function enterCloudAccount(client,user,proceed){
  clearInterval(leaseTimer);
  leaseTimer=setInterval(checkArenaLease,30000);
  proceed();
+ void window.resumeArenaPresence?.();
  if(pending){
   // Submit against the original base revision. A newer server copy produces the normal conflict UI.
   window.queueArenaSave();
@@ -395,10 +396,10 @@ function installAccountGate() {
   if(arenaCloudClient) {
    try {
     const client=await arenaCloudClient;
-    if(cloudAccount)await client.rpc('arena_release_session');
+    if(cloudAccount){await window.leaveArenaPresence?.(client);await client.rpc('arena_release_session');}
     const {error}=await client.auth.signOut({scope:'local'});
     if(error) throw error;
-   } catch(error) {status.textContent=error.message;return;}
+   } catch(error) {void window.resumeArenaPresence?.();status.textContent=error.message;return;}
   }
   clearInterval(leaseTimer);
   clearCloudAccountMarker();
@@ -442,7 +443,7 @@ function installAccountGate() {
    await flushArenaSave();
    if(arenaCloudClient) {
     const client=await arenaCloudClient;
-    await client.rpc('arena_release_session');
+    await window.leaveArenaPresence?.(client);await client.rpc('arena_release_session');
     const {error}=await client.auth.signOut({scope:'local'});
     if(error) throw error;
    }
@@ -451,7 +452,7 @@ function installAccountGate() {
    if(onlineSaveId) {window.location.reload();return;}
    returnToAccountGate();
   } catch(error) {
-   openHomeDialog('Log out',element('p',error.message || 'Could not sign out.'));
+   void window.resumeArenaPresence?.();openHomeDialog('Log out',element('p',error.message || 'Could not sign out.'));
   }
  };
  if(onlineSaveId) cloudClient().then(async client=>{
@@ -496,7 +497,7 @@ async function sendMarketOperation(operation) {
  for(let attempt=0;attempt<2;attempt++) {
   try{
    let timer;
-   try{return await Promise.race([marketRpc(operation.action,operation.args,operation.service??'market'),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('The Hub is taking too long to respond. Open Hub to retry this transaction safely.')),15000);})]);}
+   try{return await Promise.race([marketRpc(operation.action,operation.args,operation.service??'market'),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('The Hub is taking too long to respond. Open Trading Hub to retry this transaction safely.')),15000);})]);}
    finally{clearTimeout(timer);}
   }
   catch(failure){error=failure;if(failure.marketStatus || failure.marketRpcRejected)throw failure;}
@@ -540,7 +541,7 @@ window.arenaMarketMutate=async(action,args={},service='market')=>{
   applyArenaMarketSnapshot(result);setPendingMarketOperation(null);return result;
  }catch(error){
   if(error.marketStatus || error.marketRpcRejected)setPendingMarketOperation(null);
-  if(pendingMarketOperation())saveState.textContent=service==='campaign'?'Regional transaction pending · retry reward sync':'Hub transaction pending · open Hub to retry';
+  if(pendingMarketOperation())saveState.textContent=service==='campaign'?'Regional transaction pending · retry reward sync':'Trade pending · open Trading Hub to retry';
   else if(!localSaveFailed)saveState.textContent='Cloud synced';
   throw error;
  }finally{
@@ -551,10 +552,10 @@ window.arenaMarketMutate=async(action,args={},service='market')=>{
 // A short inventory transaction can begin only from the main menu. Never lock an active battle.
 for(const eventName of ['click','submit','keydown'])document.addEventListener(eventName,event=>{
  const pending=cloudAccount && pendingMarketOperation();
- const recoveryControl=event.target?.closest?.('#home-hub, #toolbar-notices, #home-dialog, .campaign-dialog, #toolbar-logout, #arena-market-recover');
+ const recoveryControl=event.target?.closest?.('#home-hub, #toolbar-notices, #home-dialog, #toolbar-logout, #arena-market-recover, #trainer-card-dialog .tc-heading button, #trainer-card-dialog .campaign-recover');
  if(arenaMarketWorking || pending && !recoveryControl){
   event.preventDefault();event.stopImmediatePropagation();
-  if(!arenaMarketWorking){saveState.textContent=pending?.service==='campaign'?'Regional transaction pending · retry reward sync':'Hub transaction pending · open Hub to retry';syncError.hidden=false;
+  if(!arenaMarketWorking){saveState.textContent=pending?.service==='campaign'?'Regional transaction pending · retry reward sync':'Trade pending · open Trading Hub to retry';syncError.hidden=false;
    const recover=element('button',pending?.service==='campaign'?'Retry reward sync':'Retry Hub sync');recover.id='arena-market-recover';recover.onclick=()=>window.arenaMarketRecover().catch(error=>{saveState.textContent=error.message;});
    syncError.replaceChildren(element('span','Finish syncing this transaction before changing progress. '),recover);
   }

@@ -4777,6 +4777,14 @@ function continueCampaign(){
  const next=gymTeams[clearedGyms.length];
  if(next)openBattle(next,null,null,null,false);
 }
+function gymBadgeIcon(index,earned,master) {
+ const icon=element('span',null,'gym-badge-icon'),sprite=element('span',null,'gym-badge-sprite'+(earned?'':' is-uncollected'));
+ sprite.style.setProperty('--badge-x',-(index%10)*48+'px');
+ sprite.style.setProperty('--badge-y',-Math.floor(index/10)*48+'px');
+ icon.setAttribute('role','img');icon.setAttribute('aria-label',gymTeams[index].badge+(master?' · Master clear':earned?'':' · Uncollected'));icon.append(sprite);
+ if(master)icon.append(element('span','M','master-badge-mark'));
+ return icon;
+}
 function renderCampaign(collection) {
  const list=byId(collection?'badge-grid':'gym-grid');
  byId(collection?'collection-progress':'gym-progress').textContent=progressText()+
@@ -4810,17 +4818,7 @@ function renderCampaign(collection) {
    if(collection) {
     const card=element('div',null,'bag-item');
     const medal=element('div',null,'bag-art');
-    const sprite=element('span',null,'gym-badge-sprite'+(earned?'':' is-uncollected'));
-    sprite.setAttribute('aria-hidden','true');
-    sprite.style.setProperty('--badge-x',-(index%10)*48+'px');
-    sprite.style.setProperty('--badge-y',-Math.floor(index/10)*48+'px');
-    medal.append(sprite);
-    if(masterGymClears.has(gym.id)){
-     const mark=element('span','M','master-badge-mark');
-     mark.title='Master clear';
-     mark.setAttribute('aria-label','Master clear');
-     medal.append(mark);
-    }
+    medal.append(gymBadgeIcon(index,earned,masterGymClears.has(gym.id)));
     card.append(medal,element('strong',gym.badge),element('small',gym.name),
      element('small',earned?'Collected':'Uncollected'));
     if(!earned){
@@ -10002,6 +10000,7 @@ function openStarterSetup() {
    return;
   }
   starterSave=save;
+  window.refreshArenaPresence?.();
   team.push(chosen);
   wildProgress.owned[chosen]={level:1,xp:0};
   registerPokemon(chosen);
@@ -10066,6 +10065,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.71',changes:['Find regional rewards, hunts and contracts in Profile → Missions. Campaign opens the same page.','Achievements displays your badge sprites and Master marks. Choose your campaign cosmetics under Edit trainer card.','Trading Hub and Online now have separate menu tabs. Browse signed-in trainers and open their profiles.']},
  {version:'0.22.70',changes:['Filter your PC and raid picker by either Pokémon element.','Pixel symbols identify ATK, S.ATK, status, and fixed damage across move lists and combat.','Player profiles now show badge rank, three featured Pokémon, collection records, Mega raid clears, and progress for all nine Pokédex regions.']},
  {version:'0.22.69',changes:['Completed the National Dex through Pecharunt and added 58 regional forms with separate PC identities, stats, abilities and learnsets.','Bundled available PMDCollab animations and offline fallback sprites; added the missing evolution paths and regional training choices.','Updated encounters, family hunts, Trading Hub National Dex search and backend catalogs for the expanded roster.']},
  {version:'0.22.68',changes:['Added regional Master unlocks and one-time standard and Master reward bundles.','Added battle presets, daily regional bounties, family hunts, training reward upgrades and weekly elite contracts with server verification.','Added Champion and regional Master titles, the Kalos Laurel frame, and Master Arena pennants. Existing badge progress unlocks these automatically.']},
@@ -10245,7 +10245,7 @@ function automaticBattleLoopActive() {
   (typeof repeatTimer!=='undefined' && repeatTimer!==null && repeatTimer!==undefined));
 }
 function canCheckGameVersion() {
- return typeof location!=='undefined' && !automaticBattleLoopActive() && !window.isArenaMarketBusy?.() && !document.querySelector('.trade-hub-dialog[open]') && !document.querySelector('.campaign-dialog[open]') && !window.ArenaCampaign?.isBusy?.() && !window.isPvpVersionContext?.() && !window.hasActiveTacticsRun?.() &&
+ return typeof location!=='undefined' && !automaticBattleLoopActive() && !window.isArenaMarketBusy?.() && !document.querySelector('.trade-hub-dialog[open]') && !window.ArenaCampaign?.isBusy?.() && !window.isPvpVersionContext?.() && !window.hasActiveTacticsRun?.() &&
   !['setup','battle','contract-battle'].includes(phase) && !document.querySelector('#trainer-card-dialog[open]') && !document.querySelector('.trainer-reward-dialog[open]') && !document.querySelector('.evolution-dialog[open]') &&
   (phase!=='online-battle' || window.isCompletedRaid?.());
 }

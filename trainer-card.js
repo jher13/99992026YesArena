@@ -123,11 +123,12 @@
   });
   box.append(grid);return box;
  }
- let root,body,nav,activeTab='Profile',model,entries,mine,revision=0,editing=false,networkNote='';
+ let root,body,nav,activeTab='Profile',model,entries,mine,revision=0,editing=false,networkNote='',missionLanding,missionNotice='';
  function tabBar(){
-  nav.replaceChildren();
+  nav.replaceChildren();nav.hidden=Boolean(model?.publicOnly);
+  if(nav.hidden)return;
   for(const tab of mine?['Profile','Missions','Achievements']:['Profile','Achievements']){
-   const b=button(tab,()=>{activeTab=tab;render();});b.setAttribute('aria-pressed',String(activeTab===tab));nav.append(b);
+   const b=button(tab,()=>{if(!window.ArenaCampaign?.isBusy()){activeTab=tab;render();}});b.setAttribute('aria-pressed',String(activeTab===tab));nav.append(b);
   }
  }
  function rankData(){
@@ -149,20 +150,26 @@
   scene.width=860;scene.height=300;scene.setAttribute('aria-hidden','true');
   const zones=[{x:104,y:92,r:46},{x:753,y:147,r:54},{x:589,y:249,r:33}];
   globalThis.ArenaMapRenderer?.draw(scene.getContext('2d'),{type:style.scene,seed:913,zones},860,300);
-  const xp=asCount(model.wildWins)+model.standard.length*5;
-  const bio=node('div',null,'tc-bio'),progress=node('div',null,'tc-level'),rankName=ranks[rank.index][0];
-  bio.append(node('div',rankName+' rank · '+(rank.next?(rank.next[1]-rank.total)+' badges to '+rank.next[0]:'Highest rank'),'tc-rank-name'),node('h2',model.name),
-   node('span',titles.includes(model.title)?model.title:'Pokémon Trainer','tc-title'));
-  progress.append(node('strong','Trainer Lv. '+(1+Math.floor(xp/10))),meter(xp%10,10,'Trainer level progress'),node('small',(xp%10)+' / 10 XP'));
-  bio.append(progress);
-  const facts=node('div',null,'tc-facts');
-  for(const [n,label] of [[rank.total,'Badges'],[model.registered,'Species'],[model.shinies,'Shinies'],[model.legends,'Legendaries']]){
-   const stat=node('div');stat.append(node('strong',countText(n)),node('small',label));facts.append(stat);
+  const bio=node('div',null,'tc-bio'),avatar=node('div',null,'tc-avatar');
+  const frame=model.laurel && (model.publicOnly || gymTeams.filter(g=>g.region==='Kalos').every(g=>model.standard.includes(g.id)));
+  avatar.append(trainerSprite(style.look));
+  if(rank){
+   const xp=asCount(model.wildWins)+model.standard.length*5,progress=node('div',null,'tc-level');
+   bio.append(node('div',ranks[rank.index][0]+' rank · '+(rank.next?(rank.next[1]-rank.total)+' badges to '+rank.next[0]:'Highest rank'),'tc-rank-name'));
+   progress.append(node('strong','Trainer Lv. '+(1+Math.floor(xp/10))),meter(xp%10,10,'Trainer level progress'),node('small',(xp%10)+' / 10 XP'));
+   bio.append(node('h2',model.name),node('span',titles.includes(model.title)?model.title:'Pokémon Trainer','tc-title'),progress);
+   const facts=node('div',null,'tc-facts');
+   for(const [n,label] of [[rank.total,'Badges'],[model.registered,'Species'],[model.shinies,'Shinies'],[model.legends,'Legendaries']]){
+    const stat=node('div');stat.append(node('strong',countText(n)),node('small',label));facts.append(stat);
+   }
+   section.append(facts);
+  }else{
+   bio.append(node('div','Online trainer','tc-rank-name'),node('h2',model.name),node('span',model.online?.guild??'Pokémon Trainer','tc-title'));
   }
-  section.append(scene,trainerSprite(style.look),bio,facts);
-  const lead=model.featured.find(Boolean);
-  if(lead){const buddy=node('div',null,'tc-buddy'+(lead.shiny?' is-shiny':''));buddy.append(portrait(lead.name,lead.shiny));section.append(buddy);}
-  if(model.laurel&&model.standard.filter(id=>id.startsWith('Kalos/')).length===gymTeams.filter(g=>g.region==='Kalos').length)section.classList.add('laurel');
+  section.append(scene,avatar,bio);
+  const lead=model.featured?.find(Boolean);let framed=avatar;
+  if(lead){const buddy=node('div',null,'tc-buddy'+(lead.shiny?' is-shiny':''));buddy.append(portrait(lead.name,lead.shiny));section.append(buddy);framed=buddy;}
+  if(frame){section.classList.add('laurel');framed.classList.add('tc-frame-laurel');framed.title='Kalos Laurel';}
   return section;
  }
  function editControls(titles){
@@ -171,15 +178,20 @@
   function select(label,id,options,current,apply){
    const field=node('label',label),input=node('select');input.id='tc-'+id;
    for(const [v,t] of options){const opt=node('option',t);opt.value=v;input.append(opt);}
-   input.value=current;input.onchange=()=>{editing=true;apply(input.value);saveWildProgress();refreshLocal();body.querySelector('#tc-'+id)?.focus();};
+   input.value=current;input.onchange=()=>{editing=true;apply(input.value);saveWildProgress();window.ArenaCampaign?.refreshCosmetics?.();refreshLocal();body.querySelector('#tc-'+id)?.focus();};
    field.append(input);controls.append(field);
   }
   for(const [key,label] of [['scene','Background'],['accent','Banner color'],['look','Trainer outfit']]){
    select(label,key,Object.entries(settings[key]).map(([v,t])=>[v,key==='scene'?t:v]),model.style[key],v=>cardState()[key]=v);
   }
-  select('Title','title',[['','Pokémon Trainer'],...titles.map(v=>[v,v])],titles.includes(model.title)?model.title:'',v=>{campaignState().title=v;window.ArenaCampaign?.refreshCosmetics();});
-  const share=node('label',null,'tc-share'),c=node('input');c.type='checkbox';c.checked=cardState().share===true;
-  c.onchange=()=>{cardState().share=c.checked;saveWildProgress();};share.append(c,'Show my card to accepted friends');controls.append(share);
+  select('Title','title',[['','Pokémon Trainer'],...titles.map(v=>[v,v])],titles.includes(model.title)?model.title:'',v=>campaignState().title=v);
+  const laurelReady=gymRegionCleared('Kalos');
+  select('Profile frame','frame',[['','Standard'],...(laurelReady?[['laurel','Kalos Laurel']]:[])],laurelReady&&model.laurel?'laurel':'',v=>campaignState().laurel=v==='laurel');
+  const pennants=gymRegions.filter(([region])=>gymRegionCleared(region,true)).map(([region])=>[region,region+' Master']);
+  select('Arena pennants','pennants',[['','None'],...pennants],window.ArenaCampaign?.appearance?.()??'',v=>campaignState().appearance=v);
+  const state=cardState(),choices=[['online','Online players and friends'],['friends','Accepted friends'],['self','Only me']];
+  const audience=choices.some(([v])=>v===state.audience)?state.audience:typeof state.share==='boolean'?(state.share?'friends':'self'):'online';
+  select('Detailed profile visible to','audience',choices,audience,v=>{state.audience=v;state.share=v!=='self';});
   details.append(controls);return details;
  }
  function featureCards(){
@@ -251,22 +263,44 @@
   const section=panel('Earned titles');
   if(titles.length)for(const title of titles)section.append(node('span',title,'tc-earned-title'));
   else section.append(node('p','Clear Paldea to earn Champion, or complete a regional Master campaign to earn its title.'));
-  const badges=panel('Campaign badges'),grid=node('div',null,'tc-earned-badges');
-  for(const [i,gym] of gymTeams.entries()){
-   const earned=model.standard.includes(gym.id),master=model.master.includes(gym.id);
-   if(!earned&&!master)continue;
-   const badge=node('div'),art=node('span',null,'gym-badge-sprite');
-   art.style.setProperty('--badge-x',-(i%10)*48+'px');art.style.setProperty('--badge-y',-Math.floor(i/10)*48+'px');
-   badge.append(art,node('small',gym.badge+(master?' · M':'')));grid.append(badge);
+  const badges=panel('Campaign badges'),detail=node('p',null,'tc-badge-detail');
+  detail.setAttribute('role','status');detail.hidden=true;let last=null;
+  badges.append(node('p',model.standard.length+' / '+gymTeams.length+' standard · '+model.master.length+' / '+gymTeams.length+' Master'),detail);
+  for(const [region] of gymRegions){
+   const grid=node('div',null,'tc-earned-badges');
+   for(const [i,gym] of gymTeams.entries()){
+    if(gym.region!==region)continue;
+    const master=model.master.includes(gym.id);
+    if(!master&&!model.standard.includes(gym.id))continue;
+    const label=gym.badge+' · '+gym.name+(master?' · Master clear':''),tile=button('',()=>{
+     if(last)last.setAttribute('aria-pressed','false');
+     detail.hidden=last===tile;detail.textContent=detail.hidden?'':label;last=detail.hidden?null:tile;
+     tile.setAttribute('aria-pressed',String(!detail.hidden));
+    },'tc-badge');
+    tile.title=label;tile.setAttribute('aria-label',label);tile.setAttribute('aria-pressed','false');
+    const art=gymBadgeIcon(i,true,master);art.setAttribute('aria-hidden','true');tile.append(art);grid.append(tile);
+   }
+   if(grid.children.length)badges.append(node('h4',region),grid);
   }
-  if(!grid.children.length)grid.append(node('p','Win a Campaign gym battle to earn your first badge.'));
-  badges.append(grid);return [section,badges];
+  if(!model.standard.length&&!model.master.length)badges.append(node('p','Win a Campaign gym battle to earn your first badge.'));
+  return [section,badges];
  }
  function render(){
-  tabBar();if(!model)return;
-  const rank=rankData(),titles=allowedTitles(model),style=appearance(model.style);
+  window.ArenaCampaign?.unmountMissions();tabBar();if(!model)return;
+  const style=appearance(model.style);
   root.style.setProperty('--tc-accent',settings.accent[style.accent]);body.replaceChildren();
-  if(activeTab==='Missions')body.append(...missionSections());
+  if(model.publicOnly){
+   const records=panel('Online battle record'),net=model.online;
+   metric(records,'Ranked PvP',countText(net.wins)+'W / '+countText(net.losses)+'L');
+   metric(records,'Rating',countText(net.rating));metric(records,'Co-op clears',countText(net.coop));
+   body.append(hero(null,[]),records);return;
+  }
+  const rank=rankData(),titles=allowedTitles(model);
+  if(activeTab==='Missions'){
+   const regional=panel('Regional progress','tc-campaign');body.append(regional,...missionSections());
+   void window.ArenaCampaign?.mountMissions(regional,missionLanding,missionNotice);
+   missionLanding=undefined;missionNotice='';
+  }
   else if(activeTab==='Achievements')body.append(rankStrip(rank),...achievements(titles));
   else{
    body.append(hero(rank,titles));if(mine)body.append(editControls(titles));
@@ -275,30 +309,35 @@
   }
   if(networkNote)body.append(node('p',networkNote,'tc-note'));
  }
- function refreshLocal(){const net=model?.online;entries=ownedEntries();model=localProfile(entries);model.online=net;render();}
+ function refreshLocal(){const net=model?.online;entries=ownedEntries();model=localProfile(entries);model.online=net;if(net?.name)model.name=net.name;render();}
  function mount(){
   if(root)return;root=node('dialog');root.id='trainer-card-dialog';root.setAttribute('aria-labelledby','trainer-card-title');
   const heading=node('div',null,'tc-heading'),title=node('h2','Player Profile');title.id='trainer-card-title';
-  heading.append(title,button('Close',()=>root.close()));nav=node('nav',null,'tc-nav');nav.setAttribute('aria-label','Trainer profile sections');
-  body=node('div',null,'tc-body');root.append(heading,nav,body);document.body.append(root);root.addEventListener('close',()=>{revision++;});
+  heading.append(title,button('Close',()=>{if(!window.ArenaCampaign?.isBusy())root.close();}));nav=node('nav',null,'tc-nav');nav.setAttribute('aria-label','Trainer profile sections');
+  body=node('div',null,'tc-body');root.append(heading,nav,body);document.body.append(root);root.addEventListener('close',()=>{if(!root.open){revision++;window.ArenaCampaign?.unmountMissions();}});
+  root.addEventListener('cancel',e=>{if(window.ArenaCampaign?.isBusy())e.preventDefault();});
  }
- async function open(trainerName=null){
-  mount();const token=++revision;mine=trainerName===null;editing=false;activeTab='Profile';networkNote='';model=null;
+ async function open(trainerName=null,destination='Profile',section,notice=''){
+  mount();const token=++revision;mine=trainerName===null;editing=false;activeTab=mine?destination:'Profile';networkNote='';model=null;missionLanding=section;missionNotice=notice;
   if(mine)refreshLocal();else{tabBar();body.replaceChildren(node('p','Loading trainer card…'));}
   root.scrollTop=0;if(!root.open)root.showModal();
   if(!sessionStorage.getItem('arena-online-user')){
-   if(!mine)body.replaceChildren(node('p','Sign in to view a friend’s trainer card.'));
+   if(!mine)body.replaceChildren(node('p','Sign in to view trainer profiles.'));
    return;
   }
   try{
    const {data,error}=await (await cloudClient()).rpc('arena_trainer_card',{trainer_name:trainerName});
    if(token!==revision||!root.open)return;if(error)throw error;
-   if(!mine){if(!data?.profile){body.replaceChildren(node('p','This trainer card is private or unavailable.'));return;}model=data.profile;}
+   if(!mine){if(!data?.profile){body.replaceChildren(node('p','This trainer is offline or their profile is unavailable.'));return;}model=data.profile;}
    model.online=data?.online??null;
    if(!mine)render();
-   else if(activeTab==='Profile'){
-    body.querySelector('.tc-summary')?.replaceWith(summaries());
-    body.querySelector('.tc-raid-panel')?.replaceWith(raidSection(new Set([...model.raidClears,...(model.online?.raids??[])])));
+   else{
+    if(model.online?.name)model.name=model.online.name;
+    if(activeTab==='Profile'){
+     const heading=body.querySelector('.tc-bio')?.querySelector('h2');if(heading)heading.textContent=model.name;
+     body.querySelector('.tc-summary')?.replaceWith(summaries());
+     body.querySelector('.tc-raid-panel')?.replaceWith(raidSection(new Set([...model.raidClears,...(model.online?.raids??[])])));
+    }
    }
   }catch{
    if(token!==revision||!root.open)return;
@@ -307,5 +346,7 @@
    else body.replaceChildren(node('p',networkNote));
   }
  }
- window.ArenaTrainerCard={open,recordBattle};
+ const openMissions=(section='regions',notice='')=>open(null,'Missions',section,notice);
+ function closeMissions(){if(mine&&activeTab==='Missions'&&root?.open)root.close();}
+ window.ArenaTrainerCard={open,openMissions,closeMissions,recordBattle};
 })();

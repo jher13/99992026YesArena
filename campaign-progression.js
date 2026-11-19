@@ -11,7 +11,8 @@
  const tabButtons=new Map();
  const phaseAllowed=()=>['home','menu','gyms','collection','wild-regions','trainer-regions'].includes(phase) && !automaticBattleLoopActive() && !window.isArenaMarketBusy?.();
  const signed=()=>Boolean(sessionStorage.getItem('arena-online-user'));
- let dialog=null,panel=null,tab='regions',server=null,busy=false,battle=null,lastRead=0,serverOffset=0;
+ const sections=[['regions','Regional rewards'],['contracts','Contracts'],['hunts','Hunts'],['presets','Presets']];
+ let panel=null,tab='regions',feedback='',server=null,busy=false,battle=null,lastRead=0,serverOffset=0,readRevision=0;
  const day=()=>new Date(Date.now()+(signed()?serverOffset:0)).toISOString().slice(0,10);
  function week(){const date=new Date();date.setUTCDate(date.getUTCDate()-(date.getUTCDay()+6)%7);return date.toISOString().slice(0,10);}
  function state(){
@@ -36,12 +37,15 @@
   wildProgress.capsules+=value.capsules??0;}
  function claims(){return signed()?(server?.claimed??state().claimed):state().claimed;}
  async function read(){
-  if(!signed()){server=null;return;}
-  server=await window.arenaCampaignRead('status');lastRead=Date.now();if(server.server_now)serverOffset=Date.parse(server.server_now)-Date.now();
+  const token=++readRevision,user=sessionStorage.getItem('arena-online-user');
+  if(!user){server=null;return;}
+  const snapshot=await window.arenaCampaignRead('status');
+  if(token!==readRevision || user!==sessionStorage.getItem('arena-online-user'))return;
+  server=snapshot;lastRead=Date.now();if(server.server_now)serverOffset=Date.parse(server.server_now)-Date.now();
   const current=state();if(JSON.stringify(current.hunt??null)!==JSON.stringify(server.hunt??null) || JSON.stringify(current.claimed)!==JSON.stringify(server.claimed)){current.hunt=server.hunt??null;current.claimed=server.claimed??[];saveWildProgress();}
  }
  function button(label,action,disabled=false){const node=element('button',label);node.type='button';node.disabled=disabled;node.onclick=action;return node;}
- function message(text){const node=panel?.querySelector('.campaign-message');if(node){node.textContent=text;node.hidden=false;}else showPassBattleNotice(text);}
+ function message(text){feedback=text;const node=panel?.querySelector('.campaign-message');if(node){node.textContent=text;node.hidden=!text;}else if(text)showPassBattleNotice(text);}
  async function transaction(action,args){
   if(busy || !phaseAllowed())throw Error('Finish your current battle or transaction first.');
   busy=true;render();
@@ -147,16 +151,6 @@
   for(const x of [46,width-46]){ctx.beginPath();ctx.moveTo(x-7,3);ctx.lineTo(x+7,3);ctx.lineTo(x+7,17);ctx.lineTo(x,13);ctx.lineTo(x-7,17);ctx.closePath();ctx.fill();ctx.stroke();}
   ctx.restore();
  }
- function cosmeticControls(){
-  const box=element('div');
-  function choose(label,values,current,apply){const row=element('label',label),select=element('select');
-   for(const [value,text] of values){const option=element('option',text);option.value=value;select.append(option);}select.value=current??'';
-   select.onchange=()=>{apply(select.value);saveWildProgress();refreshCosmetics();};row.append(select);box.append(row);}
-  choose('Profile title',[['','None'],...titles().map(title=>[title,title])],state().title,value=>state().title=value);
-  choose('Arena pennants',[['','None'],...regions.filter(row=>completed(row.name,true)).map(row=>[row.name,row.name+' Master'])],appearance(),value=>state().appearance=value);
-  if(unlocked('Kalos'))choose('Profile frame',[['','Standard'],['laurel','Kalos Laurel']],state().laurel?'laurel':'',value=>state().laurel=value==='laurel');
-  box.append(element('p','Pennants decorate the Arena edges. The map’s terrain and bonuses follow the battlefield.'));return box;
- }
  function guestContracts(){
   const completedRegions=regions.filter(row=>completed(row.name));if(!unlocked('Johto'))return [];
   const cards=[];for(let slot=0;slot<2;slot++){
@@ -185,7 +179,7 @@
     const lib=await engine(),save=readArenaSave();run={run_id:crypto.randomUUID(),definition:card,match:lib.campaignContractMatch(save.entries,card,crypto.randomUUID()),online:false};
    }
    const lib=await engine();if(run.version && run.version!==lib.campaignEngineVersion)throw Error('The battle server is updating. Retry when the client and server versions match.');
-   busy=false;dialog?.close();openMenu();selectedGym=selectedWild=selectedTrainer=null;selectedMasterGym=false;rogueRun=null;raidBattleBackdrop=null;
+   busy=false;window.ArenaTrainerCard.closeMissions();openMenu();selectedGym=selectedWild=selectedTrainer=null;selectedMasterGym=false;rogueRun=null;raidBattleBackdrop=null;
    activePlayer=activeEnemy=playerSwitch=enemySwitch=null;trainerPanels=null;recallSlot=null;lastDpsRender=-1;setArenaDimensions();
    const out=lib.simulateOnline(run.match,null,0,null,'host');battle={...run,lib,state:out.state,result:null,accumulator:0,done:false,visualActors:new Map(),soundsPlayed:new Set()};
    phase='contract-battle';showScreen('battle');byId('battle').classList.remove('is-mega-raid');
@@ -226,10 +220,10 @@
   try{
    if(run.online){
     await window.arenaCampaignVerify(run.run_id,'verify');
-    battle=null;byId('reset').disabled=byId('basic-attacks').disabled=byId('speed').disabled=false;openMenu();const result=await transaction('claim_contract',{run_id:run.run_id});await read();open('contracts');message((result.message??'Contract rewards received.')+(result.reward?' '+rewardsText(result.reward):''));
+    battle=null;byId('reset').disabled=byId('basic-attacks').disabled=byId('speed').disabled=false;openMenu();const result=await transaction('claim_contract',{run_id:run.run_id});await read();open('contracts',(result.message??'Contract rewards received.')+(result.reward?' '+rewardsText(result.reward):''));
    }else{
     if(!state().claimed.includes(run.definition.key)){state().claimed.push(run.definition.key);applyReward(run.definition.reward);saveWildProgress();}
-    battle=null;byId('reset').disabled=byId('basic-attacks').disabled=byId('speed').disabled=false;openMenu();open('contracts');message('Contract rewards received: '+rewardsText(run.definition.reward));
+    battle=null;byId('reset').disabled=byId('basic-attacks').disabled=byId('speed').disabled=false;openMenu();open('contracts','Contract rewards received · '+rewardsText(run.definition.reward));
    }
   }catch(error){
    if(phase==='contract-battle')byId('choices').replaceChildren(button('Retry reward verification',async()=>{run.done=false;await finishContract();}),button('Return to contracts',exit));
@@ -244,8 +238,15 @@
   if(out.result)void finishContract();
  }
  function render(){
-  if(!panel)return;for(const [id,node] of tabButtons)node.setAttribute('aria-selected',String(id===tab));panel.replaceChildren();
-  const notice=element('p',null,'campaign-message');notice.hidden=true;notice.setAttribute('role','status');panel.append(notice);
+  if(!panel)return;for(const [id,node] of tabButtons)node.setAttribute('aria-pressed',String(id===tab));panel.replaceChildren();
+  const notice=element('p',feedback,'campaign-message');notice.hidden=!feedback;notice.setAttribute('role','status');panel.append(notice);
+  if(signed() && !busy && window.isArenaMarketBusy?.()){
+   const recover=button('Retry pending sync',async()=>{
+    try{await window.arenaMarketRecover();await read();render();message('Account progress synced.');}
+    catch(error){message(error.message);}
+   });
+   recover.className='campaign-recover';panel.append(recover);
+  }
   if(tab==='regions'){
    panel.append(element('p','Complete each standard region to unlock its level-100 Master challenges. Regional bundles can be claimed once per account.'));
    for(const row of regions){
@@ -278,23 +279,28 @@
     try{busy=true;await window.arenaCampaignVerify(run.run_id,'verify');busy=false;await transaction('claim_contract',{run_id:run.run_id});await read();render();message('Pending rewards received.');}
     catch(error){busy=false;message(error.message);}
    },busy));
-  }else panel.append(cosmeticControls());
+  }
   if(signed())panel.append(button('Refresh account progress',async()=>{try{await read();render();}catch(error){message(error.message);}},busy));
  }
- async function open(selected='regions'){
-  if(!phaseAllowed())return;tab=selected;
-  if(!dialog){
-   dialog=element('dialog',null,'campaign-dialog');const header=element('div',null,'campaign-heading');header.append(element('h2','Regional Progress'),button('Close',()=>{if(!busy)dialog.close();}));
-   const tabs=element('nav',null,'campaign-tabs');
-   for(const [id,label] of [['regions','Regions'],['presets','Presets'],['hunts','Hunts'],['contracts','Contracts'],['cosmetics','Cosmetics']]){const node=button(label,()=>{tab=id;render();});node.setAttribute('role','tab');tabButtons.set(id,node);tabs.append(node);}
-   panel=element('div',null,'campaign-content');dialog.append(header,tabs,panel);document.body.append(dialog);
-   dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault();});
+ function unmountMissions(){panel=null;tabButtons.clear();}
+ async function mountMissions(host,selected,notice=''){
+  if(sections.some(([id])=>id===selected))tab=selected;
+  feedback=notice;tabButtons.clear();
+  const tabs=element('nav',null,'campaign-tabs');tabs.setAttribute('aria-label','Regional missions');
+  for(const [id,label] of sections){
+   const control=button(label,()=>{if(!busy){tab=id;feedback='';render();}});
+   tabButtons.set(id,control);tabs.append(control);
   }
-  render();if(!dialog.open)dialog.showModal();
-  if(signed() && Date.now()-lastRead>2000)try{await read();render();}catch(error){message(error.message);}
+  const current=element('div',null,'campaign-content');panel=current;host.append(tabs,panel);render();
+  if(signed() && Date.now()-lastRead>2000){
+   try{await read();if(panel===current)render();}catch(error){if(panel===current)message(error.message);}
+  }
  }
- function entrance(target){target.append(button('Regional progress, rewards and contracts',()=>open()));}
- window.ArenaCampaign={isBusy:()=>busy,open,entrance,renderPresets,capacity,savePreset,loadPreset,pickEncounter,family,reward,titles,appearance,refreshCosmetics,paintTrim,advanceBattle,
-  regionComplete(region,master){showPassBattleNotice(region+(master?' Master collection complete!':' region complete!')+' Open Campaign → Regional Progress to claim your rewards.');}};
+ function open(selected='regions',notice=''){
+  if(phaseAllowed())return window.ArenaTrainerCard.openMissions(selected,notice);
+ }
+ function entrance(target){target.append(button('Regional missions',()=>open('regions')));}
+ window.ArenaCampaign={isBusy:()=>busy,open,entrance,mountMissions,unmountMissions,renderPresets,capacity,savePreset,loadPreset,pickEncounter,family,reward,titles,appearance,refreshCosmetics,paintTrim,advanceBattle,
+  regionComplete(region,master){showPassBattleNotice(region+(master?' Master collection complete!':' region complete!')+' Claim your rewards in Profile → Missions.');}};
  refreshCosmetics();
 })();
