@@ -3,6 +3,7 @@
  'use strict';
  const regions=gymRegions.map(([name,generation],index)=>({name,generation,index,
   badges:gymTeams.filter(gym=>gym.region===name).map(gym=>gym.id)}));
+ const bundles=regions.flatMap(({name})=>[false,true].map(master=>({region:name,master,key:(master?'master:':'standard:')+name})));
  const standardCoins=[2000,3000,4500,6000,8000,10000,12500,15000];
  const standardCandy=[1,1,1,2,2,2,3,3],masterCandy=[2,2,2,3,3,3,4,4];
  const unlockText=['Two additional battle presets','Regional daily bounties','Targeted family hunts',
@@ -33,34 +34,56 @@
   vitamins:{'Rare Candy':(master?masterCandy:standardCandy)[i],'EXP Candy 500':master?2+Math.floor(i/2):1+Math.floor(i/3)}};}
  function rewardsText(value){return [earnedCoins(value.coins).toLocaleString()+' coins',...Object.entries(value.vitamins??{}).map(([name,n])=>n+'× '+experienceCandyName(name)),
   ...(value.capsules?[value.capsules+'× Ability Capsule']:[])].join(' · ');}
- function applyReward(value){wildProgress.coins+=earnedCoins(value.coins);for(const [name,count] of Object.entries(value.vitamins??{}))wildProgress.vitamins[name]=(wildProgress.vitamins[name]??0)+count;
-  wildProgress.capsules+=value.capsules??0;}
+ function applyReward(value,progress=wildProgress){progress.coins+=earnedCoins(value.coins);for(const [name,count] of Object.entries(value.vitamins??{}))progress.vitamins[name]=(progress.vitamins[name]??0)+count;
+  progress.capsules+=value.capsules??0;}
  function claims(){return signed()?(server?.claimed??state().claimed):state().claimed;}
+ function availableBundles(paid){return bundles.filter(b=>!paid.has(b.key) && completed(b.region,b.master));}
+ function adoptStatus(snapshot){
+  server=snapshot;lastRead=Date.now();if(server.server_now)serverOffset=Date.parse(server.server_now)-Date.now();
+  const current=state();if(JSON.stringify(current.hunt??null)!==JSON.stringify(server.hunt??null) || JSON.stringify(current.claimed)!==JSON.stringify(server.claimed)){current.hunt=server.hunt??null;current.claimed=server.claimed??[];saveWildProgress();}
+ }
  async function read(){
   const token=++readRevision,user=sessionStorage.getItem('arena-online-user');
   if(!user){server=null;return;}
   const snapshot=await window.arenaCampaignRead('status');
   if(token!==readRevision || user!==sessionStorage.getItem('arena-online-user'))return;
-  server=snapshot;lastRead=Date.now();if(server.server_now)serverOffset=Date.parse(server.server_now)-Date.now();
-  const current=state();if(JSON.stringify(current.hunt??null)!==JSON.stringify(server.hunt??null) || JSON.stringify(current.claimed)!==JSON.stringify(server.claimed)){current.hunt=server.hunt??null;current.claimed=server.claimed??[];saveWildProgress();}
+  adoptStatus(snapshot);
  }
  function button(label,action,disabled=false){const node=element('button',label);node.type='button';node.disabled=disabled;node.onclick=action;return node;}
  function message(text){feedback=text;const node=panel?.querySelector('.campaign-message');if(node){node.textContent=text;node.hidden=!text;}else if(text)showPassBattleNotice(text);}
  async function transaction(action,args){
   if(busy || !phaseAllowed())throw Error('Finish your current battle or transaction first.');
   busy=true;render();
-  try{const result=await window.arenaCampaignMutate(action,args);server=result.campaign??server;return result;}
+  try{
+   const result=await window.arenaCampaignMutate(action,args);
+   if(result.campaign){readRevision++;adoptStatus(result.campaign);}return result;
+  }
   finally{busy=false;}
  }
- async function claim(region,master){
-  const key=(master?'master:':'standard:')+region;
+ function claimGuestBundles(selected){
+  const total={coins:0,vitamins:{}};
+  for(const bundle of selected){
+   const value=reward(bundle.region,bundle.master);total.coins+=value.coins;
+   for(const [item,n] of Object.entries(value.vitamins))total.vitamins[item]=(total.vitamins[item]??0)+n;
+  }
+  const current=state(),next={...wildProgress,vitamins:{...wildProgress.vitamins},
+   campaign:{...current,claimed:[...current.claimed,...selected.map(b=>b.key)]}};
+  applyReward(total,next);
+  if(!saveWildProgress(next))throw Error('Could not save these rewards. Free up storage and try again.');
+  Object.assign(wildProgress,next);return total;
+ }
+ async function claim(region,master=false){
+  if(busy || !phaseAllowed())return;
+  const all=region===undefined;
   try{
    if(signed()){
-    const result=await transaction('claim_region',{region,master});await read();render();message((result.message??'Regional reward received.')+(result.reward?' '+rewardsText(result.reward):''));
+    const result=await transaction(all?'claim_all_regions':'claim_region',all?{}:{region,master});
+    render();message((result.message??'Regional rewards received.')+(result.reward?' '+rewardsText(result.reward):''));
    }else{
-    if(!completed(region,master))throw Error('Complete this region first.');
-    if(state().claimed.includes(key))return;
-    state().claimed.push(key);applyReward(reward(region,master));saveWildProgress();render();message('Received '+rewardsText(reward(region,master))+'.');
+    const selected=availableBundles(new Set(claims())).filter(b=>all || b.region===region && b.master===master);
+    if(!selected.length){message('No regional rewards are ready to claim.');return;}
+    const total=claimGuestBundles(selected);render();
+    message('Claimed '+selected.length+' regional '+(selected.length===1?'bundle':'bundles')+' · '+rewardsText(total)+'.');
    }
   }catch(error){render();message(error.message);}
  }
@@ -249,12 +272,17 @@
   }
   if(tab==='regions'){
    panel.append(element('p','Complete each standard region to unlock its level-100 Master challenges. Regional bundles can be claimed once per account.'));
+   const paid=new Set(claims()),available=availableBundles(paid),blocked=busy || Boolean(window.isArenaMarketBusy?.());
+   const actions=element('div',null,'campaign-claim-actions'),count=element('span',available.length+' '+(available.length===1?'bundle':'bundles')+' available');
+   count.id='campaign-reward-count';const claimAll=button('Claim All',()=>claim(),blocked || !available.length);
+   claimAll.setAttribute('aria-describedby',count.id);actions.append(claimAll,count);panel.append(actions);
    for(const row of regions){
     const card=element('section',null,'campaign-region-card'),normal=row.badges.filter(id=>clearedGyms.includes(id)).length,master=row.badges.filter(id=>masterGymClears.has(id)).length;
     card.append(element('h3',row.name+' · '+normal+'/'+row.badges.length+' standard · '+master+'/'+row.badges.length+' Master'),element('p',unlockText[row.index]),
      element('small','Standard: '+rewardsText(reward(row.name))),element('small','Master: '+rewardsText(reward(row.name,true))));
-    for(const tier of [false,true]){const key=(tier?'master:':'standard:')+row.name,claimed=claims().includes(key);
-     card.append(button(claimed?(tier?'Master reward claimed':'Standard reward claimed'):'Claim '+(tier?'Master':'standard')+' reward',()=>claim(row.name,tier),busy || claimed || !completed(row.name,tier)));}
+    for(const bundle of bundles.filter(b=>b.region===row.name)){const claimed=paid.has(bundle.key),tier=bundle.master?'Master':'standard';
+     card.append(button(claimed?(bundle.master?'Master':'Standard')+' reward claimed':'Claim '+tier+' reward',
+      ()=>claim(row.name,bundle.master),blocked || claimed || !completed(row.name,bundle.master)));}
     if(completed(row.name))card.append(element('small','Master challenges unlocked · Lv. 100'));panel.append(card);
    }
   }else if(tab==='presets')panel.append(presetControls());

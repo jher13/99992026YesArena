@@ -148,7 +148,7 @@
  function hero(rank,titles){
   const style=appearance(model.style),section=node('section',null,'tc-hero'),scene=node('canvas',null,'tc-scene');
   scene.width=860;scene.height=300;scene.setAttribute('aria-hidden','true');
-  const zones=[{x:104,y:92,r:46},{x:753,y:147,r:54},{x:589,y:249,r:33}];
+  const zones=[{x:104,y:92,r:46},{x:589,y:249,r:33}];
   globalThis.ArenaMapRenderer?.draw(scene.getContext('2d'),{type:style.scene,seed:913,zones},860,300);
   const bio=node('div',null,'tc-bio'),avatar=node('div',null,'tc-avatar');
   const frame=model.laurel && (model.publicOnly || gymTeams.filter(g=>g.region==='Kalos').every(g=>model.standard.includes(g.id)));
@@ -168,8 +168,19 @@
   }
   section.append(scene,avatar,bio);
   const lead=model.featured?.find(Boolean);let framed=avatar;
-  if(lead){const buddy=node('div',null,'tc-buddy'+(lead.shiny?' is-shiny':''));buddy.append(portrait(lead.name,lead.shiny));section.append(buddy);framed=buddy;}
-  if(frame){section.classList.add('laurel');framed.classList.add('tc-frame-laurel');framed.title='Kalos Laurel';}
+  if(lead){
+   const buddy=node('div',null,'tc-buddy'+(lead.shiny?' is-shiny':''));
+   const effect=node('canvas',null,'tc-buddy-effect');effect.width=effect.height=128;effect.setAttribute('aria-hidden','true');
+   globalThis.ArenaMapRenderer?.drawZone?.(effect.getContext('2d'),style.scene,{x:64,y:64,r:55,seed:913});
+   const sprite=portrait(lead.name,lead.shiny,'tc-buddy-sprite');sprite.dataset.portraitAlign='center';
+   buddy.append(effect,sprite);section.append(buddy);framed=buddy;
+  }
+  if(frame){
+   section.classList.add('laurel');framed.classList.add('tc-frame-laurel');framed.title='Kalos Laurel';
+   const border=node('div',null,'tc-card-frame');border.setAttribute('aria-hidden','true');
+   for(let corner=0;corner<4;corner++)border.append(node('span',null,'tc-frame-corner'));
+   section.append(border);
+  }
   return section;
  }
  function editControls(titles){

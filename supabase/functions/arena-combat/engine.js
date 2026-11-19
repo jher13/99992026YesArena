@@ -587,8 +587,9 @@ function paintIdlePortraits(now) {
   const height=Math.max(1,Math.round(frame.height*scale));
   context.clearRect(0,0,canvas.width,canvas.height);
   context.imageSmoothingEnabled=false;
+  const y=canvas.dataset.portraitAlign==='center'?Math.round((canvas.height-height)/2):canvas.height-height;
   context.drawImage(image,frame.sx,frame.sy,frame.width,frame.height,
-   Math.round((canvas.width-width)/2),canvas.height-height,width,height);
+   Math.round((canvas.width-width)/2),y,width,height);
  }
  idlePortraitFrame=idlePortraits.size?requestAnimationFrame(paintIdlePortraits):null;
 }
@@ -1736,8 +1737,9 @@ try {
  }
 
 } catch {}
-function saveWildProgress() {
- try {playerStorage.setItem(progressKey,JSON.stringify(wildProgress));} catch(error) {window.reportLocalSaveError?.(error);}
+function saveWildProgress(progress=wildProgress) {
+ try {playerStorage.setItem(progressKey,JSON.stringify(progress));return true;}
+ catch(error) {window.reportLocalSaveError?.(error);return false;}
 }
 const passTierXP=200;
 const passRewards=[
@@ -10065,6 +10067,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.72',changes:['The Kalos Laurel sits in front of the trainer card. Your featured Pokémon and its terrain effect share one center.','Claim all earned Standard and Master regional rewards together in Profile → Missions.']},
  {version:'0.22.71',changes:['Find regional rewards, hunts and contracts in Profile → Missions. Campaign opens the same page.','Achievements displays your badge sprites and Master marks. Choose your campaign cosmetics under Edit trainer card.','Trading Hub and Online now have separate menu tabs. Browse signed-in trainers and open their profiles.']},
  {version:'0.22.70',changes:['Filter your PC and raid picker by either Pokémon element.','Pixel symbols identify ATK, S.ATK, status, and fixed damage across move lists and combat.','Player profiles now show badge rank, three featured Pokémon, collection records, Mega raid clears, and progress for all nine Pokédex regions.']},
  {version:'0.22.69',changes:['Completed the National Dex through Pecharunt and added 58 regional forms with separate PC identities, stats, abilities and learnsets.','Bundled available PMDCollab animations and offline fallback sprites; added the missing evolution paths and regional training choices.','Updated encounters, family hunts, Trading Hub National Dex search and backend catalogs for the expanded roster.']},

@@ -21,7 +21,7 @@ const ctx=vm.createContext({console,Math,Date,Set,Map,JSON,crypto,structuredClon
  heldItems:{Leftovers:{}},evolutionStones:[],canHoldEvolutionItem:()=>true,
  ownedPokemon:name=>settings.owned[name],movesFor:name=>ctx.loadouts[name]??['Tackle'],legalMoves:()=>['Tackle','Surf','Thunderbolt'],
  legalLoadout:(_,moves)=>[...moves],normalizeBattleAI:ai=>({...ai,mode:ai?.mode??'Basic'}),normalizeTeamPlan:plan=>plan??'Balanced',
- saveWildProgress:()=>{saves++;},saveTeam:()=>{saves++;},renderMenu:()=>{renders++;},activeSlot:0,inspected:null,
+ saveWildProgress:()=>{saves++;return true;},saveTeam:()=>{saves++;},renderMenu:()=>{renders++;},activeSlot:0,inspected:null,
  earnedCoins:n=>n,experienceCandyName:name=>({'EXP Candy 500':'EXP Candy L','EXP Candy 250':'EXP Candy M'}[name]??name),showPassBattleNotice(){},
  generationOf:name=>{const id=dex[name][0];return [151,251,386,493,649,721,809,905,1025].findIndex(end=>id<=end)+1;},
  isLegendaryEncounter:name=>[144,145,146,150,151,249,250,251,377,378,379,380,381,382,383,384,385,386].includes(dex[name][0]),
@@ -55,6 +55,26 @@ const button=label=>{const found=buttons().find(node=>node.textContent===label);
  assert.equal(routes.at(-1).section,'regions');assert.equal(button('Regional rewards').attributes['aria-pressed'],'true');assert(!buttons().some(b=>b.textContent==='Cosmetics'));
  assert.equal(button('Claim standard reward').disabled,false);await button('Claim standard reward').onclick();assert.equal(settings.coins,2000);assert.equal(settings.vitamins['Rare Candy'],1);
  const again=buttons().find(node=>node.textContent==='Standard reward claimed');assert(again.disabled);checks++;
+ assert.equal(button('Claim All').disabled,true);
+ complete(16);ctx.masterGymClears=new Set(allBadges.slice(0,8));await c.open('regions');
+ assert.equal(ctx.document.body.all().find(node=>node.id==='campaign-reward-count').textContent,'2 bundles available');
+ const previousSave=ctx.saveWildProgress,previousInventory=JSON.stringify(settings);ctx.saveWildProgress=()=>false;
+ await button('Claim All').onclick();assert.equal(JSON.stringify(settings),previousInventory,'failed storage leaves both receipts and rewards untouched');
+ assert.match(ctx.document.body.querySelector('.campaign-message').textContent,/Could not save/);ctx.saveWildProgress=previousSave;
+ const bulk=button('Claim All'),saveCount=saves;await Promise.all([bulk.onclick(),bulk.onclick()]);
+ assert.equal(saves,saveCount+1);assert.equal(settings.coins,9000);assert.equal(settings.vitamins['Rare Candy'],4);assert.equal(settings.vitamins['EXP Candy 500'],4);
+ assert.deepEqual([...settings.campaign.claimed].sort(),['master:Kanto','standard:Johto','standard:Kanto']);
+ assert(button('Claim All').disabled);assert.equal(ctx.document.body.all().find(node=>node.id==='campaign-reward-count').textContent,'0 bundles available');
+ complete(24);await c.open('regions');await button('Claim All').onclick();assert.match(ctx.document.body.querySelector('.campaign-message').textContent,/1 regional bundle · 4,500 coins/);checks++;
+ // A slow status read started before a successful cloud claim cannot restore stale receipts.
+ complete(32);storage.set('arena-online-user','trainer');const fromGuest=[...settings.campaign.claimed];let finishRead,finishClaim,requests=0;
+ ctx.window.arenaCampaignRead=()=>new Promise(resolve=>{finishRead=resolve;});
+ ctx.window.arenaCampaignMutate=(action,args)=>{assert.equal(action,'claim_all_regions');assert.equal(Object.keys(args).length,0);requests++;return new Promise(resolve=>{finishClaim=resolve;});};
+ const opening=c.open('regions'),pendingBulk=button('Claim All'),pendingClick=pendingBulk.onclick();
+ await pendingBulk.onclick();assert.equal(requests,1);assert(button('Claim All').disabled);
+ const earned=[...fromGuest,'standard:Sinnoh'];finishClaim({campaign:{claimed:earned,hunt:null},claimed_count:1,reward:{coins:6000,vitamins:{'Rare Candy':2,'EXP Candy 500':2}},message:'Claimed 1 regional bundle.'});
+ await pendingClick;finishRead({claimed:fromGuest,hunt:null});await opening;assert(button('Claim All').disabled);assert.deepEqual([...settings.campaign.claimed],earned);
+ assert.match(ctx.document.body.querySelector('.campaign-message').textContent,/6,000 coins/);storage.delete('arena-online-user');checks++;
  c.family('Pikachu');assert.equal(c.family('Pikachu'),c.family('Raichu'));checks++;
  complete(24);await c.open('hunts');const familyButtons=buttons().filter(node=>node.textContent.includes(' family · Lv.'));assert.equal(familyButtons.length,9);await familyButtons[0].onclick();assert.equal(settings.campaign.hunt.remaining,20);assert(buttons().filter(node=>node.textContent.includes(' family · Lv.')).every(node=>node.disabled));checks++;
  const hunt=settings.campaign.hunt;let attempted=0;const eligible=Object.keys(dex).filter(name=>c.family(name)===hunt.root && !ctx.isLegendaryEncounter(name));

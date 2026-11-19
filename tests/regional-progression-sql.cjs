@@ -30,6 +30,7 @@ let db,checks=0;
  await db.exec(read('supabase/migrations/20261118010000_trading_hub.sql'));
  await db.exec(read('supabase/migrations/20261118020000_regional_progression.sql'));
  await db.exec(read('supabase/migrations/20261118030000_complete_pokedex.sql'));checks++;
+ await db.exec(read('supabase/migrations/20261119020000_claim_all_regional_rewards.sql'));
  await db.query('insert into auth.users values($1),($2)',[uid,other]);
  await db.query('insert into public.arena_saves(user_id,save_data) values($1,$3),($2,$3)',[uid,other,save()]);
  await db.query("select set_config('arena.test_uid',$1,false),set_config('arena.test_session','active',false)",[uid]);
@@ -41,6 +42,8 @@ let db,checks=0;
  const ok=result=>{assert.equal(result.status,'ok',JSON.stringify(result));checks++;return result;};
  const reject=result=>{assert.equal(result.status,'error',JSON.stringify(result));checks++;};
  let status=await rpc('status');assert.equal(status.contracts.length,0);assert.deepEqual(status.claimed,[]);checks++;
+ let none=ok(await mutate('claim_all_regions'));assert.equal(none.claimed_count,0);assert.equal(none.reward,undefined);assert.equal(progress(none).coins,10000);
+ reject(await mutate('claim_all_regions',{region:'Kanto'}));reject(await mutate('claim_all_regions',{coins:100000}));
  reject(await mutate('claim_region',{region:'Kanto'}));
  reject(await mutate('claim_region',{region:'Kanto',coins:999999}));
  assert.equal((await db.query('select arena_private.save_issue($1) issue',[save(8,[badges[0]])])).rows[0].issue,null,'regional Master accepted at eight badges');checks++;
@@ -77,6 +80,33 @@ let db,checks=0;
  result=ok(await mutate('claim_contract',{run_id:run}));assert.equal(progress(result).coins,11000);assert.equal(progress(result).owned.Mewtwo.level,99,'rewards preserve PC changes made after the pinned battle');checks++;
  reject(await mutate('start_contract',{key}));
  await setSave(save(68,badges));result=ok(await mutate('claim_region',{region:'Paldea',master:true}));assert.equal(progress(result).coins,70000,'Lucky Coin doubles the fixed 30,000 Master bundle');checks++;
+ const beforeBatch=await stored(),bulkId=crypto.randomUUID(),batchArgs={request_id:bulkId,expected_revision:beforeBatch.stamp};
+ assert.equal((await rpc('claim_all_regions',{...batchArgs,expected_revision:'2000-01-01'})).status,'conflict');
+ // A save failure after inserting receipts must roll back both receipts and inventory.
+ await db.exec(`create function public.reject_test_campaign_write() returns trigger language plpgsql as $$
+  begin if current_setting('arena.test_reject_write',true)='on' then raise exception 'Interrupted test write';end if;return new;end $$;
+  create trigger zz_test_campaign_write before update on public.arena_saves for each row execute function public.reject_test_campaign_write();`);
+ await db.query("select set_config('arena.test_reject_write','on',false)");
+ const interrupted=await rpc('claim_all_regions',batchArgs);reject(interrupted);assert.equal(interrupted.message,'Interrupted test write');
+ assert.deepEqual(await stored(),beforeBatch);
+ const regionalKeys=async id=>(await db.query("select key from arena_private.campaign_claims where user_id=$1 and (key like 'standard:%' or key like 'master:%') order by key",[id])).rows.map(row=>row.key);
+ assert.deepEqual(await regionalKeys(uid),['master:Paldea','standard:Kanto']);
+ assert.equal((await db.query('select count(*)::int n from arena_private.campaign_operations where user_id=$1 and request_id=$2',[uid,bulkId])).rows[0].n,0);
+ await db.query("select set_config('arena.test_reject_write','off',false)");
+ const remaining=[];for(const [i,[region]] of regions.entries())for(const master of [false,true]){
+  if(!master&&region==='Kanto'||master&&region==='Paldea')continue;
+  remaining.push({key:(master?'master:':'standard:')+region,coins:[2000,3000,4500,6000,8000,10000,12500,15000][i]*(master?2:1),
+   candy:(master?[2,2,2,3,3,3,4,4]:[1,1,1,2,2,2,3,3])[i],exp:master?2+Math.floor(i/2):1+Math.floor(i/3)});
+ }
+ const bulk=ok(await rpc('claim_all_regions',batchArgs)),total=field=>remaining.reduce((sum,b)=>sum+b[field],0),before=progress({save_data:beforeBatch.save_data});
+ assert.equal(bulk.claimed_count,14);assert.deepEqual(bulk.reward,{coins:total('coins'),vitamins:{'Rare Candy':total('candy'),'EXP Candy 500':total('exp')}});
+ assert.equal(progress(bulk).coins,before.coins+2*total('coins'));assert.equal(progress(bulk).vitamins['Rare Candy'],before.vitamins['Rare Candy']+total('candy'));
+ for(const b of remaining)assert(progress(bulk).campaign.claimed.includes(b.key));
+ assert.deepEqual(progress(bulk).campaign.claimed,bulk.campaign.claimed);assert(bulk.campaign.claimed.includes(key),'existing contract receipt survives bulk claim');
+ const replay=ok(await rpc('claim_all_regions',batchArgs));assert(replay.replayed);assert.deepEqual(replay.reward,bulk.reward);assert.equal(progress(replay).coins,progress(bulk).coins);
+ none=ok(await mutate('claim_all_regions'));assert.equal(none.claimed_count,0);assert.equal(progress(none).coins,progress(bulk).coins);
+ let individual=ok(await mutate('claim_region',{region:'Sinnoh',master:true}));assert.equal(individual.claimed_count,0);assert.equal(progress(individual).coins,progress(bulk).coins);
+ assert.equal((await db.query("select count(*)::int n from arena_private.campaign_claims where user_id=$1 and (key like 'standard:%' or key like 'master:%')",[uid])).rows[0].n,16);checks++;
  document=save(0);p=JSON.parse(document.entries['pokemon-arena-wild-progress']);p.campaign={presets:Array(3).fill(null)};document.entries['pokemon-arena-wild-progress']=JSON.stringify(p);
  saved=(await db.query('select public.arena_write_save($1,$2) data',[document,(await stored()).stamp])).rows[0].data;assert.equal(saved.status,'rejected');assert.equal(saved.reason,'campaign_preset_capacity');checks++;
  p.campaign={title:'Champion'};document.entries['pokemon-arena-wild-progress']=JSON.stringify(p);saved=(await db.query('select public.arena_write_save($1,$2) data',[document,(await stored()).stamp])).rows[0].data;assert.equal(saved.reason,'campaign_title_locked');checks++;
@@ -88,6 +118,16 @@ let db,checks=0;
  }
  assert.equal((await db.query("select has_table_privilege('authenticated','arena_private.campaign_claims','select') allowed")).rows[0].allowed,false);checks++;
 const migrated=save(8);const migrantProgress=JSON.parse(migrated.entries['pokemon-arena-wild-progress']);migrantProgress.campaign={claimed:['standard:Kanto'],presets:[]};migrated.entries['pokemon-arena-wild-progress']=JSON.stringify(migrantProgress);await db.query('update public.arena_saves set save_data=$2 where user_id=$1',[other,migrated]);await db.query("select set_config('arena.test_uid',$1,false)",[other]);const adopted=await rpc('status');assert(adopted.claimed.includes('standard:Kanto'));const otherStamp=(await db.query('select updated_at::text stamp from public.arena_saves where user_id=$1',[other])).rows[0].stamp;const credited=ok(await rpc('claim_region',{region:'Kanto',request_id:crypto.randomUUID(),expected_revision:otherStamp}));assert.equal(progress(credited).coins,10000,'offline regional receipts cannot pay again on account adoption');checks++;
- await db.query("select set_config('arena.test_session','expired',false)");reject(await rpc('status'));
+ const receiptOnly=ok(await rpc('claim_all_regions',{request_id:crypto.randomUUID(),expected_revision:credited.updated_at}));assert.equal(receiptOnly.claimed_count,0);assert.equal(progress(receiptOnly).coins,10000);
+ const partial=(await db.query('update public.arena_saves set save_data=$2,updated_at=clock_timestamp() where user_id=$1 returning updated_at::text stamp',[other,save(16,badges.slice(0,8))])).rows[0];
+ const competing=[crypto.randomUUID(),crypto.randomUUID()];
+ const outcomes=await Promise.all(competing.map(request_id=>rpc('claim_all_regions',{request_id,expected_revision:partial.stamp})));
+ assert.deepEqual(outcomes.map(outcome=>outcome.status).sort(),['conflict','ok']);
+ const paid=ok(outcomes.find(outcome=>outcome.status==='ok'));assert.equal(paid.claimed_count,2);
+ assert.deepEqual(paid.reward,{coins:7000,vitamins:{'Rare Candy':3,'EXP Candy 500':3}});
+ assert.deepEqual(await regionalKeys(other),['master:Kanto','standard:Johto','standard:Kanto']);assert.equal(progress(paid).coins,17000);
+ const retry=ok(await rpc('claim_all_regions',{request_id:competing[outcomes.findIndex(outcome=>outcome.status==='conflict')],expected_revision:paid.updated_at}));
+ assert.equal(retry.claimed_count,0);assert.equal(progress(retry).coins,17000);
+ await db.query("select set_config('arena.test_session','expired',false)");reject(await rpc('status'));reject(await rpc('claim_all_regions',{request_id:crypto.randomUUID(),expected_revision:credited.updated_at}));
  console.log(JSON.stringify({campaignSQLChecks:checks,oneTimeClaims:true,contractVerification:true,regionalMaster:true,huntProtection:true,sessionAndOwnership:true}));await db.close();
 })().catch(async error=>{console.error(error);if(db){try{console.error((await db.query('select reason,details from arena_private.market_security_events order by id desc limit 3')).rows);}catch{}await db.close();}process.exitCode=1;});

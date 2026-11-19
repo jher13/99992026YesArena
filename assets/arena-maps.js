@@ -297,5 +297,6 @@
   if(original.viewMirror){ctx.translate(width,0);ctx.scale(-1,1);}
   ctx.drawImage(image,0,0,width,height);ctx.restore();
  }
- globalThis.ArenaMapRenderer={draw,themes,zonePoints,clearCache(){cache.clear();builds=0;},cacheInfo(){return {builds,entries:cache.size};}};
+ function drawZone(ctx,type,zone){zoneScenery(ctx,zone,themes[type]??themes.Grass,0);}
+ globalThis.ArenaMapRenderer={draw,drawZone,themes,zonePoints,clearCache(){cache.clear();builds=0;},cacheInfo(){return {builds,entries:cache.size};}};
 })();

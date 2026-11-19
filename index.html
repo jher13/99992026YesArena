@@ -937,7 +937,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
 @media(max-width:460px){.arena-evolution-route{grid-template-columns:1fr}.arena-evolution-route button{grid-column:1;grid-row:auto;justify-self:start}}
 
 </style>
-<link rel="stylesheet" href="./trainer-card.css?v=0.22.71">
+<link rel="stylesheet" href="./trainer-card.css?v=0.22.72">
 <main><header id="arena-header"><div class="arena-brand"><h1>Pokemon Arena</h1><button id="battle-settings-button" type="button" aria-haspopup="dialog" aria-controls="battle-settings" hidden>Settings</button></div><span id="score"></span></header>
 <section id="account-gate" aria-label="Account access">
 <div class="account-card">
@@ -1210,7 +1210,7 @@ dialog:is(#home-dialog,#battle-settings,#shop-purchase,#bag-craft-results,.gambi
  <div class="battle-settings-grid"><button id="battle-sfx" aria-pressed="true">SFX: On</button><button id="battle-music" aria-pressed="true">Music: On</button><button id="basic-attacks" type="button" aria-pressed="true">Normal Attack: On</button><button id="speed" aria-pressed="false">1× speed</button><button id="battle-auto-start" aria-pressed="false" hidden>Auto Start: Off</button><button id="battle-auto-capture" aria-pressed="false" hidden>Auto capture: Off</button><button id="battle-auto-repeat" aria-pressed="false" hidden>Auto repeat: Off</button><button id="auto-reserve" aria-pressed="false" hidden>Auto send-out: Off</button></div>
  <div id="battle-volume-controls"></div>
 </dialog>
-<script src="./assets/variant-sprites.js?v=0.22.69"></script><script src="./assets/arena-maps.js?v=0.22.67"></script><script>
+<script src="./assets/variant-sprites.js?v=0.22.69"></script><script src="./assets/arena-maps.js?v=0.22.72"></script><script>
 const byId = id => document.getElementById(id);
 const profileIndexKey='pokemon-arena-player-index';
 const defaultPlayer={id:'default',name:'Player 1'};
@@ -1780,8 +1780,9 @@ function paintIdlePortraits(now) {
   const height=Math.max(1,Math.round(frame.height*scale));
   context.clearRect(0,0,canvas.width,canvas.height);
   context.imageSmoothingEnabled=false;
+  const y=canvas.dataset.portraitAlign==='center'?Math.round((canvas.height-height)/2):canvas.height-height;
   context.drawImage(image,frame.sx,frame.sy,frame.width,frame.height,
-   Math.round((canvas.width-width)/2),canvas.height-height,width,height);
+   Math.round((canvas.width-width)/2),y,width,height);
  }
  idlePortraitFrame=idlePortraits.size?requestAnimationFrame(paintIdlePortraits):null;
 }
@@ -2929,8 +2930,9 @@ try {
  }
 
 } catch {}
-function saveWildProgress() {
- try {playerStorage.setItem(progressKey,JSON.stringify(wildProgress));} catch(error) {window.reportLocalSaveError?.(error);}
+function saveWildProgress(progress=wildProgress) {
+ try {playerStorage.setItem(progressKey,JSON.stringify(progress));return true;}
+ catch(error) {window.reportLocalSaveError?.(error);return false;}
 }
 const passTierXP=200;
 const passRewards=[
@@ -11257,6 +11259,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.72',changes:['The Kalos Laurel sits in front of the trainer card. Your featured Pokémon and its terrain effect share one center.','Claim all earned Standard and Master regional rewards together in Profile → Missions.']},
  {version:'0.22.71',changes:['Find regional rewards, hunts and contracts in Profile → Missions. Campaign opens the same page.','Achievements displays your badge sprites and Master marks. Choose your campaign cosmetics under Edit trainer card.','Trading Hub and Online now have separate menu tabs. Browse signed-in trainers and open their profiles.']},
  {version:'0.22.70',changes:['Filter your PC and raid picker by either Pokémon element.','Pixel symbols identify ATK, S.ATK, status, and fixed damage across move lists and combat.','Player profiles now show badge rank, three featured Pokémon, collection records, Mega raid clears, and progress for all nine Pokédex regions.']},
  {version:'0.22.69',changes:['Completed the National Dex through Pecharunt and added 58 regional forms with separate PC identities, stats, abilities and learnsets.','Bundled available PMDCollab animations and offline fallback sprites; added the missing evolution paths and regional training choices.','Updated encounters, family hunts, Trading Hub National Dex search and backend catalogs for the expanded roster.']},
@@ -11567,4 +11570,4 @@ byId('home-events').onclick=()=>{phase='events';showScreen('events');selectedPas
 byId('events-back').onclick=openMenu;
 </script>
 <script src="./tactics.js?v=0.22.70"></script><script src="./multiplayer.js?v=0.22.71"></script>
-<script src="./trade-hub.js?v=0.22.69"></script><script src="./campaign-progression.js?v=0.22.71"></script><script src="./trainer-card.js?v=0.22.71"></script></html>
+<script src="./trade-hub.js?v=0.22.69"></script><script src="./campaign-progression.js?v=0.22.72"></script><script src="./trainer-card.js?v=0.22.72"></script></html>

@@ -79,10 +79,14 @@ async function navigationChecks(A, net) {
  clearedGyms=[...badgeIds];for(const id of badgeIds.slice(0,8))masterGymClears.add(id);
  await window.ArenaTrainerCard.open();
  const featured=dlg().querySelector('.tc-buddy');A.ok(featured);
+ const effect=featured.querySelector('.tc-buddy-effect'),sprite=featured.querySelector('.tc-buddy-sprite');
+ A.ok(effect&&sprite);A.equal(effect.parent,sprite.parent);A.equal(effect.width,effect.height);A.equal(sprite.dataset.portraitAlign,'center');
  select(dlg(),'frame','laurel');A.ok(dlg().querySelector('.tc-hero').classList.contains('laurel'));
+ const hero=dlg().querySelector('.tc-hero');A.equal(hero.children.at(-1),hero.querySelector('.tc-card-frame'));
+ A.equal(hero.querySelectorAll('.tc-frame-corner').length,4);A.equal(hero.querySelector('.tc-card-frame').getAttribute('aria-hidden'),'true');
  A.ok(dlg().querySelector('.tc-buddy').classList.contains('tc-frame-laurel'));
  A.ok(byId('home').classList.contains('has-kalos-laurel'));A.equal(wildProgress.campaign.laurel,true);
- select(dlg(),'frame','');A.equal(dlg().querySelector('.tc-frame-laurel'),null);A.equal(byId('home').classList.contains('has-kalos-laurel'),false);
+ select(dlg(),'frame','');A.equal(dlg().querySelector('.tc-card-frame'),null);A.equal(dlg().querySelector('.tc-frame-laurel'),null);A.equal(byId('home').classList.contains('has-kalos-laurel'),false);
  select(dlg(),'frame','laurel');
  select(dlg(),'pennants','Kanto');select(dlg(),'title','Kanto Master');select(dlg(),'audience','friends');
  A.equal(window.ArenaCampaign.appearance(),'Kanto');A.equal(byId('campaign-player-title').textContent,'Kanto Master');A.equal(wildProgress.trainerCard.audience,'friends');
@@ -129,7 +133,7 @@ async function navigationChecks(A, net) {
   assert(markup.includes('#home.has-kalos-laurel #feature-sprite::before,.tc-frame-laurel::before'));
   assert(markup.includes(assetRoot+'gym-badges.png'));
  }
- assert(read('trainer-card.css').includes('border-image:var(--arena-kalos-laurel)'));
+ for(const rule of ['.tc-card-frame{','.tc-frame-corner{','.tc-buddy>canvas{grid-area:1/1'])assert(read('trainer-card.css').includes(rule));
  const settingsGrid=new Element('div');settingsGrid.className='battle-settings-grid';document.getElementById('battle-settings').append(settingsGrid);
  globalThis.profileTest={document,store,network};
  let engine=read('supabase/functions/arena-combat/engine.js');

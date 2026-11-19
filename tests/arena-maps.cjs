@@ -65,6 +65,15 @@ const renderMath=Object.create(Math);renderMath.random=()=>{throw Error('Renderi
 const rendererVM=vm.createContext({Math:renderMath,document:{createElement:tag=>{assert.equal(tag,'canvas');return makeCanvas();}}});
 vm.runInContext(art,rendererVM);const renderer=rendererVM.ArenaMapRenderer;
 assert.deepEqual(Object.keys(renderer.themes).sort(),[...types].sort());checks++;
+const portraitEffects=new Set();
+for(const type of ['Grass','Ghost','Water','Ice']){
+ const zone={x:64,y:64,r:55,seed:913},first=makeCanvas(),repaint=makeCanvas();
+ renderer.drawZone(first.getContext('2d'),type,zone);renderer.drawZone(repaint.getContext('2d'),type,zone);
+ assert(first.commands.some(cmd=>cmd[0]==='clip'));
+ assert(first.commands.some(([op,x,y])=>op==='moveTo'&&x===zone.x+zone.r&&y===zone.y),'terrain is drawn around the portrait center');
+ assert.equal(hash(first.commands),hash(repaint.commands));portraitEffects.add(hash(first.commands));
+}
+assert.equal(portraitEffects.size,4,'each trainer-card background paints its own terrain effect');checks++;
 const unique=new Set();
 for(const map of maps){
  const snapshot=JSON.stringify(map),surface=makeCanvas();renderer.draw(surface.getContext('2d'),map,960,480);

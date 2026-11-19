@@ -1,3 +1,13 @@
+# Update to 0.22.72
+
+Extract this patch over **0.22.71** and preserve the folder structure. The
+profile frame, featured Pokémon and terrain effect update on personal and
+shared trainer cards. Claim All is in **Profile → Missions → Regional rewards**.
+
+Push the files to `main` so the existing Supabase workflow applies
+`supabase/migrations/20261119020000_claim_all_regional_rewards.sql`.
+Signed-in players need that migration to claim multiple bundles at once.
+
 # Update to 0.22.71
 
 Extract the changed files over **0.22.70**, preserving their paths. Profile holds
