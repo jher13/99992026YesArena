@@ -10237,6 +10237,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.89',changes:['Room invites show online friends and guild members. The list refreshes while open and checks the recipient again before sending.']},
  {version:'0.22.88',changes:['PC storage remembers your search, filters, and sort order across the PC, co-op raid team selection, Trading Hub, and trainer-card favorites.']},
  {version:'0.22.87',changes:['Online battles process moves faster and recover missed battle time. PvP results show server timing and gaps between battle updates.']},
  {version:'0.22.86',changes:['Restored the complete set of 30 edited regional battle and victory themes. Each recording has a fresh music URL for returning players.']},

@@ -1,3 +1,7 @@
+# Update to 0.22.89
+
+Extract over **0.22.88** and push the changed files to `main`. The client uses the existing Online directory to filter room invites. The backend workflow applies `20261120020000_online_room_invites.sql` so both PvP and co-op also check the recipient's presence when saving an invitation.
+
 # Update to 0.22.88
 
 Extract over **0.22.87** and push the changed files to `main`. PC storage preferences are saved per player on this browser. The included combat engine carries the matching version for regional contracts.

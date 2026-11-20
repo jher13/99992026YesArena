@@ -27,6 +27,7 @@ class Element {
  remove(){if(this.parent)this.parent.children=this.parent.children.filter(child=>child!==this);this.parent=null;}
  cloneNode(deep){const copy=new Element(this.tag);copy.className=this.className;if(deep)copy.append(...this.children.map(c=>c instanceof Element?c.cloneNode(true):c));return copy;}
  get isConnected(){return this===document.body||Boolean(this.parent?.isConnected);}
+ get options(){return this.children.filter(child=>child.tag==='option');}
  contains(node){return this===node||Boolean(node?.parent&&this.contains(node.parent));}
  setAttribute(key,value){this.attributes[key]=String(value);}
  getAttribute(key){return this.attributes[key]??null;}
@@ -123,12 +124,69 @@ async function navigationChecks(A, net) {
  net.rows=net.rows.filter(r=>r.self);await click(content,'Refresh');A.equal(profileLinks().length,1);
  net.fail=true;await click(content,'Refresh');A.equal(profileLinks().length,0);A.match(content.textContent,/Try refreshing/);A.equal(byId('home-online-count').hidden,true);
  net.fail=false;await click(content,'Refresh');A.equal(profileLinks().length,1);
+ await inviteNavigationChecks(A,net);
  const started=new Promise(resolve=>net.onNotifications=resolve);let finishHeartbeat;
  net.pendingNotifications=new Promise(resolve=>finishHeartbeat=resolve);
  const polling=byId('toolbar-notices').onclick();await started;
  const leaving=window.leaveArenaPresence(net);await Promise.resolve();
  A.notEqual(net.requests.at(-1),'leave');finishHeartbeat();await Promise.all([polling,leaving]);
  A.equal(net.requests.at(-1),'leave');A.equal(byId('home-online-count').hidden,true);
+}
+async function inviteNavigationChecks(A,net){
+ const content=byId('home-dialog-content'),room=byId('raid-lobby');
+ const find=(root,label)=>root.querySelectorAll('button').find(node=>node.textContent===label);
+ const click=async(root,label)=>{const node=find(root,label);A.ok(node,label+' in '+root.textContent);await node.onclick();};
+ const friends=[{name:'Rival',accepted:true},{name:'Offline friend',accepted:true},{name:'Pending',accepted:false}];
+ const guild=['Guildmate','Rival','Offline guildmate'];
+ const pvp={id:'pvp-room',code:'PVP',mode:'unranked',format:1,side:'host',joined:false};
+ const raid={id:'raid-room',code:'RAID',mode:'coop_mega',format:1,side:'host',ownSlot:0,seats:[{uid:'viewer',name:'Nifty'},null,null,null,null,null]};
+ const sent=[],originalRpc=net.rpc;
+ let waitForFriends;
+ net.rpc=async function(method,args){
+  if(method==='arena_online'||method==='arena_raid'){
+   if(args.action==='create'||args.action==='poll')return {data:method==='arena_online'?pvp:raid};
+   if(args.action==='invite_list')return {data:['Nifty','Rival','Guildmate','Offline friend','Offline guildmate']};
+   if(args.action==='friends'){await waitForFriends;return {data:friends};}
+   if(args.action==='guildlist')return {data:guild};
+   if(args.action==='invite'){sent.push([method,args.args.id,args.args.name]);return {data:{}};}
+  }
+  if(method==='arena_raid_chat'||method==='arena_mega_raid_clears')return {data:[]};
+  if(method==='arena_coop_ticket_balance')return {data:0};
+  return originalRpc.call(this,method,args);
+ };
+ const online=(...names)=>{net.rows=[{name:'Nifty',self:true},...names.map(name=>({name,self:false}))];};
+ const names=()=>content.querySelector('select')?.options.map(option=>option.value)??[];
+ try{
+  online('Guildmate','Pending','Rival','Stranger');
+  await byId('home-pvp').onclick();await click(content,'Create room');await click(content,'Invite friend or guild member');
+  A.deepEqual(names(),['Guildmate','Rival']);
+  content.querySelector('select').value='Rival';await click(content,'Send invite');
+  A.deepEqual(sent,[['arena_online','pvp-room','Rival']]);
+  online('Rival');await window.refreshArenaPresence();A.deepEqual(names(),['Rival']);A.equal(content.querySelector('select').value,'Rival');
+  online();await click(content,'Send invite');A.equal(sent.length,1);
+  A.deepEqual(names(),[]);A.ok(!find(content,'Send invite'));A.match(content.textContent,/No friends or guild members online/);
+  await click(content,'Invite friend or guild member');A.equal(content.querySelectorAll('select').length,0);
+
+  online('Guildmate','Pending','Rival','Stranger');
+  await byId('home-coop').onclick();await click(room,'Create room');await click(content,'Private');await click(room,'Invite');
+  await click(content,'Friendlist');
+  A.deepEqual(content.querySelectorAll('button').filter(b=>b.textContent.startsWith('Invite ')).map(b=>b.textContent),['Invite Rival']);
+  await click(content,'Invite Rival');A.deepEqual(sent.at(-1),['arena_raid','raid-room','Rival']);
+  let finish;waitForFriends=new Promise(resolve=>{finish=resolve;});
+  const slow=click(content,'Friendlist');await click(content,'Guildlist');finish();await slow;
+  A.ok(find(content,'Invite Guildmate'));A.ok(!find(content,'Invite Offline guildmate'));
+  online('Guildmate');await window.refreshArenaPresence();
+  A.ok(!find(content,'Invite Rival'));await click(content,'Invite Guildmate');
+  A.deepEqual(sent.at(-1),['arena_raid','raid-room','Guildmate']);
+  net.fail=true;await window.refreshArenaPresence();A.ok(!find(content,'Invite Guildmate'));A.match(content.textContent,/Unable to check/);
+  net.fail=false;online('Offline guildmate');await window.refreshArenaPresence();A.ok(find(content,'Invite Offline guildmate'));
+  online();await window.refreshArenaPresence();A.match(content.textContent,/No guild members online/);
+  await click(content,'Friendlist');A.match(content.textContent,/No friends online/);
+  byId('home-dialog').close();await window.refreshArenaPresence();A.equal(net.requests.at(-1),'count');
+ }finally{
+  net.rpc=originalRpc;net.fail=false;phase='home';
+  await byId('home-online').onclick();
+ }
 }
 (async()=>{
  for(const [file,assetRoot] of [['index.html','./assets/'],['local-test/PokeArena_Local_Test.html','../assets/']]){
@@ -143,11 +201,12 @@ async function navigationChecks(A, net) {
  let engine=read('supabase/functions/arena-combat/engine.js');
  engine=engine.slice(0,engine.indexOf('const makeNode'))+'const document=globalThis.profileTest.document;\n'+engine.slice(engine.indexOf('const localStorage'));
  engine=engine.replace('const sessionStorage=localStorage;','const sessionStorage=globalThis.profileTest.store;');
+ engine=engine.replace('const location=undefined;',"const location={protocol:'file:',search:''};");
  engine=engine.replace('const Image=class {};','const Image=class {addEventListener(){}};');
- const source=[engine,'let cloudAccount=null;const cloudClient=async()=>globalThis.profileTest.network;',read('campaign-progression.js'),read('trainer-card.js'),read('multiplayer.js'),'export '+navigationChecks.toString()].join('\n');
+ const source=[engine,'let cloudAccount=null;const dirty=false;const cloudClient=async()=>globalThis.profileTest.network;',read('campaign-progression.js'),read('trainer-card.js'),read('multiplayer.js'),inviteNavigationChecks.toString(),'export '+navigationChecks.toString()].join('\n');
  const mod=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
  await mod.navigationChecks(assert,network);
- console.log('Passed profile navigation, cosmetics on own and visiting cards, 68 badge icons, Mission shortcuts, online listings and refresh recovery.');
+ console.log('Passed profile navigation, cosmetics, 68 badge icons, Mission shortcuts, online directory and live PvP/co-op invite checks.');
 })().catch(error=>{
  console.error(error.name,error.message);
  console.error(error.stack.split('\n').slice(1,4).map(l=>l.replace(/data:text\/javascript;base64,[\w+/=]+/g,'arena-client')).join('\n'));

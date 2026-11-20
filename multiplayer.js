@@ -6,7 +6,7 @@
   const network=!online || error instanceof TypeError && /fetch|network|load failed/i.test(error.message);
   return (network?'Connection lost. Retrying… ':'Online battle error. Retrying… ')+error.message;
  }
- let generation=0, timer, active;
+ let generation=0, timer, active, inviteView=null;
  let pvpVersionContext=false;
  window.isPvpVersionContext=()=>pvpVersionContext;
  window.isCompletedRaid=()=>Boolean(active?.result && isCoop(active.mode));
@@ -525,6 +525,7 @@
  window.addEventListener('online',()=>resumeMatchPolling?.());
  const stop=()=>{
   generation++;
+  inviteView=null;
   resumeMatchPolling=null;
   clearTimeout(timer);
   closeBattleChannel?.();
@@ -864,20 +865,13 @@
    }));
    const invite=button('Invite',()=>{
     const contacts=element('div');
-    const showContacts=async kind=>{
-     const data=kind==='friends'?await rpc('friends'):null;
-     let names;
-     if(kind==='friends')names=data.filter(friend=>friend.accepted).map(friend=>friend.name);
-     else names=await raidRpc('guildlist',{id:match.id});
-     contacts.replaceChildren(...(names.length?names.map(name=>button('Invite '+name,async()=>{
-      await raidRpc('invite',{id:match.id,name});
-      contacts.append(element('p','Invited '+name+'.'));
-     })):[element('p','No contacts available.')]));
-    };
-    show('Invite',button('Friendlist',()=>showContacts('friends')),button('Guildlist',()=>showContacts('guild')),
+    show('Invite',button('Friendlist',()=>showInviteContacts(contacts,'friends',match.id)),
+     button('Guildlist',()=>showInviteContacts(contacts,'guild',match.id)),
      button('Copy Room Code',async()=>{
-      try{await navigator.clipboard.writeText(match.code);contacts.replaceChildren(element('p','Room code copied.'));}
-      catch{contacts.replaceChildren(element('p',match.code));}
+      const message=element('p');
+      contacts.replaceChildren(message);
+      try{await navigator.clipboard.writeText(match.code);message.textContent='Room code copied.';}
+      catch{message.textContent=match.code;}
      }),contacts);
    });
    actions.replaceChildren(ready,edit,invite);
@@ -1148,13 +1142,10 @@
    if(raid && !m.joined)raid.seats.replaceChildren(element('div','You','raid-seat'),element('div','Open seat','raid-seat'));
    if(!m.joined && !m.seats){
     view.append(element('p','Waiting for another player…'));
-    if(m.code && m.side==='host') view.append(button('Invite friend or guild member',async()=>{
-     const names=await rpc('invite_list');
-     const recipient=select('Invite recipient',names.map(name=>[name,name]));
-     view.append(...(names.length?[recipient,button('Send invite',async()=>{
-      await rpc('invite',{id:m.id,name:recipient.value});view.append(element('p','Invitation sent.'));
-     })]:[element('p','No friends or guild members to invite.')]));
-    }));
+    if(m.code && m.side==='host'){
+     const contacts=element('div');
+     view.append(button('Invite friend or guild member',()=>showInviteContacts(contacts,'all',m.id)),contacts);
+    }
     return;
    }
    if(raid && !m.started){
@@ -1396,6 +1387,61 @@
  const onlineCount=byId('home-online-count');
  let directory=null,presenceRequest=null,leavingAccount=null,nextPulse=0;
  const directoryVisible=()=>Boolean(directory?.root.isConnected && dialog.open);
+ function visibleInviteView(){
+  if(!inviteView || inviteView.account!==cloudAccount || inviteView.token!==generation || !inviteView.root.isConnected)return null;
+  const open=dialog.contains(inviteView.root)?dialog.open:phase==='raid-lobby';
+  return open?inviteView:null;
+ }
+ const needsOnlineNames=()=>directoryVisible() || Boolean(visibleInviteView());
+ async function showInviteContacts(container,group,roomId){
+  const choices=element('div'),feedback=element('p');
+  feedback.setAttribute('role','status');
+  choices.textContent='Checking who is online…';
+  container.replaceChildren(choices,feedback);
+  let contacts,available=new Set(),lastKey,recipient;
+  const view={root:choices,account:cloudAccount,token:generation,update};
+  inviteView=view;
+  function update(rows){
+   if(!contacts)return;
+   const names=(rows??[]).filter(row=>!row.self && contacts.has(row.name)).map(row=>row.name);
+   const key=rows?JSON.stringify(names):null;
+   if(key===lastKey)return;
+   lastKey=key;
+   available=new Set(names);
+   if(!names.length){
+    const empty={friends:'No friends online.',guild:'No guild members online.',all:'No friends or guild members online.'};
+    choices.textContent=rows?empty[group]:'Unable to check who is online.';
+   }else if(group==='all'){
+    const selected=recipient?.value;
+    recipient=select('Invite recipient',names.map(name=>[name,name]));
+    recipient.value=available.has(selected)?selected:names[0];
+    choices.replaceChildren(recipient,button('Send invite',()=>send(recipient.value)));
+   }else choices.replaceChildren(...names.map(name=>button('Invite '+name,()=>send(name))));
+  }
+  async function send(name){
+   if(visibleInviteView()!==view)return;
+   await refreshPresence();
+   if(visibleInviteView()!==view || leavingAccount===view.account)return;
+   if(!available.has(name)){
+    feedback.textContent=lastKey===null?'':name+' is no longer online.';
+    return;
+   }
+   try{
+    await (group==='all'?rpc:raidRpc)('invite',{id:roomId,name});
+    if(visibleInviteView()===view)feedback.textContent='Invited '+name+'.';
+   }catch(error){
+    if(visibleInviteView()===view){feedback.textContent=error.message;await refreshPresence();}
+   }
+  }
+  try{
+   if(group==='friends')contacts=new Set((await rpc('friends')).filter(friend=>friend.accepted).map(friend=>friend.name));
+   else contacts=new Set(group==='guild'?await raidRpc('guildlist',{id:roomId}):await rpc('invite_list'));
+  }catch(error){
+   if(visibleInviteView()===view){choices.textContent='Unable to load invite contacts.';feedback.textContent=error.message;inviteView=null;}
+   return;
+  }
+  if(visibleInviteView()===view)await refreshPresence();
+ }
  function timedPresenceRequest(request){
   return typeof request.abortSignal==='function' && typeof globalThis.AbortSignal?.timeout==='function'
    ?request.abortSignal(AbortSignal.timeout(8000)):request;
@@ -1420,16 +1466,17 @@
   if(focused)buttons.get(focused)?.focus();
  }
  function refreshPresence(){
-  const account=cloudAccount,withNames=directoryVisible();
+  const account=cloudAccount,withNames=needsOnlineNames();
   if(!account || leavingAccount===account){
    onlineCount.hidden=true;
-   if(!account&&withNames){directory.status.textContent='Sign in to see online trainers.';directory.list.replaceChildren();directory.key=null;}
+   inviteView?.update(null);
+   if(!account&&directoryVisible()){directory.status.textContent='Sign in to see online trainers.';directory.list.replaceChildren();directory.key=null;}
    return Promise.resolve();
   }
   if(presenceRequest){
    const pending=presenceRequest;
    if(pending.account===account && (!withNames || pending.withNames))return pending.work;
-   return pending.work.then(()=>{if(cloudAccount===account && (!withNames || directoryVisible()))return refreshPresence();});
+   return pending.work.then(()=>{if(cloudAccount===account && (!withNames || needsOnlineNames()))return refreshPresence();});
   }
   nextPulse=Date.now()+25000;
   const job={account,withNames},live=()=>cloudAccount===account && leavingAccount!==account;
@@ -1437,9 +1484,11 @@
    if(!live())return;
    onlineCount.textContent=String(data.count);onlineCount.hidden=false;
    if(withNames && directoryVisible())updateOnlineList(data.players);
+   if(withNames)visibleInviteView()?.update(data.players);
   }).catch(()=>{
    if(!live())return;
    onlineCount.hidden=true;
+   visibleInviteView()?.update(null);
    if(directoryVisible()){directory.key=null;directory.list.replaceChildren();directory.status.textContent='Online players could not be loaded. Try refreshing.';}
   }).finally(()=>{if(presenceRequest===job)presenceRequest=null;});
   presenceRequest=job;return job.work;
@@ -1454,7 +1503,7 @@
  window.refreshArenaPresence=refreshPresence;
  window.resumeArenaPresence=()=>{leavingAccount=null;return refreshPresence();};
  window.leaveArenaPresence=async client=>{
-  const account=cloudAccount;if(!account)return;leavingAccount=account;onlineCount.hidden=true;
+  const account=cloudAccount;if(!account)return;leavingAccount=account;onlineCount.hidden=true;inviteView?.update(null);
   // The legacy notifications RPC refreshes the same timestamp. Let earlier writes finish before leaving.
   await Promise.allSettled([...notificationPulses,presenceRequest?.work]);
   if(cloudAccount===account)try{await directoryRpc('leave',client);}catch{}
@@ -1469,7 +1518,7 @@
  };
  window.addEventListener('online',refreshPresence);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refreshPresence();});
- setInterval(()=>{if(directoryVisible() || Date.now()>=nextPulse)void refreshPresence();},10000);
+ setInterval(()=>{if(needsOnlineNames() || Date.now()>=nextPulse)void refreshPresence();},10000);
  void refreshPresence();
  byId('home-coop').onclick=()=>open('Co-op',()=>lobby(true));
  byId('home-pvp').onclick=()=>open('PvP',()=>lobby(false));
