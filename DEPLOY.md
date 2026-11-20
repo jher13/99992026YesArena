@@ -1,3 +1,34 @@
+# Update to 0.22.87
+
+Extract the changed files over **0.22.86** and push them together to `main`.
+The existing GitHub workflow runs the online checks, applies the new turn-read
+migration, and deploys `arena-combat` with its pinned token-verification dependency.
+Existing rooms keep their saved state. Both previously signed and newer sessions
+can play through the update.
+
+After a PvP match, expand **PvP connection timing** on each device. It reports
+mean and 95th-percentile processing time for the advancing server turns that
+device observed, the longest gap between fresh updates, and the count of gaps
+of at least two seconds. Compare several 6v6 matches against the 50 ms mean and
+100 ms 95th-percentile targets, and check both players for multi-second gaps.
+The Supabase Overview also includes raids, campaign verification, and other
+requests. Slow combat requests and a sample of regular turns log an `arena_turn`
+record with the match, mode, turn, execution region, retries and stage timings.
+Individual combat responses also include a `Server-Timing` header.
+
+The first combat request uses automatic routing. The deployment workflow reads
+the project's database region and the client uses that region on subsequent
+requests. Regional failures let the next request use automatic routing for one
+minute. To compare routing, open the game with `?arenaRegion=auto` on both
+devices during a second set of matches. For a manual function deployment, set
+the optional `ARENA_COMBAT_REGION` to the project's exact region. If the region
+is unavailable, the game uses automatic routing.
+
+Run `npm ci` and `npm run test:online` for the regression checks.
+`npm run test:online -- --benchmark` runs five complete seeded 6v6 matches
+through the local function and embedded database. Hosted latency is measured
+in the deployed game.
+
 # Update to 0.22.86
 
 This cumulative soundtrack repair applies to **0.22.83 through 0.22.85**.

@@ -1,6 +1,6 @@
 {
   "name": "pokearena",
-  "version": "0.22.86",
+  "version": "0.22.87",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,9 +11,11 @@
     "test:maps": "node tests/arena-maps.cjs",
     "test:campaign": "node tests/regional-progression-client.cjs && node tests/regional-contracts.cjs && node tests/regional-progression-sql.cjs",
     "test:roster": "node tests/roster-expansion.cjs && node tests/arena-evolutions.cjs && node tests/roster-expansion-sql.cjs",
-    "test:profile": "node tests/trainer-profile.cjs && node tests/profile-navigation.cjs"
+    "test:profile": "node tests/trainer-profile.cjs && node tests/profile-navigation.cjs",
+    "test:online": "node tests/online-combat-turns.mjs"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.16"
+    "@electric-sql/pglite": "0.5.16",
+    "jose": "6.2.18"
   }
 }

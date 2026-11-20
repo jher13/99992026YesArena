@@ -270,14 +270,44 @@
   byId('choices').replaceChildren(confirmReady);
   if(!isCoop(match.mode))byId('choices').append(pvpLoanerPanel(match.locked));
  }
- async function combat(id,command) {
-  const client=await cloudClient();
-  const {data,error}=await client.functions.invoke('arena-combat',{body:{id,command}});
-  if(error) {
-   const body=await error.context?.json?.().catch(()=>null);
-   throw Error(body?.error ?? error.message);
+ function createCombatRequest() {
+  const automatic=new URLSearchParams(location.search).get('arenaRegion')==='auto';
+  let databaseRegion=null, retryRegionAfter=0;
+  return async (id,command)=>{
+   const client=await cloudClient();
+   const options={body:{id,command}};
+   if(!automatic && databaseRegion && performance.now()>=retryRegionAfter)options.region=databaseRegion;
+   const {data,error}=await client.functions.invoke('arena-combat',options);
+   if(error) {
+    const status=error.context?.status;
+    if(options.region && (!status || status===429 || status>=500))retryRegionAfter=performance.now()+60000;
+    const body=await error.context?.json?.().catch(()=>null);
+    throw Error(body?.error ?? error.message);
+   }
+   databaseRegion=data.combatRegion ?? null;
+   return data;
+  };
+ }
+ function recordPvPTurn(timing,packet,now) {
+  if(timing.last!==null) {
+   const gap=now-timing.last;
+   timing.maxGap=Math.max(timing.maxGap,gap);
+   if(gap>=2000)timing.stalls++;
   }
-  return data;
+  timing.last=now;
+  timing.updates++;
+  if(Number.isFinite(packet.serverMs) && packet.serverMs>=0)timing.server.push(packet.serverMs);
+ }
+ function pvpTimingDetails(timing) {
+  const details=element('details');
+  details.append(element('summary','PvP connection timing'));
+  if(timing.server.length) {
+   const times=[...timing.server].sort((a,b)=>a-b);
+   const avg=times.reduce((total,ms)=>total+ms,0)/times.length;
+   details.append(element('p','Server processing · '+avg.toFixed(1)+' ms average · '+times[Math.ceil(times.length*.95)-1].toFixed(1)+' ms at the 95th percentile · '+times.length+' timed turns'));
+  }
+  if(timing.updates>=2)details.append(element('p','Updates received on this device · '+timing.updates+' · Longest gap '+(timing.maxGap/1000).toFixed(2)+'s · Gaps of 2s or more '+timing.stalls));
+  return details;
  }
  function showBattleSnapshot(packet,send) {
   if(!packet.battle || packet.turn<=displayedTurn)return;
@@ -1015,6 +1045,8 @@
    } catch(error) {byId('status').textContent=error.message;view.append(element('p',error.message));}
   };
   const coOp=isCoop(active.mode);
+  const combat=createCombatRequest();
+  const timing={last:null,updates:0,maxGap:0,stalls:0,server:[]};
   const tier=megaRaidTiers[active.mode];
   raidBattleBackdrop=tier?new Image():null;
   if(raidBattleBackdrop)raidBattleBackdrop.src=raidAssetUrl(tier,'webp');
@@ -1032,7 +1064,7 @@
     const channel=client.channel('arena:'+active.id+':'+active.side,{config:{private:true}});
     closeBattleChannel=()=>{void client.removeChannel(channel);};
     channel.on('broadcast',{event:'snapshot'},({payload})=>{
-     if(token!==generation || active.result || !payload?.battle)return;
+     if(token!==generation || active.result || !payload?.battle || payload.turn<=displayedTurn)return;
      lastPush=performance.now();
      acceptBattle(payload);
     }).subscribe(status=>{live=status==='SUBSCRIBED';});
@@ -1050,6 +1082,9 @@
    } finally {sending=false;}
   }
   function acceptBattle(packet) {
+   if(!coOp && packet.battle && packet.turn>displayedTurn && (!battleSnapshot || packet.battle.clock>battleSnapshot.clock)) {
+    recordPvPTurn(timing,packet,performance.now());
+   }
    showBattleSnapshot(packet,send);
    if(packet.result && !active.result) {
     active={...active,result:packet.result};
@@ -1134,6 +1169,7 @@
       });
       check();
      }
+     if(!coOp && timing.updates>=2)stats.push(pvpTimingDetails(timing));
      show(result,...stats,button('Main menu',()=>dialog.close()));
     }
     else view.append(element('strong',result));return;

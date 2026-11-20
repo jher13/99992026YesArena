@@ -4937,7 +4937,13 @@ let pendingCasts=[];
 let trainerFields=null;
 let recallSlot=null;
 let fieldActorCache=null;
+// Move scoring and damage estimates only read the field. Discard these lookups before applying a move.
+let moveEvaluation=null;
 function fieldActors() {
+ if(moveEvaluation)return moveEvaluation.field ??= currentFieldActors();
+ return currentFieldActors();
+}
+function currentFieldActors() {
  const cache=fieldActorCache;
  let valid=cache && cache.clock===clock && cache.fields===trainerFields && cache.player===activePlayer &&
   cache.enemy===activeEnemy && cache.playerSwitch===playerSwitch && cache.enemySwitch===enemySwitch;
@@ -6019,6 +6025,10 @@ function setWeather(kind) {
 }
 let abilityEnvironmentCache=null;
 function abilityEnvironment() {
+ if(moveEvaluation)return moveEvaluation.abilities ??= currentAbilityEnvironment();
+ return currentAbilityEnvironment();
+}
+function currentAbilityEnvironment() {
  const field=fieldActors(),cache=abilityEnvironmentCache;
  let valid=cache && cache.field===field;
  if(valid)for(let i=0;i<field.length;i++) {
@@ -6760,6 +6770,15 @@ function scaledBattleDamage(damage) {
  return damage>0 ? Math.max(1,Math.round(damage*battleDamageScale)) : 0;
 }
 function battleDamage(actor,victim,power,multiplier,physical,element,move,critical=false) {
+ if(moveEvaluation)return calculateBattleDamage(actor,victim,power,multiplier,physical,element,move,critical);
+ moveEvaluation={};
+ try {
+  return calculateBattleDamage(actor,victim,power,multiplier,physical,element,move,critical);
+ } finally {
+  moveEvaluation=null;
+ }
+}
+function calculateBattleDamage(actor,victim,power,multiplier,physical,element,move,critical=false) {
  if(multiplier===0) return 0;
  const masterBonus=actor.friendly!==victim.friendly?
   masterGymDamageMultiplier(actor)*(isRaidBerserk(actor)?2:1)*(isRaidBerserk(victim)?3:1):1;
@@ -7522,6 +7541,15 @@ function isBackHit(origin,target) {
  return distance>0 && (dx*Math.sin(heading)+dy*Math.cos(heading))/distance<=-Math.SQRT1_2+1e-9;
 }
 function tacticalMoveScore(actor,target,move,rules,gap) {
+ if(moveEvaluation)return scoreTacticalMove(actor,target,move,rules,gap);
+ moveEvaluation={};
+ try {
+  return scoreTacticalMove(actor,target,move,rules,gap);
+ } finally {
+  moveEvaluation=null;
+ }
+}
+function scoreTacticalMove(actor,target,move,rules,gap) {
  const [,power,accuracy,priority,status,drain,recoil]=moveCatalog[move];
  const {element:type}=arenaAttackElement(actor,move);
  const defender=targetAbility(actor,target,move);
@@ -10150,6 +10178,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.87',changes:['Online battles process moves faster and recover missed battle time. PvP results show server timing and gaps between battle updates.']},
  {version:'0.22.86',changes:['Restored the complete set of 30 edited regional battle and victory themes. Each recording has a fresh music URL for returning players.']},
  {version:'0.22.85',changes:['Trainer battle wins now play the edited trainer victory theme.']},
  {version:'0.22.84',changes:['Updated the wild, trainer, and gym battle music in all nine regions, plus the wild and gym victory themes.']},
