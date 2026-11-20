@@ -222,28 +222,30 @@
   section.append(grid);return section;
  }
  function chooseFavorite(slot){
-  const picker=node('dialog',null,'tc-picker'),label=node('h2','Choose favorite Pokémon'),search=node('input');
-  picker.setAttribute('aria-label',label.textContent);search.type='search';search.placeholder='Search your Pokémon';search.setAttribute('aria-label',search.placeholder);
-  const grid=node('div',null,'tc-pick-grid'),pageText=node('span'),pages=node('div',null,'tc-pager');
-  let page=0;const limit=30,old=model.featured.map(mon=>mon?.name??null);
+  const picker=node('dialog',null,'tc-picker'),label=node('h2','Choose favorite Pokémon');
+  picker.setAttribute('aria-label',label.textContent);
+  const {storage,control}=clonePcBox(),search=control('box-search'),grid=control('box-grid');
+  grid.className='tc-pick-grid';search.placeholder='Search your Pokémon';search.setAttribute('aria-label',search.placeholder);
+  let page=0;const old=model.featured.map(mon=>mon?.name??null);
   const set=name=>{
    const used=old.indexOf(name);if(name&&used!==-1&&used!==slot)old[used]=old[slot];
    old[slot]=name;cardState().featured=old;saveWildProgress();picker.close();refreshLocal();
    body.querySelectorAll('.tc-mon')[slot]?.focus();
   };
-  const back=button('Previous',()=>{page--;paint();}),next=button('Next',()=>{page++;paint();});
+  const back=control('box-prev'),next=control('box-next');
+  back.onclick=()=>{page--;paint();};next.onclick=()=>{page++;paint();};
   function paint(){
-   const query=search.value.trim().replace(/^#/,'').toLowerCase();
-   const list=dexNames.filter(name=>entries.has(name)&&(!query||name.toLowerCase().includes(query)||String(nationalDexId(name))===query.replace(/^0+/,'')));
-   const count=Math.max(1,Math.ceil(list.length/limit));page=Math.min(page,count-1);back.disabled=page===0;next.disabled=page>=count-1;
-   pageText.textContent=(page+1)+' / '+count;
-   grid.replaceChildren(...list.slice(page*limit,(page+1)*limit).map(name=>{
+   const list=filteredPcNames(entries.keys(),control),count=Math.ceil(list.length/boxSize);
+   page=Math.max(0,Math.min(page,count-1));back.disabled=page===0;next.disabled=page>=count-1;
+   control('box-page').textContent=count?'Box '+(page+1)+' / '+count:'No boxes';
+   control('box-count').textContent=list.length+' Pokémon';
+   grid.replaceChildren(...list.slice(page*boxSize,(page+1)*boxSize).map(name=>{
     const mon=entries.get(name),tile=button('',()=>set(name));tile.append(portrait(name,mon.shiny),node('small',(mon.shiny?'✦ ':'')+name));return tile;
    }));
    if(!list.length)grid.append(node('p','No matching Pokémon.'));
   }
-  search.oninput=()=>{page=0;paint();};pages.append(back,pageText,next);
-  picker.append(label,search,grid,pages,button('Clear slot',()=>set(null)),button('Cancel',()=>picker.close()));
+  bindPcBox(control,()=>{page=0;paint();});
+  picker.append(label,storage,button('Clear slot',()=>set(null)),button('Cancel',()=>picker.close()));
   picker.addEventListener('close',()=>picker.remove(),{once:true});document.body.append(picker);paint();picker.showModal();search.focus();
  }
  function summaries(){

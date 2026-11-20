@@ -1,3 +1,7 @@
+# Update to 0.22.88
+
+Extract over **0.22.87** and push the changed files to `main`. PC storage preferences are saved per player on this browser. The included combat engine carries the matching version for regional contracts.
+
 # Update to 0.22.87
 
 Extract the changed files over **0.22.86** and push them together to `main`.

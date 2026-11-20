@@ -56,6 +56,29 @@ async function updateChecks(){
  ctx.selectedWild=null;flushHook=null;await ctx.restartUpdatedClient('9.0.0');assert.equal(redirects.length,1);assert.match(redirects[0],/gameVersion=9.0.0/);checks++;
 }
 function storage(){const m=new Map();return {get length(){return m.size;},key:i=>[...m.keys()][i],getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,String(v)),removeItem:k=>m.delete(k)};}
+const pcFilterCode=html.slice(html.indexOf('const pcFilterKey='),html.indexOf('function appendFilterOption('));
+function pcPreferenceChecks(){
+ const local=storage();
+ function open(profile){
+  const d=dom(),ctx=vm.createContext({...d,localStorage:local,playerSaveKey:key=>profile+'/'+key});
+  vm.runInContext(pcFilterCode,ctx);
+  ctx.bindPcBox(d.byId,()=>{});
+  return d.byId;
+ }
+ const main=open('one');
+ const change=(control,id,value)=>{const input=control(id);input.value=value;(input.oninput??input.onchange)();};
+ const settings={'box-search':'#0026','box-generation':'1','pc-element':'Electric','pc-nature':'Timid','pc-personality':'Mischievous','pc-favorites':'only','pc-sort':'level','pc-order':'desc','pc-min-iv':'150','pc-min-ev':'400'};
+ for(const [id,value] of Object.entries(settings))change(main,id,value);
+ const raid=open('one');
+ for(const [id,value] of Object.entries(settings))assert.equal(raid(id).value,value,id);
+ change(raid,'pc-stat','0');
+ const restored=open('one');assert.equal(restored('pc-stat').value,'0');assert.equal(restored('pc-min-iv').value,'31');assert.equal(restored('pc-min-ev').value,'252');checks++;
+ assert.equal(open('two')('pc-sort').value,'number');assert.equal(open('two')('box-search').value,'');checks++;
+ restored('pc-reset').onclick();
+ assert.equal(open('one')('pc-order').value,'asc');assert.equal(open('one')('pc-favorites').value,'');assert.equal(open('one')('pc-min-iv').max,186);checks++;
+ local.setItem('two/pokemon-arena-pc-filters','{broken');
+ assert.equal(open('two')('box-generation').value,'0');checks++;
+}
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 async function cloudChecks(){
  const d=dom(),local=storage(),session=storage();let saveWrites=0,marketCalls=[],failures=0,loseResponse=false,heldResolve=null,lastResult;
@@ -101,7 +124,7 @@ async function hubChecks(){
   ...Object.entries(gameDex).filter(([,value])=>value[0]>1&&value[0]<=32||value[0]===152).map(([name,value])=>({selector:{name,slot:0,fingerprint:'species-'+value[0]},
    pokemon:{...sample,name,number:value[0],generation:value[0]===152?2:1,types:value.slice(1,3).filter(Boolean)},profile}))];
  const calls=[],mutations=[];let listings=[];
- const ctx=vm.createContext({...d,window:{arenaMarketPrepare:async()=>{},arenaMarketRead:async(action,args)=>{calls.push({action,args});return action==='inventory'?{rows}:{rows:listings,total:listings.length};},
+ const ctx=vm.createContext({...d,localStorage:storage(),playerSaveKey:key=>key,window:{arenaMarketPrepare:async()=>{},arenaMarketRead:async(action,args)=>{calls.push({action,args});return action==='inventory'?{rows}:{rows:listings,total:listings.length};},
   arenaMarketMutate:async(action,args)=>{mutations.push({action,args});return {message:'Saved.'};}},wildProgress:{coins:10000,favorites:['Bulbasaur']},
   dexNames:Object.keys(gameDex),dex:gameDex,moveColors:{Grass:'#00aa00',Poison:'#aa00aa',Fire:'#ff0000'},typeChart:{Grass:{},Poison:{},Fire:{}},
   pokemonPortrait:()=>new Node('canvas'),idlePokemonPortrait:()=>new Node('canvas'),spriteVariants:()=>({shiny:'shiny'}),
@@ -111,6 +134,7 @@ async function hubChecks(){
  vm.runInContext(html.slice(html.indexOf('const natureNames=['),html.indexOf('const profileStorage=')),ctx);
  vm.runInContext(html.slice(html.indexOf('function natureOf('),html.indexOf('function isAvailablePokemon(')),ctx);
  vm.runInContext(html.slice(html.indexOf('function drawStats('),html.indexOf('function addEVs(')),ctx);
+ vm.runInContext(pcFilterCode,ctx);
  vm.runInContext(read('trade-hub.js'),ctx);
  const content=d.byId('home-dialog-content'),allText=n=>[n,...n.all()].map(n=>n.textContent).join(' '),text=()=>allText(content);
  const button=label=>content.all().find(n=>n.tagName==='button'&&n.textContent===label);
@@ -141,7 +165,10 @@ async function hubChecks(){
  input('PC minimum EV').value='252';input('PC minimum EV').oninput();assert.equal(content.querySelector('.market-pc-grid').children.length,1);checks++;
  await button('Reset PC filters').onclick();input('PC favorites').value='only';input('PC favorites').oninput();assert.equal(content.querySelector('.market-pc-grid').children.length,1);assert(control('Inspect Bulbasaur'));checks++;
  await button('Reset PC filters').onclick();input('PC sort by').value='level';input('PC sort by').oninput();input('PC sort order').value='desc';input('PC sort order').oninput();assert.equal(content.querySelector('.market-pc-grid').children[0].attributes['aria-label'],'Inspect Bulbasaur');await selectCopy();assert.match(allText(content.querySelector('.market-pc-status')),/Lv. 80/);checks++;
- await button('Request').onclick();assert(input('Search requests for'));await button('Create request').onclick();await selectCopy(1);assert.match(allText(content.querySelector('.market-pc-status')),/Copy 2 · Stored/);checks++;
+ input('PC copies').value='stored';input('PC copies').oninput();
+ await button('Request').onclick();assert(input('Search requests for'));await button('Create request').onclick();
+ assert.equal(input('PC sort by').value,'level');assert.equal(input('PC sort order').value,'desc');assert.equal(input('PC copies').value,'stored');checks++;
+ await selectCopy(1);assert.match(allText(content.querySelector('.market-pc-status')),/Copy 2 · Stored/);checks++;
  input('Pokémon you want').value='charmander';input('Wanted nature').value='Timid';input('Wanted personality').value='Swift';input('Wanted appearance').value='true';
  await content.all().find(n=>n.tagName==='form').onsubmit({preventDefault(){}});const wanted=mutations.at(-1);assert.equal(wanted.action,'create_request');assert.equal(wanted.args.selector.fingerprint,'copy-two');assert.equal(wanted.args.want.name,'Charmander');assert.equal(wanted.args.want.personality,'Swift');assert.equal(wanted.args.want.shiny,true);checks++;
  assert(ctx.window.arenaMarketMatchesWanted({...sample,name:'Charmander',nature:'Timid',personality:'Swift',shiny:true},wanted.args.want));assert(!ctx.window.arenaMarketMatchesWanted({...sample,name:'Charmander'},wanted.args.want));checks++;
@@ -151,4 +178,4 @@ async function hubChecks(){
  d.byId('home-dialog').close();assert(!d.byId('home-dialog').classes.has('trade-hub-dialog'));checks++;
 }
 
-(async()=>{await updateChecks();await cloudChecks();await hubChecks();console.log(checks+' client checks passed: automatic session update guards, transaction recovery, live PC imports and all Hub tabs.');})().catch(error=>{console.error(error);process.exitCode=1;});
+(async()=>{pcPreferenceChecks();await updateChecks();await cloudChecks();await hubChecks();console.log(checks+' client checks passed: automatic session update guards, transaction recovery, PC filter persistence, live PC imports and all Hub tabs.');})().catch(error=>{console.error(error);process.exitCode=1;});

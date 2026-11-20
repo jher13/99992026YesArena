@@ -463,15 +463,12 @@ const boxSize = 30;
 let activeSlot = 0;
 let inspected = null;
 let boxPage = 0;
-const boxSearch = byId('box-search');
 const boxGeneration=byId('box-generation');
 for(let generation=0;generation<=generationEnds.length;generation++) {
  const option=element('option',generation ? 'Generation '+generation : 'All generations');
  option.value=String(generation);
  boxGeneration.append(option);
 }
-boxGeneration.onchange=()=>{boxPage=0;renderBoxes();};
-boxSearch.oninput = () => {boxPage=0;renderBoxes();};
 byId('box-prev').onclick = () => {boxPage--;renderBoxes();};
 byId('box-next').onclick = () => {boxPage++;renderBoxes();};
 function element(tag, text, className) {
@@ -720,7 +717,82 @@ function renderRoster() {
   return name?enableBoxDrag(tile,name):tile;
  }));
 }
-const pcFilterIds=['pc-element','pc-nature','pc-personality','pc-stat','pc-min-iv','pc-min-ev','pc-sort','pc-order','pc-favorites'];
+const pcFilterKey=playerSaveKey('pokemon-arena-pc-filters');
+const pcFilterDefaults={generation:'0',sort:'number',order:'asc'};
+let pcFilterPreferences={},pcFilterRaw=null;
+function readPcFilters() {
+ try {
+  const raw=localStorage.getItem(pcFilterKey);
+  if(raw!==pcFilterRaw){
+   pcFilterRaw=raw;
+   pcFilterPreferences={};
+   const saved=JSON.parse(raw);
+   if(saved && typeof saved==='object' && !Array.isArray(saved))pcFilterPreferences=saved;
+  }
+ } catch {}
+ return pcFilterPreferences;
+}
+function bindPcFilters(inputs,onChange) {
+ const fields=Object.entries(inputs);
+ function statLimits() {
+  const single=inputs.stat.value!=='';
+  for(const [key,max] of [['iv',single?31:186],['ev',single?252:510]]) {
+   const input=inputs[key];input.max=max;
+   if(input.value!=='') {
+    const amount=Math.trunc(Number(input.value));
+    input.value=Number.isFinite(amount)?String(Math.max(0,Math.min(max,amount))):'';
+   }
+  }
+ }
+ function apply(settings) {
+  let changed=false;
+  for(const [key,input] of fields) {
+   const before=input.value, fallback=pcFilterDefaults[key] ?? '';
+   const value=typeof settings[key]==='string'?settings[key]:fallback;
+   input.value=value;
+   if(input.value!==value)input.value=fallback;
+   if(input.value!==before)changed=true;
+  }
+  statLimits();
+  return changed;
+ }
+ function save(keys) {
+  const settings=readPcFilters();
+  for(const key of keys)settings[key]=inputs[key].value;
+  const raw=JSON.stringify(settings);
+  try {localStorage.setItem(pcFilterKey,raw);pcFilterRaw=raw;} catch {}
+ }
+ for(const [key,input] of fields) {
+  const change=()=>{
+   if(key==='stat' || key==='iv' || key==='ev')statLimits();
+   save(key==='stat'?['stat','iv','ev']:[key]);
+   onChange();
+  };
+  if(key==='generation')input.onchange=change;else input.oninput=change;
+ }
+ const restore=()=>apply(readPcFilters());
+ restore();
+ return {restore,reset(){apply({});save(Object.keys(inputs));onChange();}};
+}
+function bindPcBox(control,onChange) {
+ const inputs={search:control('box-search'),generation:control('box-generation'),iv:control('pc-min-iv'),ev:control('pc-min-ev')};
+ for(const key of ['element','nature','personality','stat','sort','order','favorites'])inputs[key]=control('pc-'+key);
+ const filters=bindPcFilters(inputs,onChange);
+ control('pc-reset').onclick=filters.reset;
+ return filters;
+}
+function clonePcBox() {
+ const storage=element('section',null,'team-box'),controls=new Map();
+ for(let source=byId('box-generation').parentElement;source;source=source.nextElementSibling) {
+  const copy=source.cloneNode(source.id!=='box-grid');
+  for(const input of [copy,...copy.querySelectorAll('[id]')]) {
+   if(input.id){controls.set(input.id,input);input.removeAttribute('id');}
+  }
+  storage.append(copy);
+  if(source.id==='box-grid')break;
+ }
+ return {storage,control:id=>controls.get(id)};
+}
 function appendFilterOption(id,label,value=label) {
  const option=element('option',label);
  option.value=value;
@@ -730,25 +802,10 @@ for(const type of Object.keys(typeChart).sort())appendFilterOption('pc-element',
 for(const nature of [...natureNames].sort()) appendFilterOption('pc-nature',nature);
 for(const trait of [...new Set(personalityTraits.flat())].sort()) appendFilterOption('pc-personality',trait);
 statLabels.forEach((label,index)=>appendFilterOption('pc-stat',label,String(index)));
-function refreshPcFilters() {
- const single=byId('pc-stat').value!=='';
- for(const [id,max] of [['pc-min-iv',single?31:186],['pc-min-ev',single?252:510]]) {
-  const input=byId(id);
-  input.max=max;
-  if(Number(input.value)>max) input.value=String(max);
- }
+const mainPcFilters=bindPcBox(byId,()=>{
  boxPage=0;
  renderBoxes();
-}
-for(const id of pcFilterIds) byId(id).oninput=refreshPcFilters;
-byId('pc-reset').onclick=()=>{
- for(const id of pcFilterIds) byId(id).value='';
- byId('pc-sort').value='number';
- byId('pc-order').value='asc';
- boxSearch.value='';
- boxGeneration.value='0';
- refreshPcFilters();
-};
+});
 function pcCandidates(storage,query,generation,control=byId) {
  const numeric=query.replace(/^#/,'');
  const elementFilter=control('pc-element').value;
@@ -769,7 +826,7 @@ function pcCandidates(storage,query,generation,control=byId) {
   if(generation && generationOf(name)!==generation) continue;
   const number=dex[name][0];
   if(query && !name.toLowerCase().includes(query) &&
-   !(/^\d+$/.test(numeric) && (number===Number(numeric) || dexNumber(name).slice(1).startsWith(numeric)))) continue;
+   !(/^\d+$/.test(numeric) && (number===Number(numeric) || nationalDexId(name)===Number(numeric) || dexNumber(name).slice(1).startsWith(numeric)))) continue;
   const profile=profileFor(name);
   const nature=natureOf(profile).name;
   const personality=personalityOf(profile).split(' · ')[0];
@@ -784,11 +841,12 @@ function pcCandidates(storage,query,generation,control=byId) {
  });
  return matches.map(entry=>entry.name);
 }
+function filteredPcNames(storage,control=byId) {
+ return pcCandidates(storage,control('box-search').value.trim().toLowerCase(),Number(control('box-generation').value),control);
+}
 function renderBoxes() {
- const query=boxSearch.value.trim().toLowerCase();
- const selectedGeneration=Number(boxGeneration.value);
  const storage=dexNames.filter(name=>ownedPokemon(name) && (!team.includes(name) || wildProgress.copies[name]?.length));
- const names=pcCandidates(storage,query,selectedGeneration);
+ const names=filteredPcNames(storage);
  const pages=Math.ceil(names.length/boxSize);
  boxPage=clamp(boxPage,0,Math.max(0,pages-1));
  const page=names.slice(boxPage*boxSize,(boxPage+1)*boxSize);
@@ -1297,6 +1355,7 @@ badges,element('p',height/10+' m · '+weight/10+' kg'),
  drawStats(chart,chartValues);
 }
 function renderMenu() {
+ if(mainPcFilters.restore())boxPage=0;
  renderRoster();
  renderBoxes();
  renderDetail();
@@ -10178,6 +10237,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.88',changes:['PC storage remembers your search, filters, and sort order across the PC, co-op raid team selection, Trading Hub, and trainer-card favorites.']},
  {version:'0.22.87',changes:['Online battles process moves faster and recover missed battle time. PvP results show server timing and gaps between battle updates.']},
  {version:'0.22.86',changes:['Restored the complete set of 30 edited regional battle and victory themes. Each recording has a fresh music URL for returning players.']},
  {version:'0.22.85',changes:['Trainer battle wins now play the edited trainer victory theme.']},

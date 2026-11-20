@@ -751,23 +751,10 @@
    const prior=inspected;
    panel.before(anchor);
    const title=element('h2','Edit Pokémon');
-   const storage=element('section',null,'team-box');
+   const {storage,control}=clonePcBox();
    storage.setAttribute('aria-label','Choose raid Pokémon');
-   const controls=new Map();
-   for(let source=byId('box-generation').parentElement;source;source=source.nextElementSibling) {
-    const copy=source.cloneNode(true);
-    for(const control of [copy,...copy.querySelectorAll('[id]')]) {
-     if(!control.id)continue;
-     controls.set(control.id,control);
-     control.removeAttribute('id');
-    }
-    storage.append(copy);
-    if(source.id==='box-grid')break;
-   }
-   const control=id=>controls.get(id);
    const grid=control('box-grid');
-   let chosen=eligible.includes(initial)?initial:eligible[0] ?? '';
-   let page=0;
+   let chosen=initial, page=0, submitting=false;
    const preview=()=>{
     panel.hidden=!chosen;
     if(!chosen)return;
@@ -779,16 +766,20 @@
    const use=element('button','Use this Pokémon');
    use.type='button';
    use.onclick=async()=>{
-    if(!chosen || use.disabled)return;
-    use.disabled=true;
+    if(!chosen || submitting)return;
+    submitting=true;use.disabled=true;
     feedback.textContent='';
     try {
      if(await save(chosen))editor.close();
      else feedback.textContent=status.textContent || 'The raid room is busy. Try again.';
-    } finally {use.disabled=!chosen;}
+    } finally {submitting=false;use.disabled=!chosen;}
    };
-   function renderPicker() {
-    const names=pcCandidates(eligible,control('box-search').value.trim().toLowerCase(),Number(control('box-generation').value),control);
+   function renderPicker(names=filteredPcNames(eligible,control)) {
+    if(!names.includes(chosen)) {
+     chosen=names[0] ?? '';
+     preview();
+    }
+    use.disabled=submitting || !chosen;
     const pages=Math.ceil(names.length/boxSize);
     page=clamp(page,0,Math.max(0,pages-1));
     control('box-prev').disabled=page===0;
@@ -805,33 +796,13 @@
      })));
     if(!names.length)grid.append(element('p',eligible.length?'No Pokémon match these filters.':'Catch a Pokémon to join a raid.'));
    }
-   function refreshPicker() {
-    const single=control('pc-stat').value!=='';
-    for(const [id,max] of [['pc-min-iv',single?31:186],['pc-min-ev',single?252:510]]) {
-     const input=control(id);
-     input.max=max;
-     if(Number(input.value)>max)input.value=String(max);
-    }
-    page=0;
-    renderPicker();
-   }
-   const defaults={'pc-sort':'number','pc-order':'asc','box-generation':'0'};
-   const filters=[...pcFilterIds,'box-search','box-generation'];
-   const reset=()=>{
-    for(const id of filters)control(id).value=defaults[id] ?? '';
-    refreshPicker();
-   };
-   for(const id of filters)control(id).oninput=refreshPicker;
-   control('pc-reset').onclick=reset;
+   bindPcBox(control,()=>{page=0;renderPicker();});
    control('box-prev').onclick=()=>{page--;renderPicker();};
    control('box-next').onclick=()=>{page++;renderPicker();};
-   reset();
-   if(chosen) {
-    const ordered=pcCandidates(eligible,'',0,control);
-    page=Math.floor(ordered.indexOf(chosen)/boxSize);
-    renderPicker();
-   }
-   use.disabled=!chosen;
+   const names=filteredPcNames(eligible,control);
+   chosen=names.includes(initial)?initial:names[0] ?? '';
+   page=Math.max(0,Math.floor(names.indexOf(chosen)/boxSize));
+   renderPicker(names);
    editor.append(title,storage,panel,feedback,element('div',null,'raid-room-actions'));
    editor.lastChild.append(use,button('Cancel',()=>editor.close()));
    editor.addEventListener('close',()=>{

@@ -71,7 +71,7 @@
   const root=node('section',null,'market-picker market-pc-picker'),storage=node('section',null,'team-box market-pc-box');
   const preview=node('div',null,'market-pc-preview'),toolbar=node('div',null,'market-pc-toolbar');
   const search=field('Search PC storage','search'),generation=select('PC generation',[
-   ['','All generations'],...Array.from({length:9},(_,i)=>[String(i+1),'Generation '+(i+1)])]);
+   ['0','All generations'],...Array.from({length:9},(_,i)=>[String(i+1),'Generation '+(i+1)])],'0');
   search.input.placeholder='Search PC storage';search.wrapper.classList.add('market-pc-search');generation.wrapper.classList.add('market-pc-generation');
   const controls={},filterDetails=node('details',null,'pc-filters'),filterGrid=node('div',null,'pc-filter-grid');
   filterDetails.append(node('summary','Filters & sorting'),filterGrid);
@@ -107,7 +107,7 @@
     const meta=row.pokemon;
     const searchable=[identity(meta),sourceLabel(row),...meta.types].join(' ').toLowerCase();
     return (!query || searchable.includes(query) || /^\d+$/.test(numeric) && (meta.number===Number(numeric)||String(meta.number).padStart(4,'0').startsWith(numeric))) &&
-     (!generation.input.value || String(meta.generation)===generation.input.value) &&
+     (generation.input.value==='0' || String(meta.generation)===generation.input.value) &&
      (!controls.nature.value || meta.nature===controls.nature.value) && (!controls.personality.value || meta.personality===controls.personality.value) &&
      (!controls.element.value || meta.types.includes(controls.element.value)) && (!controls.appearance.value || String(meta.shiny)===controls.appearance.value) &&
      (!controls.source.value || (row.selector.slot===0)===(controls.source.value==='active')) &&
@@ -145,14 +145,8 @@
    }else{copies.append(node('p','Select a Pokémon above to see its Active and stored copies.'));selection.textContent='Choose a Pokémon from your PC.';}
    preview.replaceChildren(pokemonStatus(selected));
   }
-  const filter=()=>{page=0;render();};
-  for(const control of Object.values(controls))control.oninput=filter;
-  controls.stat.oninput=()=>{for(const [key,max] of [['iv',controls.stat.value===''?186:31],['ev',controls.stat.value===''?510:252]]){controls[key].max=max;if(Number(controls[key].value)>max)controls[key].value=String(max);}filter();};
-  search.input.oninput=filter;generation.input.onchange=filter;
-  filterGrid.append(button('Reset PC filters',()=>{
-   search.input.value='';generation.input.value='';for(const control of Object.values(controls))control.value='';
-   controls.sort.value='number';controls.order.value='asc';controls.stat.oninput();
-  }));
+  const filters=bindPcFilters({...controls,search:search.input,generation:generation.input},()=>{page=0;render();});
+  filterGrid.append(button('Reset PC filters',filters.reset));
   storage.append(toolbar,filterDetails,label,grid,copies,selection);root.append(storage,preview);render();return root;
  }
  async function mutate(action,args){
