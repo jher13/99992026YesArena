@@ -7,6 +7,30 @@ on:
       - '.github/workflows/deploy-supabase.yml'
       - 'supabase/functions/arena-combat/**'
       - 'supabase/migrations/**'
+      - 'tests/trade-hub-sql.cjs'
+      - 'tests/update-and-trade-client.cjs'
+      - 'tests/arena-evolutions.cjs'
+      - 'tests/arena-tactics.cjs'
+      - 'tests/arena-maps.cjs'
+      - 'assets/arena-maps.js'
+      - 'campaign-progression.js'
+      - 'cloud.js'
+      - 'tests/regional-progression-client.cjs'
+      - 'tests/regional-progression-sql.cjs'
+      - 'tests/regional-contracts.cjs'
+      - 'tests/roster-expansion.cjs'
+      - 'tests/roster-expansion-sql.cjs'
+      - 'tests/trainer-profile.cjs'
+      - 'tests/profile-navigation.cjs'
+      - 'tests/online-combat-turns.mjs'
+      - 'tests/release-smoke.cjs'
+      - 'trainer-card.js'
+      - 'trainer-card.css'
+      - 'multiplayer.js'
+      - 'assets/roster-expansion.json'
+      - 'tests/fixtures/trade-save-validation.sql'
+      - 'package.json'
+      - 'package-lock.json'
 
 permissions:
   contents: read
@@ -28,8 +52,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: npm
+      - name: Install locked test dependencies
+        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund
       - name: Run release checks
-        run: node tests/release-smoke.cjs
+        run: npm test
       - uses: supabase/setup-cli@v3
       - name: Check deployment credentials
         run: |
@@ -39,5 +66,20 @@ jobs:
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
       - name: Apply database migrations
         run: supabase db push --remote --yes
+      - name: Route combat updates near the project database
+        env:
+          REGION_OVERRIDE: ${{ vars.ARENA_COMBAT_REGION }}
+        run: |
+          region="$REGION_OVERRIDE"
+          if [[ -z "$region" ]]; then
+            region=$(curl -fsS --max-time 10 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF" | jq -r '.region // empty') || region=""
+          fi
+          if [[ "$region" =~ ^[a-z]{2}(-[a-z0-9]+)+-[0-9]+$ ]]; then
+            jq -n --arg region "$region" '{region:$region}' > supabase/functions/arena-combat/region.json
+            echo "Combat database region: $region"
+          else
+            echo "Using automatic Edge routing."
+          fi
       - name: Deploy arena combat
         run: supabase functions deploy arena-combat --remote="$SUPABASE_PROJECT_REF" --use-api --no-verify-jwt --yes
