@@ -5528,7 +5528,7 @@ function musicNote(output,voice,midi,time,duration,volume) {
  oscillator.start(time);
  oscillator.stop(time+duration+0.01);
 }
-const victoryRecordings={"wild":"./assets/battle-28.mp3?v=a26cc9a680c9","trainer":"./assets/battle-29.mp3","gym":"./assets/battle-30.mp3?v=312d3c384e55"};
+const victoryRecordings={"wild":"./assets/battle-28.mp3?v=a26cc9a680c9","trainer":"./assets/battle-29.mp3?v=92c57d06d2e1","gym":"./assets/battle-30.mp3?v=312d3c384e55"};
 function playVictoryMusic(kind) {
  stopBattleMusic();
  if(!battleMusicEnabled || !window.Audio) return;
@@ -11347,6 +11347,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.85',changes:['Trainer battle wins now play the edited trainer victory theme.']},
  {version:'0.22.84',changes:['Updated the wild, trainer, and gym battle music in all nine regions, plus the wild and gym victory themes.']},
  {version:'0.22.83',changes:['Mega Charizard X, Mega Gengar and Mega Rayquaza each have a dedicated co-op battle theme. Their shiny Master Tier fights play three separate themes.']},
  {version:'0.22.82',changes:['All 846 Arena moves now have custom sound effects. Charged moves build up before release, multi-hit moves sound on contact, and online battles play sounds in time with the displayed action.']},

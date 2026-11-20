@@ -168,15 +168,13 @@ function checkBattleMusic(markup,pageUrl,assetDir){
  game.stopBattleMusic();game.phase='online-battle';game.active={mode:'free_fight',started:true};game.startBattleMusic();
  assert.equal(media.at(-1).src,new URL(trainer,pageUrl).href,'PvP retains its regional music');
 
- function checkRecording(number,edited){
+ function checkRecording(number){
   const filename='battle-'+String(number).padStart(2,'0')+'.mp3';
   const expected=new URL(assetDir+filename,pageUrl);
   const actual=new URL(media.at(-1).src);
-  if(edited){
-   const bytes=fs.readFileSync(path.join(__dirname,'..','assets',filename));
-   expected.searchParams.set('v',createHash('sha256').update(bytes).digest('hex').slice(0,12));
-   assert.equal(actual.href,expected.href,'the recording URL identifies the shipped edit');
-  }else assert.equal(actual.pathname,expected.pathname);
+  const bytes=fs.readFileSync(path.join(__dirname,'..','assets',filename));
+  expected.searchParams.set('v',createHash('sha256').update(bytes).digest('hex').slice(0,12));
+  assert.equal(actual.href,expected.href,'the recording URL identifies the shipped edit');
  }
  const regionSlots={Kanto:[17,18,21],Johto:[5,2,3],Hoenn:[7,1,11],Sinnoh:[16,23,19],Unova:[25,27,26],
   Kalos:[20,13,14],Alola:[6,8,10],Galar:[4,12,9],Paldea:[24,15,22]};
@@ -185,14 +183,14 @@ function checkBattleMusic(markup,pageUrl,assetDir){
  for(const [region,slots] of Object.entries(regionSlots)){
   for(const [i,encounter] of encounters.entries()){
    game.stopBattleMusic();game[encounter]={region};game.startBattleMusic();
-   checkRecording(slots[i],true);assert.equal(media.at(-1).loop,true);
+   checkRecording(slots[i]);assert.equal(media.at(-1).loop,true);
    game[encounter]=null;
   }
  }
  for(const [kind,slot] of Object.entries({wild:28,trainer:29,gym:30})){
   const previous=media.at(-1);
   game.playVictoryMusic(kind);
-  checkRecording(slot,kind!=='trainer');assert(previous.paused);assert.equal(media.at(-1).loop,false);
+  checkRecording(slot);assert(previous.paused);assert.equal(media.at(-1).loop,false);
  }
 }
 checkBattleMusic(html,'https://arena.test/PokeArena/index.html','./assets/');
