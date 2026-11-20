@@ -1,3 +1,9 @@
+# Update to 0.22.84
+
+Extract the changed files over **0.22.83**, keeping the folders intact, and push
+to `main`. The game now loads the edited wild, trainer, and gym battle themes
+for all nine regions and the edited wild and gym victory themes.
+
 # Update to 0.22.83
 
 Extract the changed files over **0.22.82** and keep the folder structure. Push to

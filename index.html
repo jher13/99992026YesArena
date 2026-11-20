@@ -5498,7 +5498,7 @@ const regionBattleThemes={
 };
 let battleMusicEnabled=true;
 try {battleMusicEnabled=playerStorage.getItem('pokemon-arena-music')!=='off';} catch {}
-const recordedBattleMusic={"Hoenn:trainer":"./assets/battle-01.mp3","Johto:trainer":"./assets/battle-02.mp3","Johto:gym":"./assets/battle-03.mp3","Galar:wild":"./assets/battle-04.mp3","Johto:wild":"./assets/battle-05.mp3","Alola:wild":"./assets/battle-06.mp3","Hoenn:wild":"./assets/battle-07.mp3","Alola:trainer":"./assets/battle-08.mp3","Galar:gym":"./assets/battle-09.mp3","Alola:gym":"./assets/battle-10.mp3","Hoenn:gym":"./assets/battle-11.mp3","Galar:trainer":"./assets/battle-12.mp3","Kalos:trainer":"./assets/battle-13.mp3","Kalos:gym":"./assets/battle-14.mp3","Paldea:trainer":"./assets/battle-15.mp3","Sinnoh:wild":"./assets/battle-16.mp3","Kanto:wild":"./assets/battle-17.mp3","Kanto:trainer":"./assets/battle-18.mp3","Sinnoh:gym":"./assets/battle-19.mp3","Kalos:wild":"./assets/battle-20.mp3","Kanto:gym":"./assets/battle-21.mp3","Paldea:gym":"./assets/battle-22.mp3","Sinnoh:trainer":"./assets/battle-23.mp3","Paldea:wild":"./assets/battle-24.mp3","Unova:wild":"./assets/battle-25.mp3","Unova:gym":"./assets/battle-26.mp3","Unova:trainer":"./assets/battle-27.mp3"};
+const recordedBattleMusic={"Hoenn:trainer":"./assets/battle-01.mp3?v=fae40c985d99","Johto:trainer":"./assets/battle-02.mp3?v=4d03be0c03c4","Johto:gym":"./assets/battle-03.mp3?v=f3e33b0dc22d","Galar:wild":"./assets/battle-04.mp3?v=e7f5d27960a3","Johto:wild":"./assets/battle-05.mp3?v=2cedd583b5f5","Alola:wild":"./assets/battle-06.mp3?v=e64e2861f0f1","Hoenn:wild":"./assets/battle-07.mp3?v=39297e1d0908","Alola:trainer":"./assets/battle-08.mp3?v=aa2a2209621f","Galar:gym":"./assets/battle-09.mp3?v=66a0f03b0c2d","Alola:gym":"./assets/battle-10.mp3?v=2001142fa9d6","Hoenn:gym":"./assets/battle-11.mp3?v=95ca99f3527e","Galar:trainer":"./assets/battle-12.mp3?v=d0850232cf41","Kalos:trainer":"./assets/battle-13.mp3?v=ef73b3d2323f","Kalos:gym":"./assets/battle-14.mp3?v=79f99dadc96a","Paldea:trainer":"./assets/battle-15.mp3?v=38e92539266b","Sinnoh:wild":"./assets/battle-16.mp3?v=cb59c0b896ba","Kanto:wild":"./assets/battle-17.mp3?v=e05c93391c49","Kanto:trainer":"./assets/battle-18.mp3?v=ff9fbf5f2783","Sinnoh:gym":"./assets/battle-19.mp3?v=220619f96f61","Kalos:wild":"./assets/battle-20.mp3?v=9a137db240fc","Kanto:gym":"./assets/battle-21.mp3?v=19fc2c30c661","Paldea:gym":"./assets/battle-22.mp3?v=81c678222696","Sinnoh:trainer":"./assets/battle-23.mp3?v=e91d10a397dc","Paldea:wild":"./assets/battle-24.mp3?v=6cc2a2fce168","Unova:wild":"./assets/battle-25.mp3?v=d6f7bafe9b83","Unova:gym":"./assets/battle-26.mp3?v=78e905cf16a8","Unova:trainer":"./assets/battle-27.mp3?v=9542e98ce356"};
 let musicContext,musicTrack;
 function stopBattleMusic() {
  if(!musicTrack) return;
@@ -5528,7 +5528,7 @@ function musicNote(output,voice,midi,time,duration,volume) {
  oscillator.start(time);
  oscillator.stop(time+duration+0.01);
 }
-const victoryRecordings={"wild":"./assets/battle-28.mp3","trainer":"./assets/battle-29.mp3","gym":"./assets/battle-30.mp3"};
+const victoryRecordings={"wild":"./assets/battle-28.mp3?v=a26cc9a680c9","trainer":"./assets/battle-29.mp3","gym":"./assets/battle-30.mp3?v=312d3c384e55"};
 function playVictoryMusic(kind) {
  stopBattleMusic();
  if(!battleMusicEnabled || !window.Audio) return;
@@ -11347,6 +11347,7 @@ function raidResidualDamage(actor,amount) {
  return actor.masterRaidPhase?Math.min(amount,actor.max*.0065):amount;
 }
 const updateLogEntries=[
+ {version:'0.22.84',changes:['Updated the wild, trainer, and gym battle music in all nine regions, plus the wild and gym victory themes.']},
  {version:'0.22.83',changes:['Mega Charizard X, Mega Gengar and Mega Rayquaza each have a dedicated co-op battle theme. Their shiny Master Tier fights play three separate themes.']},
  {version:'0.22.82',changes:['All 846 Arena moves now have custom sound effects. Charged moves build up before release, multi-hit moves sound on contact, and online battles play sounds in time with the displayed action.']},
  {version:'0.22.81',changes:['Added animations for the final 129 status and support moves. All 846 Arena moves now have artwork. Ally heals and item gifts show their recipient, and Wish has a second animation when its heal lands.']},

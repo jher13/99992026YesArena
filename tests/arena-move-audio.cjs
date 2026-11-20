@@ -125,12 +125,12 @@ function section(source,start,end){
  const first=source.indexOf(start),last=source.indexOf(end,first);
  assert(first>=0 && last>first,start);return source.slice(first,last);
 }
-function checkRaidMusic(markup,pageUrl,assetDir){
+function checkBattleMusic(markup,pageUrl,assetDir){
  const media=[],controls=new Map(),gestures=new Map(),settings=new Map();
  const element=()=>({children:[],setAttribute(){},append(...items){this.children.push(...items);}});
  const byId=id=>{if(!controls.has(id))controls.set(id,element());return controls.get(id);};
  class Recording{
-  constructor(src){this.src=new URL(src,pageUrl).href;this.paused=true;this.plays=0;media.push(this);}
+  constructor(src){this.src=new URL(src,pageUrl).href;this.loop=false;this.paused=true;this.plays=0;media.push(this);}
   play(){this.plays++;this.paused=false;return Promise.resolve();}
   pause(){this.paused=true;}
  }
@@ -167,7 +167,34 @@ function checkRaidMusic(markup,pageUrl,assetDir){
  assert.equal(media.at(-1).src,new URL(trainer,pageUrl).href,'solo battle after leaving a raid');
  game.stopBattleMusic();game.phase='online-battle';game.active={mode:'free_fight',started:true};game.startBattleMusic();
  assert.equal(media.at(-1).src,new URL(trainer,pageUrl).href,'PvP retains its regional music');
+
+ function checkRecording(number,edited){
+  const filename='battle-'+String(number).padStart(2,'0')+'.mp3';
+  const expected=new URL(assetDir+filename,pageUrl);
+  const actual=new URL(media.at(-1).src);
+  if(edited){
+   const bytes=fs.readFileSync(path.join(__dirname,'..','assets',filename));
+   expected.searchParams.set('v',createHash('sha256').update(bytes).digest('hex').slice(0,12));
+   assert.equal(actual.href,expected.href,'the recording URL identifies the shipped edit');
+  }else assert.equal(actual.pathname,expected.pathname);
+ }
+ const regionSlots={Kanto:[17,18,21],Johto:[5,2,3],Hoenn:[7,1,11],Sinnoh:[16,23,19],Unova:[25,27,26],
+  Kalos:[20,13,14],Alola:[6,8,10],Galar:[4,12,9],Paldea:[24,15,22]};
+ const encounters=['selectedWild','selectedTrainer','selectedGym'];
+ game.phase='battle';game.active=null;game.selectedTrainer=null;
+ for(const [region,slots] of Object.entries(regionSlots)){
+  for(const [i,encounter] of encounters.entries()){
+   game.stopBattleMusic();game[encounter]={region};game.startBattleMusic();
+   checkRecording(slots[i],true);assert.equal(media.at(-1).loop,true);
+   game[encounter]=null;
+  }
+ }
+ for(const [kind,slot] of Object.entries({wild:28,trainer:29,gym:30})){
+  const previous=media.at(-1);
+  game.playVictoryMusic(kind);
+  checkRecording(slot,kind!=='trainer');assert(previous.paused);assert.equal(media.at(-1).loop,false);
+ }
 }
-checkRaidMusic(html,'https://arena.test/PokeArena/index.html','./assets/');
-checkRaidMusic(local,'file:///PokeArena/local-test/PokeArena_Local_Test.html','../assets/');
-console.log('Six co-op boss themes passed hosted and local selection, looping, mute, volume and playback retry checks.');
+checkBattleMusic(html,'https://arena.test/PokeArena/index.html','./assets/');
+checkBattleMusic(local,'file:///PokeArena/local-test/PokeArena_Local_Test.html','../assets/');
+console.log('Regional, victory and co-op music passed hosted and local playback checks.');
