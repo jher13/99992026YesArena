@@ -173,8 +173,9 @@ function checkBattleMusic(markup,pageUrl,assetDir){
   const expected=new URL(assetDir+filename,pageUrl);
   const actual=new URL(media.at(-1).src);
   const bytes=fs.readFileSync(path.join(__dirname,'..','assets',filename));
-  expected.searchParams.set('v',createHash('sha256').update(bytes).digest('hex').slice(0,12));
-  assert.equal(actual.href,expected.href,'the recording URL identifies the shipped edit');
+  const fileHash=createHash('sha256').update(bytes).digest('hex');
+  expected.searchParams.set('v',fileHash);
+  assert.equal(actual.href,expected.href,`${filename} on disk has SHA-256 ${fileHash}. The game requested ${actual.href}.`);
  }
  const regionSlots={Kanto:[17,18,21],Johto:[5,2,3],Hoenn:[7,1,11],Sinnoh:[16,23,19],Unova:[25,27,26],
   Kalos:[20,13,14],Alola:[6,8,10],Galar:[4,12,9],Paldea:[24,15,22]};

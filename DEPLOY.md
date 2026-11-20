@@ -1,3 +1,10 @@
+# Update to 0.22.86
+
+This cumulative soundtrack repair applies to **0.22.83 through 0.22.85**.
+Extract the ZIP at the repository root, replacing the game files and all 30
+regional battle and victory MP3s in `assets/`. Commit the extracted files
+together. Run `node tests/release-smoke.cjs` to verify the installation.
+
 # Update to 0.22.85
 
 Extract the changed files over **0.22.84**, keeping the folders intact, and push
